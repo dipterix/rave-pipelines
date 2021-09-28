@@ -4,13 +4,8 @@ source("common.R")
 # tar_option_set(packages = c("raveio"))
 
 ...targets <- list(
-  check_settings_file = tar_target(
-    settings_path,
-    "settings.yaml",
-    format = "file"
-  ),
   load_settings = tar_target(
-    settings,
+    settings,  # "settings.yaml"
     {
       settings <- raveio::load_yaml(settings_path)
       settings$electrodes <- dipsaus::parse_svec(settings$electrodes)
@@ -20,105 +15,76 @@ source("common.R")
       settings
     }
   ),
-  creating_virtual_subject_instance = tar_target(
-    subject,
+  initialize_and_check_subject = tar_target(
+    checked_settings,
     {
-      subject <- raveio::RAVESubject$new(
-        project_name = settings$project_name,
-        subject_code = settings$subject_code,
-        strict = FALSE
-      )
-      subject$initialize_paths(include_freesurfer = FALSE)
-      subject
-    }
-  ),
-  preparing_preprocess_unit = tar_target(
-    subject_preprocess,
-    {
-      subject_preprocess <- raveio::RAVEPreprocessSettings$new(
-        subject = subject, read_only = FALSE
-      )
-      sel <- settings$blocks %in% subject_preprocess$all_blocks
+      sel <- settings$blocks %in% preprocess_instance$all_blocks
       if(!all(sel)){
         stop("Some block folders are missing: ", paste(settings$blocks[!sel], collapse = ", "))
       }
-      sel <- subject_preprocess$electrodes %in% settings$electrodes
-      if(length(sel) && any(subject_preprocess$data_imported[sel])){
-        if(!setequal(settings$blocks, subject_preprocess$blocks)){
+      sel <- preprocess_instance$electrodes %in% settings$electrodes
+      if(length(sel) && any(preprocess_instance$data_imported[sel])){
+        if(!setequal(settings$blocks, preprocess_instance$blocks)){
           stop("The subject has been imported before. The block was ",
-               paste(subject_preprocess$blocks, collapse = ", "),
+               paste(preprocess_instance$blocks, collapse = ", "),
                ". However, block ",
                paste(settings$blocks, collapse = ", "), " was asked")
         }
       } else {
-        subject_preprocess$set_blocks(settings$blocks, force = TRUE)
+        preprocess_instance$set_blocks(settings$blocks, force = TRUE)
       }
       add_es <- settings$electrodes[
-        !settings$electrodes %in% subject_preprocess$electrodes
+        !settings$electrodes %in% preprocess_instance$electrodes
       ]
       if(length(add_es)){
-        subject_preprocess$set_electrodes(settings$electrodes, type = "LFP", add = TRUE)
+        preprocess_instance$set_electrodes(settings$electrodes, type = "LFP", add = TRUE)
       }
 
-      subject_preprocess$set_sample_rates(settings$sample_rate, type = 'LFP')
+      preprocess_instance$set_sample_rates(settings$sample_rate, type = 'LFP')
 
-      es <- subject_preprocess$electrodes
-      et <- subject_preprocess$electrode_types
+      es <- preprocess_instance$electrodes
+      et <- preprocess_instance$electrode_types
       raveio::catgl(paste(
-        "Setting subject [{subject_preprocess$subject$subject_id}]:\n",
-        "    Blocks: ", paste(subject_preprocess$blocks, collapse = ", "), "\n",
+        "Setting subject [{preprocess_instance$subject$subject_id}]:\n",
+        "    Blocks: ", paste(preprocess_instance$blocks, collapse = ", "), "\n",
         "    Electrodes: ", dipsaus::deparse_svec(es[et == "LFP"]), "\n",
-        "    LFP sample rate: ", subject_preprocess$`@lfp_ecog_sample_rate`, "\n",
+        "    LFP sample rate: ", preprocess_instance$`@lfp_ecog_sample_rate`, "\n",
         sep = ""), level = "INFO")
 
-      subject_preprocess$save()
-      subject_preprocess
+      # initialize
+      subject$initialize_paths(include_freesurfer = FALSE)
+      preprocess_instance$save()
+      preprocess_instance
+
     }
   ),
   import_LFP_analog_traces = tar_target(
-    import_LFP_timestamp,
+    import_LFP,
     {
       on.exit({
         future::plan("sequential")
       }, add = TRUE)
-      es <- subject_preprocess$electrodes
-      et <- subject_preprocess$electrode_types
-      es <- es[et == "LFP" & !subject_preprocess$data_imported]
+      es <- checked_settings$electrodes
+      et <- checked_settings$electrode_types
+      es <- es[et == "LFP" & !checked_settings$data_imported]
       if(length(es)){
         raveio::rave_import(
           project_name = subject$project_name,
           subject_code = subject$subject_code,
-          blocks = subject_preprocess$blocks,
+          blocks = checked_settings$blocks,
           electrodes = es[et == "LFP"],
           format = settings$file_format,
-          sample_rate = subject_preprocess$`@lfp_ecog_sample_rate`,
+          sample_rate = checked_settings$`@lfp_ecog_sample_rate`,
           conversion = settings$physical_unit,
           data_type = "LFP",
         )
       }
-      subject_preprocess$save()
+      checked_settings$save()
       tstamp <- Sys.time()
       dir <- file.path(subject$pipeline_path, "_shared")
       raveio::dir_create2(dir)
       saveRDS(tstamp, file = file.path(dir, "import_timestamp"))
       tstamp
-    }
-  ),
-  save_pipeline = tar_target(
-    save_pipeline_import_LFP,
-    {
-      # per-update the pipeline, run
-      force(import_LFP_timestamp)
-      if(settings$save_pipeline){
-        src <- normalizePath(getwd())
-        dst <- file.path(subject$pipeline_path, !!target_name)
-        dst <- normalizePath(dst, mustWork = FALSE)
-        if(dst != src){
-          file.copy(src, subject$pipeline_path,
-                    recursive = TRUE, copy.date = TRUE)
-        }
-      }
-      Sys.time()
     }
   )
 )
