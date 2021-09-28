@@ -1,0 +1,13 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|iteration|parent|children|seconds|warnings|error
+target_name|object|266a82385c3b3f9f||||||||||||||
+...targets|object|4f6ee4e9d0f7d5b7||||||||||||||
+.Random.seed|object|937f23950345c8a8||||||||||||||
+.settings|object|ea2d350d1e5ce8fa||||||||||||||
+target_script|object|f11d9153276ba58d||||||||||||||
+target_directory|object|5a791d818ae738a6||||||||||||||
+settings_path|stem|2a1e6216ff587af8|ee1c47cad3baa348|ef46db3751d8e999|1996204167|settings.yaml|t18898.1612164201s|253a8b79276e1ed4|185|file|vector|||0.001||
+settings|stem|55e5f0860320de0b|feed0c8d998ed6bb|cd67c9448c9c3ba4|-1526810889||t18898.1613493202s|fdd742f1201b30e7|14485|rds|vector|||0.006||
+subject|stem|113e02da2f164b0e|9777b9cd29a5aee4|22cb7acfae2f675c|-1700957165||t18898.161351139s|3615e8210e121c92|198088|rds|vector|||0.086||
+subject_preprocess|stem|09e7a2b1ddc055aa|da79ca338a9334d5|3f134308c007d0bd|-755349167||t18898.1613535458s|2bfd7f289a948e94|215904|rds|vector|||0.053||
+import_LFP_timestamp|stem|f80f20f065c638be|5e9e9805ee2edec2|d1eeb1d05c184749|710994418||t18898.1614603611s|41200f7f0df0ebd3|96|rds|vector|||9.225||
+save_pipeline_import_LFP|stem|e76c49e11955e72e|c8f3489a81bb659c|547da722e34138b6|-812719080||t18898.1614604273s|41200f7f0df0ebd3|96|rds|vector|||0.004||

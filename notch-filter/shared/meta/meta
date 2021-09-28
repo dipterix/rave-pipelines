@@ -1,0 +1,17 @@
+name|type|data|command|depend|seed|path|time|size|bytes|format|iteration|parent|children|seconds|warnings|error
+settings_path|stem|5a298bc1903067d3|ee1c47cad3baa348|ef46db3751d8e999|1996204167|settings.yaml|t18898.0587594595s|e634ea2609ddfae9|387|file|vector|||0||
+settings|stem|f4c66a1833c579dd|77f5053fd6180ac0|c2e0306864b73b26|-1526810889||t18898.1618116938s|45278a1a820dc4cc|14632|rds|vector|||0.001||
+preprocess_tool|stem|b31e15a238f68890|cff91ec946cb3684|5c40bad6a9dd3ea1|-391561906||t18898.1618139448s|4551b0d5098448a4|213203|rds|vector|||0.126||
+notch_timestamp|stem|f6cb81423a847de9|3f0c26db9b752121|61e166beb984ec8e|1614848428||t18898.1618469698s|4ff05336d644dae2|106|rds|vector|||2.843||
+notch_plots|stem|bf96b310b2c704c0|0970dcc6f7547ece|33c1bd6a9ae7a9c7|109257945||t18898.1621661346s|41200f7f0df0ebd3|96|rds|vector|||6.502||
+save_pipeline_notch|stem|bb54ca5ba101c9fd|c77793eac68ec98f|c9d0b1814cf601f8|735223931||t18898.1621662266s|41200f7f0df0ebd3|96|rds|vector|||0.005||
+target_name|object|a3ea270d0f6e13f4||||||||||||||
+import_LFP_timestamp|object|7b23f18734876857||||||||||||||
+...targets|object|f5575c4a1b1da224||||||||||||||
+subject_preprocess|object|8466101478a7c840||||||||||||||
+.Random.seed|object|a677562645f7d132||||||||||||||
+.settings|object|ea2d350d1e5ce8fa||||||||||||||
+target_script|object|9d576c4ed83b0b42||||||||||||||
+target_directory|object|5a791d818ae738a6||||||||||||||
+subject|object|cda19fd6c8ce10b8||||||||||||||
+save_pipeline_import_LFP|object|074385e5d9a6c02d||||||||||||||
