@@ -1,0 +1,3 @@
+morlet-wavelet:
+  script: make-main.R
+  store: shared
