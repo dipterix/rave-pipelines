@@ -24,7 +24,8 @@ library(targets)
     'preparing_preprocess_instance',
     "initialize_and_check_subject",
     'import_LFP_analog_traces',
-    'save_pipeline_and_export_timestamp'
+    'save_pipeline_and_export_timestamp',
+    "generate_electrodes_csv"
   )]
 
 })

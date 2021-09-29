@@ -43,6 +43,9 @@ source("common.R")
       blocks = preprocess_instance$blocks
       sample_rates <- preprocess_instance$sample_rates
       preprocess_path <- preprocess_instance$subject$preprocess_path
+      voltage_path <- file.path(preprocess_instance$subject$data_path, "voltage")
+      raveio::dir_create2(preprocess_path)
+      raveio::dir_create2(voltage_path)
 
       e <- electrodes[[1]]
       h5_path <- file.path(preprocess_path, 'voltage', sprintf('electrode_%d.h5', e))
@@ -62,9 +65,11 @@ source("common.R")
           blocks <- .(blocks)
           settings <- .(settings)
           sample_rates <- .(sample_rates)
+          voltage_path <- .(voltage_path)
 
           e <- electrodes[[ii]]
           h5_path <- file.path(.(preprocess_path), 'voltage', sprintf('electrode_%d.h5', e))
+          h5_volt <- file.path(voltage_path, sprintf("%d.h5", e))
 
           # load all data
           signals <- structure(lapply(blocks, function(block){
@@ -79,10 +84,18 @@ source("common.R")
               lb = settings$lower_bound,
               ub = settings$upper_bound
             )
+            filtered <- as.vector(filtered)
             raveio::save_h5(
-              x = as.vector(filtered),
+              x = filtered,
               file = h5_path,
               name = sprintf('/notch/%s', block),
+              chunk = c(1024),
+              replace = TRUE
+            )
+            raveio::save_h5(
+              x = filtered,
+              file = h5_volt,
+              name = sprintf('/raw/voltage/%s', block),
               chunk = c(1024),
               replace = TRUE
             )
@@ -101,6 +114,9 @@ source("common.R")
         settings$upper_bound - settings$lower_bound
       for(e in electrodes){
         preprocess_instance$data[[e]]$notch_filtered <- TRUE
+
+        # The pipeline requires notch before the wavelet
+        preprocess_instance$data[[e]]$has_wavelet <- FALSE
       }
       preprocess_instance$save()
 

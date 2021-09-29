@@ -86,6 +86,47 @@ source("common.R")
       saveRDS(tstamp, file = file.path(dir, "import_timestamp"))
       tstamp
     }
+  ),
+  generate_electrodes_csv = tar_target(
+    generate_electrodes_csv,
+    {
+      force(import_LFP)
+
+      # reload preprocess_instance (clean start)
+      subject <-
+        raveio::RAVESubject$new(project_name = settings$project_name,
+                                subject_code = settings$subject_code)
+
+      etable <- subject$meta_data("electrodes")
+
+      if(is.null(etable)){
+        etable <- data.frame(
+          Electrode = subject$electrodes,
+          Coord_x = 0,
+          Coord_y = 0,
+          Coord_z = 0,
+          Label = "NoLabel"
+        )
+      } else {
+        es <- subject$electrodes[!subject$electrodes %in% etable$Electrode]
+        row <- etable[1,]
+        row[] <- NA
+        row <- do.call(rbind, lapply(es, function(e){
+          row$Electrode <- e
+          row$Coord_x <- 0
+          row$Coord_y <- 0
+          row$Coord_z <- 0
+          row$Label <- "NoLabel"
+          row
+        }))
+        etable <- rbind(etable, row)
+      }
+      etable <- etable[order(etable$Electrode),]
+      etable <- etable[!duplicated(etable$Electrode), ]
+      raveio::dir_create2(subject$meta_path)
+      csv <- file.path(subject$meta_path, "electrodes.csv")
+      raveio::safe_write_csv(etable, csv)
+    }
   )
 )
 
