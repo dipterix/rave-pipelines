@@ -1,0 +1,12 @@
+Name: "rave-pipelines"
+Version: "0.0.1"
+Description: "RAVE Builtin Pipelines"
+Authors: >
+  person("Zhengjia", "Wang", email = "dipterix.wang@gmail.com", role = c("aut", "cre"))
+URL: https://github.com/beauchamplab/rave-pipelines
+BugReports: https://github.com/beauchamplab/rave-pipelines/issues
+Inherits:
+Contains:
+  - "import-LFP"
+  - "notch-filter"
+  - "morlet-wavelet"

@@ -11,7 +11,7 @@ source("common.R")
       settings$electrodes <- dipsaus::parse_svec(settings$electrodes)
       freq <- settings$wavelet$frequencies
       if(is.character(freq)){
-        freq <- sapply(freq, glue::glue)
+        freq <- sapply(freq, raveio::glue)
       }
       freq <- as.numeric(unlist(freq))
       if(any(is.na(freq) | freq <= 0)){
@@ -45,7 +45,7 @@ source("common.R")
         }
         nms <- raveio::h5_names(h5_path)
         for(block in blocks){
-          if(!glue::glue(settings$signal_source) %in% nms){
+          if(!raveio::glue(settings$signal_source) %in% nms){
             stop("Cannot find signal names in the imported files: ", settings$source, " (with block: ", block, ")")
           }
         }

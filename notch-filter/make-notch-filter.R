@@ -54,7 +54,7 @@ source("common.R")
       }
       nms <- raveio::h5_names(h5_path)
       for(block in blocks){
-        if(!glue::glue(settings$source) %in% nms){
+        if(!raveio::glue(settings$source) %in% nms){
           stop("Cannot find signal names in the imported files: ", settings$source, " (with block: ", block, ")")
         }
       }
@@ -73,7 +73,7 @@ source("common.R")
 
           # load all data
           signals <- structure(lapply(blocks, function(block){
-            h5_name <- glue::glue(settings$source)
+            h5_name <- raveio::glue(settings$source)
             raveio::load_h5(h5_path, h5_name, ram = TRUE)
           }), names = blocks)
 
@@ -144,7 +144,7 @@ source("common.R")
       srates <- preprocess_instance$sample_rates
 
       winlen <- sapply(srates, function(sample_rate){
-        as.integer(glue::glue(as.character(settings$plots$pwelch_window_size)))
+        as.integer(raveio::glue(as.character(settings$plots$pwelch_window_size)))
       })
       winlen[is.na(winlen)] <- ceiling(srates[is.na(winlen)] * 2)
       freq_lim <- settings$plots$pwelch_max_frequency
