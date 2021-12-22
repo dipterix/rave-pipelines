@@ -58,6 +58,7 @@ library(dipsaus)
     plot_wavelet_power = tar_target_raw(
       "plot_wavelet_power",
       bquote({
+        force(apply_morlet_wavelet)
         pipeline_path <- preprocess_instance$subject$pipeline_path
         dir <- file.path(
           pipeline_path, "_plots", "wavelet-diagnosis",

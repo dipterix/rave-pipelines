@@ -29,4 +29,8 @@ Suggests:
     rstudioapi
 Remotes:
     dipterix/raveutils
-Inherits:
+InheritPipelines:
+SubPipelines:
+    import-LFP,
+    notch-filter,
+    morlet-wavelet

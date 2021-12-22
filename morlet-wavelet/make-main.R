@@ -33,7 +33,7 @@ library(targets)
     "find_electrodes_to_transform",
     "apply_morlet_wavelet",
     "save_pipeline_and_export_timestamp",
-    # "plot_wavelet_kernels"
+    "plot_wavelet_kernels",
     "plot_wavelet_power"
   )]
 

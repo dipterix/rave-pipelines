@@ -124,6 +124,10 @@ source("common.R")
       }
       preprocess_instance$save()
 
+      # save frequencies.csv (maybe for future use)
+      freq_path <- file.path(preprocess_instance$subject$meta_path, "frequencies.csv")
+      write.csv(data.frame(Frequency = wave_params$frequencies), file = freq_path)
+
       Sys.time()
     }
   )

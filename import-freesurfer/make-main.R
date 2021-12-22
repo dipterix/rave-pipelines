@@ -5,13 +5,12 @@ library(targets)
 
   # load & combine pipelines
   targets <- raveio::load_targets(
-    # "make-shared.R",
-    "make-import-LFP.R"
+    "make-shared.R",
+    "make-import-freesurfer.R"
   )
+  targets$save_pipeline_and_export_timestamp <- NULL
 
-  names(targets)
-
-  # force save-pipeline to depend on import-LFP
+  # force save-pipeline to depend on import-freesurfer
   # targets$save_pipeline_and_export_timestamp$command$deps <- unique(c(
   #   targets$save_pipeline_and_export_timestamp$command$deps,
   #   "import_LFP", "checked_settings"
@@ -29,8 +28,8 @@ library(targets)
   #   'save_pipeline_and_export_timestamp',
   #   "generate_electrodes_csv"
   # )]
-
   targets
+
 })
 ...targets
 
