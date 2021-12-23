@@ -5,3 +5,6 @@
 .DS_Store
 shared/
 grant
+backup
+adhoc
+_rs_job.R

@@ -31,6 +31,8 @@ Remotes:
     dipterix/raveutils
 InheritPipelines:
 SubPipelines:
-    import-LFP,
-    notch-filter,
-    morlet-wavelet
+    _pipelines/import-LFP,
+    _pipelines/notch-filter,
+    _pipelines/morlet-wavelet
+InteractiveModules:
+    modules/import_raw
