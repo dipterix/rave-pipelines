@@ -1,4 +1,6 @@
-# global variables for the module
+library(dipsaus)
+
+# options("shinyvalidate.verbose" = TRUE)
 
 # Stores global variables
 local_data <- fastmap::fastmap()
@@ -53,4 +55,16 @@ pipeline_settings <- local({
 })
 pipeline_set <- pipeline_settings$set
 pipeline_get <- pipeline_settings$get
+
+
+module_ui_loader <- function(){
+  shiny::tagList(
+    ui_step1(),
+    ui_step2()
+  )
+}
+
+module_ui_main <- function(){
+  module_ui_loader()
+}
 
