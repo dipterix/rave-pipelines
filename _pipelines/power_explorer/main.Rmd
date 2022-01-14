@@ -1,0 +1,207 @@
+---
+title: "RAVE Pipeline Markdown Template"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+# This code block sets up the engine environment
+# Please do not remove me
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+build_pipeline <- raveio::configure_knitr()
+# build_pipeline(make_file = "make-power_explorer.R")
+```
+
+```{rave create_subject_instance, language = "R", export = "subject"}
+# raveio::pipeline_debug(quick = FALSE)
+library(raveio)
+subject_id <- sprintf("%s/%s", project_name, subject_code)
+subject <- as_rave_subject(subject_id, strict = TRUE)
+subject
+```
+
+1. Check inputs
+
+```{rave check_epoch, language = "R", export = "epoch_table"}
+# ---- Check epoch file ----
+if(length(epoch_name) != 1){
+  stop("Only one epoch is allowed at a time.")
+}
+if(!isTRUE(epoch_name %in% subject$epoch_names)){
+  stop("Subject ", subject_id, " has no epoch name called: ", sQuote(epoch_name), "\n  Please check folder\n    ", subject$meta_path, "\n  and make sure ", sQuote(sprintf("epoch_%s.csv", epoch_name)), " exists.")
+}
+epoch_table <- subject$meta_data(meta_type = 'epoch', meta_name = epoch_name)
+
+if(!is.data.frame(epoch_table)){
+  stop("Cannot load epoch file correctly. A typical RAVE-epoch file contains 4 columns (case-sensitive): Block (characters), Time (numerical), Trial (integer), Condition (characters).")
+}
+
+# trial starts from -1 sec but only 0.5 seconds are allowed
+invalid_epochs <- 
+  epoch_table$Time + trial_starts < 0
+
+if(any(invalid_epochs)){
+  stop("Trial ", dipsaus::deparse_svec(epoch_table$Trial[invalid_epochs]), " start too soon after the beginning of the sessions (less than ", sprintf("%.2f seconds", -trial_starts), "). Please adjust the trial start time (i.e. ", sQuote("Pre"), " if you are using the RAVE application).")
+}
+
+head(epoch_table)
+```
+
+```{rave check_reference, language = "R", export = "reference_table"}
+# ---- Check epoch file ----
+if(length(reference_name) != 1){
+  stop("Only one reference is allowed at a time.")
+}
+if(!isTRUE(reference_name %in% subject$reference_names)){
+  stop("Subject ", subject_id, " has no reference name called: ", sQuote(reference_name), "\n  Please check folder\n    ", subject$meta_path, "\n  and make sure ", sQuote(sprintf("reference_%s.csv", reference_name)), " exists.")
+}
+
+reference_table <- subject$meta_data(meta_type = 'reference', meta_name = reference_name)
+
+if(!is.data.frame(reference_table)){
+  stop("Cannot load reference file correctly. A typical RAVE-reference file contains 4 columns (case-sensitive): Electrode (integer), Group (characters), Reference (characters), Type (characters).")
+}
+
+head(reference_table)
+```
+
+```{rave check_electrodes, language = "R", export = "electrode_table"}
+# ---- Check electrodes ----
+# Get electrodes to be loaded
+load_electrodes <- dipsaus::parse_svec(loaded_electrodes)
+valid_electrodes <- subject$valid_electrodes(reference_name = reference_name)
+
+# 1. get electrodes to be truly loaded
+load_electrodes <- load_electrodes[load_electrodes %in% valid_electrodes]
+if(!length(load_electrodes)) {
+  stop("There is no valid electrodes to be loaded. The valid electrodes are: ", dipsaus::deparse_svec(valid_electrodes), ".")
+}
+
+preproc <- subject$preprocess_settings
+all_electrodes <- subject$electrodes
+
+sel <- all_electrodes %in% load_electrodes
+if(!all(preproc$has_wavelet[sel])){
+  imcomplete <- all_electrodes[all_electrodes %in% load_electrodes & !preproc$has_wavelet]
+  stop("The following electrodes do not have power spectrum: \n  ", dipsaus::deparse_svec(imcomplete), 
+       "\nPlease run wavelet module first.")
+}
+
+electrode_table <- subject$meta_data("electrodes")
+
+if(!is.data.frame(electrode_table)){
+  stop("Cannot load electrode.csv correctly. A basic RAVE-electrode file contains 5 columns (case-sensitive): Electrode (integer), Coord_x (numerical), Coord_y (numerical), Coord_y (numerical), Label (characters).")
+}
+
+electrode_table <- merge(electrode_table, reference_table, by = 'Electrode', all.x = TRUE, all.y = FALSE)
+electrode_table$isLoaded <- electrode_table$Electrode %in% load_electrodes
+```
+
+```{rave check_frequencies, language = "R", export = "frequency_table"}
+frequency_table <- subject$meta_data('frequencies')
+```
+
+2. Load data
+
+```{rave load_epoch, language = "R", export = "epoch"}
+epoch <- raveio::RAVEEpoch$new(subject = subject, name = epoch_name)
+epoch
+```
+
+```{rave load_electrode_power, language = "R", export = "power_list", cue = "always"}
+electrode_list <- unique(electrode_table$Electrode[electrode_table$isLoaded])
+
+# load reference first, do not create race conditions
+ref_names <- unique(reference_table$Reference[reference_table$Electrode %in% electrode_list])
+
+# progress <- shidashi::shiny_progress(title = "Loading electrodes...", max = length(ref_names) + length(electrode_list), shiny_auto_close = TRUE)
+# print(shiny::getDefaultReactiveDomain())
+
+dipsaus::lapply_callr(ref_names, function(ref_name){
+  ref <- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+  ref$set_epoch(epoch)
+  ref$trial_intervals <- list(c(trial_starts, trial_ends))
+  ref$load_data(type = "power")
+  NULL
+}, .globals = list(
+  reference_table = reference_table,
+  subject = subject,
+  epoch = epoch,
+  trial_starts = trial_starts,
+  trial_ends = trial_ends
+), .callback = function(ref_name, ii){
+  msg <- sprintf("Loading reference | %s", ref_name)
+  msg
+}, .ncores = raveio::raveio_getopt("max_worker"))
+
+# Load electrodes
+power_list <- dipsaus::lapply_callr(electrode_list, function(e){
+  ref_name <- reference_table$Reference[reference_table$Electrode == e]
+  el <- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
+  ref <- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+  el$set_reference(ref)
+  el$set_epoch(epoch)
+  el$trial_intervals <- list(c(trial_starts, trial_ends))
+  el$load_data(type = "power")
+}, .globals = list(
+  reference_table = reference_table,
+  subject = subject,
+  epoch = epoch,
+  trial_starts = trial_starts,
+  trial_ends = trial_ends
+), .callback = function(el, ii){
+  msg <- sprintf("Loading electrode | %s (%d of %d)", el, ii, length(electrode_list))
+  msg
+}, .ncores = raveio::raveio_getopt("max_worker"))
+
+# power_list <- dipsaus::lapply_async2(electrode_list, function(e){
+#   ref_name <- reference_table$Reference[reference_table$Electrode == e]
+#   el <- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
+#   ref <- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+#   el$set_reference(ref)
+#   el$set_epoch(epoch)
+#   el$trial_intervals <- list(c(trial_starts, trial_ends))
+#   el$load_data(type = "power")
+# }, callback = function(el){
+#   msg <- sprintf("Loading electrode - %s", el)
+#   print(msg)
+# }, workers = raveio::raveio_getopt("max_worker"))
+# stop('no')
+```
+
+```{rave load_dimension_names, language = "R", export = "power_dimnames"}
+power_dimnames <- dimnames(power_list[[1]])
+power_dimnames$Electrode <- electrode_table$Electrode[electrode_table$isLoaded]
+```
+
+## Build, Visualize, & Run
+
+Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-power_explorer.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
+
+```{r build, echo=FALSE, results='hide'}
+build_pipeline(make_file = "make-power_explorer.R")
+```
+
+
+Once the pipeline script `make-power_explorer.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
+
+```{r visualize, echo=FALSE}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_visualize()
+```
+
+
+```{r execute}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_run(type = "vanilla")
+raveio::pipeline_progress(method = 'details')
+```
+
+
+
+
+
+

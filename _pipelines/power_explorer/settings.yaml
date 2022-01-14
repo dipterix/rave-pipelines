@@ -1,0 +1,7 @@
+reference_name: default
+subject_code: DemoSubject
+project_name: demo
+trial_starts: -1
+trial_ends: 2
+epoch_name: auditory_onset
+loaded_electrodes: 13-16,24

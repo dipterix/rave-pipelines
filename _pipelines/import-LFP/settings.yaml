@@ -57,7 +57,7 @@ channels:
   sample_rate: 2000
   type: LFP
 subject_code: YAB
-project_name: test2
+project_name: demo
 file_format: 1.0
 blocks:
 - 008
