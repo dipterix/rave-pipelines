@@ -177,7 +177,7 @@ library(raveio)
 subject_id &lt;- sprintf(&quot;%s/%s&quot;, project_name, subject_code)
 subject &lt;- as_rave_subject(subject_id, strict = TRUE)
 subject
-#&gt; RAVE subject &lt;demo/KC&gt;</code></pre>
+#&gt; RAVE subject &lt;demo/DemoSubject&gt;</code></pre>
 <ol style="list-style-type: decimal">
 <li>Check inputs</li>
 </ol>
@@ -204,12 +204,12 @@ if(any(invalid_epochs)){
 
 head(epoch_table)
 #&gt;   Block    Time Trial    Condition Duration ExcludedElectrodes X
-#&gt; 1   003  4.9115     1 AmeantVdrive       NA                    1
-#&gt; 2   003  8.7660     2      drive_a       NA                    2
-#&gt; 3   003 12.9650     3 AknownVmeant       NA                    3
-#&gt; 4   003 16.9020     4       last_v       NA                    4
-#&gt; 5   003 20.8060     5     meant_av       NA                    5
-#&gt; 6   003 24.6520     6      known_a       NA                    6</code></pre>
+#&gt; 1   008  5.3475     1 AknownVmeant       NA                    1
+#&gt; 2   008  9.3685     2 AmeantVdrive       NA                    2
+#&gt; 3   008 13.3370     3      meant_v       NA                    3
+#&gt; 4   008 17.5915     4      drive_v       NA                    4
+#&gt; 5   008 21.4185     5      known_a       NA                    5
+#&gt; 6   008 25.6390     6     known_av       NA                    6</code></pre>
 <pre class="r"><code># ---- Check epoch file ----
 if(length(reference_name) != 1){
   stop(&quot;Only one reference is allowed at a time.&quot;)
@@ -225,27 +225,12 @@ if(!is.data.frame(reference_table)){
 }
 
 head(reference_table)
-#&gt;   Electrode    Group
-#&gt; 1         6 PJK_redo
-#&gt; 2         7 PJK_redo
-#&gt; 3        14 PJK_redo
-#&gt; 4        15 PJK_redo
-#&gt; 5        22 PJK_redo
-#&gt; 6        23 PJK_redo
-#&gt;                                                                 Reference
-#&gt; 1 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt; 2 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt; 3 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt; 4 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt; 5 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt; 6 ref_4-10,12-17,22-26,30-33,38-39,41,44-48,50,52-56,58,60-62,64-76,78-80
-#&gt;                       Type
-#&gt; 1 Common Average Reference
-#&gt; 2 Common Average Reference
-#&gt; 3 Common Average Reference
-#&gt; 4 Common Average Reference
-#&gt; 5 Common Average Reference
-#&gt; 6 Common Average Reference</code></pre>
+#&gt;   Electrode Group    Reference                     Type
+#&gt; 1        13  Grid ref_13-16,24 Common Average Reference
+#&gt; 2        14  Grid ref_13-16,24 Common Average Reference
+#&gt; 3        15  Grid ref_13-16,24 Common Average Reference
+#&gt; 4        16  Grid ref_13-16,24 Common Average Reference
+#&gt; 5        24  Grid ref_13-16,24 Common Average Reference</code></pre>
 <pre class="r"><code># ---- Check electrodes ----
 # Get electrodes to be loaded
 load_electrodes &lt;- dipsaus::parse_svec(loaded_electrodes)
@@ -289,7 +274,7 @@ epoch
 #&gt;     data: fastmap2, list
 #&gt;     initialize: function (subject, name) 
 #&gt;     n_trials: active binding
-#&gt;     name: KCaOutlier
+#&gt;     name: auditory_onset
 #&gt;     set_trial: function (Block, Time, Trial, Condition, ...) 
 #&gt;     subject: RAVESubject, R6
 #&gt;     table: data.frame
@@ -303,49 +288,25 @@ epoch
 # load reference first, do not create race conditions
 ref_names &lt;- unique(reference_table$Reference[reference_table$Electrode %in% electrode_list])
 
-# progress &lt;- shidashi::shiny_progress(title = &quot;Loading electrodes...&quot;, max = length(ref_names) + length(electrode_list), shiny_auto_close = TRUE)
-# print(shiny::getDefaultReactiveDomain())
-
-dipsaus::lapply_callr(ref_names, function(ref_name){
-  ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
-  ref$set_epoch(epoch)
-  ref$trial_intervals &lt;- list(c(trial_starts, trial_ends))
-  ref$load_data(type = &quot;power&quot;)
-  NULL
-}, .globals = list(
-  reference_table = reference_table,
-  subject = subject,
-  epoch = epoch,
-  trial_starts = trial_starts,
-  trial_ends = trial_ends
-), .callback = function(ref_name, ii){
-  msg &lt;- sprintf(&quot;Loading reference | %s&quot;, ref_name)
-  msg
-}, .ncores = raveio::raveio_getopt(&quot;max_worker&quot;))
-#&gt; [[1]]
-#&gt; NULL
-
-# Load electrodes
-power_list &lt;- dipsaus::lapply_callr(electrode_list, function(e){
-  ref_name &lt;- reference_table$Reference[reference_table$Electrode == e]
-  el &lt;- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
-  ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
-  el$set_reference(ref)
-  el$set_epoch(epoch)
-  el$trial_intervals &lt;- list(c(trial_starts, trial_ends))
-  el$load_data(type = &quot;power&quot;)
-}, .globals = list(
-  reference_table = reference_table,
-  subject = subject,
-  epoch = epoch,
-  trial_starts = trial_starts,
-  trial_ends = trial_ends
-), .callback = function(el, ii){
-  msg &lt;- sprintf(&quot;Loading electrode | %s (%d of %d)&quot;, el, ii, length(electrode_list))
-  msg
-}, .ncores = raveio::raveio_getopt(&quot;max_worker&quot;))
-
-# power_list &lt;- dipsaus::lapply_async2(electrode_list, function(e){
+# dipsaus::lapply_callr(ref_names, function(ref_name){
+#   ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+#   ref$set_epoch(epoch)
+#   ref$trial_intervals &lt;- list(c(trial_starts, trial_ends))
+#   ref$load_data(type = &quot;power&quot;)
+#   NULL
+# }, .globals = list(
+#   reference_table = reference_table,
+#   subject = subject,
+#   epoch = epoch,
+#   trial_starts = trial_starts,
+#   trial_ends = trial_ends
+# ), .callback = function(ref_name, ii){
+#   msg &lt;- sprintf(&quot;Loading reference | %s&quot;, ref_name)
+#   msg
+# }, .ncores = raveio::raveio_getopt(&quot;max_worker&quot;))
+# 
+# # Load electrodes
+# power_list &lt;- dipsaus::lapply_callr(electrode_list, function(e){
 #   ref_name &lt;- reference_table$Reference[reference_table$Electrode == e]
 #   el &lt;- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
 #   ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
@@ -353,19 +314,54 @@ power_list &lt;- dipsaus::lapply_callr(electrode_list, function(e){
 #   el$set_epoch(epoch)
 #   el$trial_intervals &lt;- list(c(trial_starts, trial_ends))
 #   el$load_data(type = &quot;power&quot;)
-# }, callback = function(el){
-#   msg &lt;- sprintf(&quot;Loading electrode - %s&quot;, el)
-#   print(msg)
-# }, workers = raveio::raveio_getopt(&quot;max_worker&quot;))
-# stop(&#39;no&#39;)</code></pre>
+# }, .globals = list(
+#   reference_table = reference_table,
+#   subject = subject,
+#   epoch = epoch,
+#   trial_starts = trial_starts,
+#   trial_ends = trial_ends
+# ), .callback = function(el, ii){
+#   msg &lt;- sprintf(&quot;Loading electrode | %s (%d of %d)&quot;, el, ii, length(electrode_list))
+#   msg
+# }, .ncores = raveio::raveio_getopt(&quot;max_worker&quot;))
+
+
+dipsaus::make_forked_clusters(workers = raveio::raveio_getopt(&quot;max_worker&quot;), clean = TRUE)
+
+dipsaus::lapply_async2(ref_names, function(ref_name){
+  ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+  ref$set_epoch(epoch)
+  ref$trial_intervals &lt;- list(c(trial_starts, trial_ends))
+  ref$load_data(type = &quot;power&quot;)
+  NULL
+}, callback = function(ref_name){
+  msg &lt;- sprintf(&quot;Loading reference | %s&quot;, ref_name)
+  msg
+}, plan = FALSE)
+#&gt; [[1]]
+#&gt; NULL
+
+# Load electrodes
+power_list &lt;- dipsaus::lapply_async2(electrode_list, function(e){
+  ref_name &lt;- reference_table$Reference[reference_table$Electrode == e]
+  el &lt;- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
+  ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
+  el$set_reference(ref)
+  el$set_epoch(epoch)
+  el$trial_intervals &lt;- list(c(trial_starts, trial_ends))
+  el$load_data(type = &quot;power&quot;)
+}, .callback = function(el){
+  msg &lt;- sprintf(&quot;Loading electrode | %s&quot;, el)
+  msg
+}, plan = FALSE)</code></pre>
 <pre class="r"><code>power_dimnames &lt;- dimnames(power_list[[1]])
 power_dimnames$Electrode &lt;- electrode_table$Electrode[electrode_table$isLoaded]</code></pre>
 <div id="build-visualize-run" class="section level2">
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a <code>make-power_explorer.R</code> script with your pipeline markdown file. <code>RAVE</code> will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.</p>
 <p>Once the pipeline script <code>make-power_explorer.R</code> is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use <code>r</code> block instead of <code>rave</code>. (This is because the code blocks are not part of pipeline targets.)</p>
-<div id="htmlwidget-9abce5f7ec60210c61f0" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-9abce5f7ec60210c61f0">{"x":{"nodes":{"name":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","outdated","outdated","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate"],"seconds":[0.072,0.106,0,0.04,0.043,0,0,2.222,0.001,0,0.043,0,0,0.106,0,0,0.001],"bytes":[1028,207658,63,2879,170,80,1509,1359967,57,60,294,14539,161,160215,55,49,49],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"id":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"label":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"level":[6,5,3,5,5,3,8,7,3,3,5,2,1,4,3,3,3],"color":["#354823","#354823","#354823","#354823","#354823","#354823","#78B7C5","#78B7C5","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","power_list","electrode_table","subject","loaded_electrodes","subject","reference_name","reference_table","subject","epoch_name","reference_name","subject","settings","settings","electrode_table","reference_table","subject","epoch","trial_starts","trial_ends","epoch_name","subject","trial_starts","settings","project_name","subject_code","settings","settings","settings_path"],"to":["epoch_name","reference_name","power_dimnames","power_dimnames","frequency_table","electrode_table","electrode_table","electrode_table","electrode_table","epoch","epoch","reference_table","reference_table","trial_ends","subject_code","power_list","power_list","power_list","power_list","power_list","power_list","epoch_table","epoch_table","epoch_table","project_name","subject","subject","trial_starts","loaded_electrodes","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Up to date","Outdated","Stem"],"color":["#354823","#78B7C5","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-fc49812c53bd3ed3b407" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-fc49812c53bd3ed3b407">{"x":{"nodes":{"name":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","outdated","outdated","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate"],"seconds":[0.084,0.14,0,0.041,0.043,0,0.001,1.056,0.001,0,0.042,0.001,0,0.092,0,0,0],"bytes":[5456,210387,67,3926,170,61,1688,682866,57,60,210,14526,155,158914,64,49,49],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"id":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"label":["electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_name","reference_table","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"level":[6,5,3,5,5,3,8,7,3,3,5,2,1,4,3,3,3],"color":["#354823","#354823","#354823","#354823","#354823","#354823","#78B7C5","#78B7C5","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","power_list","electrode_table","subject","loaded_electrodes","subject","reference_name","reference_table","subject","epoch_name","reference_name","subject","settings","settings","electrode_table","reference_table","subject","epoch","trial_starts","trial_ends","epoch_name","subject","trial_starts","settings","project_name","subject_code","settings","settings","settings_path"],"to":["epoch_name","reference_name","power_dimnames","power_dimnames","frequency_table","electrode_table","electrode_table","electrode_table","electrode_table","epoch","epoch","reference_table","reference_table","trial_ends","subject_code","power_list","power_list","power_list","power_list","power_list","power_list","epoch_table","epoch_table","epoch_table","project_name","subject","subject","trial_starts","loaded_electrodes","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Up to date","Outdated","Stem"],"color":["#354823","#78B7C5","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
 <pre class="r"><code>Sys.setenv(&quot;RAVE_PIPELINE&quot; = normalizePath(&quot;.&quot;))
 raveio::pipeline_run(type = &quot;vanilla&quot;)
 #&gt; ✓ skip target settings_path

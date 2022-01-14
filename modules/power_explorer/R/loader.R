@@ -320,19 +320,53 @@ server_loader <- function(input, output, session, tools, ...){
 
     # Run the pipeline!
     tryCatch({
-      # names <- c("subject_id", "power_dimnames",
-      #   "epoch_name", "reference_name", "loaded_electrodes", "trial_ends",
-      #   "subject_code", "trial_starts", "project_name", "subject", "frequency_table",
-      #   "reference_table", "epoch", "epoch_table", "electrode_table",
-      #   "power_list")
-      # raveio::pipeline_progress(pipeline_path, method = 'summary')
-      raveio::pipeline_run(
-        type = "basic", pipe_dir = pipeline_path,
-        names = c(
-          "power_list", "power_dimnames", "epoch_table", "epoch",
-          "reference_table", "electrode_table", "frequency_table"
+      name <- sprintf("%s/%s (power)", input$loader_project_name, input$loader_subject_code)
+      check <- dipsaus::rs_exec(bquote({
+        raveio::pipeline_run(
+          type = "basic", pipe_dir = .(pipeline_path),
+          names = c(
+            "power_list", "power_dimnames", "epoch_table", "epoch",
+            "reference_table", "electrode_table", "frequency_table"
+          )
         )
+        Sys.sleep(10)
+      }), quoted = TRUE, name = name, wait = FALSE, focus_on_console = TRUE, rs = FALSE)
+
+      callback <- function(){
+        state <- check()
+        if(state == 0) {
+          dipsaus::close_alert2()
+          shiny::withReactiveDomain(session, {
+            tools$rave_event$data_changed <- Sys.time()
+            tools$rave_event$data_loaded <- TRUE
+            logger("Data has been loaded loaded")
+          })
+        } else if(state < 0){
+          shiny::withReactiveDomain(session, {
+            e <- attr(state, 'rs_exec_error')
+            dipsaus::close_alert2()
+            dipsaus::shiny_alert2(
+              title = "Errors",
+              text = paste(
+                "Found an error while loading the data:\n\n",
+                paste(e, collapse = "\n"),
+                "\n\nPlease check RAVE console for details."
+              ), icon = "error", danger_mode = TRUE, auto_close = FALSE
+            )
+          })
+        } else {
+          ravedash::add_callback(callback)
+        }
+      }
+      ravedash::add_callback(callback)
+
+      dipsaus::shiny_alert2(
+        title = "Loading in progress",
+        text = paste(
+          "Everything takes time. You can still browse other modules though."
+        ), icon = "info", auto_close = FALSE, buttons = FALSE
       )
+
       # raveio::pipeline_run_interactive(
       #   names = c(
       #     "power_list",
@@ -352,9 +386,7 @@ server_loader <- function(input, output, session, tools, ...){
       #   env = new.env(parent = globalenv())
       # )
 
-      tools$rave_event$data_changed <- Sys.time()
-      tools$rave_event$data_loaded <- TRUE
-      logger("Data has been loaded loaded")
+
     }, error = function(e){
       cat("The error occurs in the following pipeline expression:\n")
       print(e$call)

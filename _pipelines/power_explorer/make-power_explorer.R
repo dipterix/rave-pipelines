@@ -142,7 +142,9 @@ source("common.R", local = TRUE, chdir = TRUE)
                 electrode_list <- unique(electrode_table$Electrode[electrode_table$isLoaded])
                 ref_names <- unique(reference_table$Reference[reference_table$Electrode %in% 
                   electrode_list])
-                dipsaus::lapply_callr(ref_names, function(ref_name) {
+                dipsaus::make_forked_clusters(workers = raveio::raveio_getopt("max_worker"), 
+                  clean = TRUE)
+                dipsaus::lapply_async2(ref_names, function(ref_name) {
                   ref <- raveio::LFP_electrode$new(subject = subject, 
                     ref_name, is_reference = TRUE)
                   ref$set_epoch(epoch)
@@ -150,14 +152,11 @@ source("common.R", local = TRUE, chdir = TRUE)
                     trial_ends))
                   ref$load_data(type = "power")
                   NULL
-                }, .globals = list(reference_table = reference_table, 
-                  subject = subject, epoch = epoch, trial_starts = trial_starts, 
-                  trial_ends = trial_ends), .callback = function(ref_name, 
-                  ii) {
+                }, callback = function(ref_name) {
                   msg <- sprintf("Loading reference | %s", ref_name)
                   msg
-                }, .ncores = raveio::raveio_getopt("max_worker"))
-                power_list <- dipsaus::lapply_callr(electrode_list, 
+                }, plan = FALSE)
+                power_list <- dipsaus::lapply_async2(electrode_list, 
                   function(e) {
                     ref_name <- reference_table$Reference[reference_table$Electrode == 
                       e]
@@ -170,14 +169,11 @@ source("common.R", local = TRUE, chdir = TRUE)
                     el$trial_intervals <- list(c(trial_starts, 
                       trial_ends))
                     el$load_data(type = "power")
-                  }, .globals = list(reference_table = reference_table, 
-                    subject = subject, epoch = epoch, trial_starts = trial_starts, 
-                    trial_ends = trial_ends), .callback = function(el, 
-                    ii) {
-                    msg <- sprintf("Loading electrode | %s (%d of %d)", 
-                      el, ii, length(electrode_list))
+                  }, .callback = function(el) {
+                    msg <- sprintf("Loading electrode | %s", 
+                      el)
                     msg
-                  }, .ncores = raveio::raveio_getopt("max_worker"))
+                  }, plan = FALSE)
             }
             return(power_list)
         }), deps = c("electrode_table", "reference_table", "subject", 
