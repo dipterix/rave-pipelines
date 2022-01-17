@@ -20,7 +20,8 @@ raveio::pipeline_visualize()
 ##' Test run the pipeline in production mode
 ##'
 # raveio::pipeline_run(type = "async")
-raveio::pipeline_run()
+dipsaus::make_forked_clusters(3)
+raveio::pipeline_run(use_future = TRUE)
 
 ##' Check pipeline progress to see status (cached/skipped, built, errored...)
 ##' Must run `raveio::pipeline_run()` first, otherwise error will occur
@@ -35,7 +36,8 @@ raveio::pipeline_vartable()
 ##' Get intermediate variables
 ##'
 raveio::pipeline_hasname("project_name")
-raveio::pipeline_read("project_name")
+power_list <- raveio::pipeline_read("power_list")
+raveio::pipeline_read("power_dimnames")
 
 
 ##' Launch a shiny app to watch the pipeline. Please install extra
