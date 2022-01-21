@@ -175,248 +175,46 @@ pre code {
 <pre class="r"><code># raveio::pipeline_debug(quick = FALSE)
 library(raveio)
 subject_id &lt;- sprintf(&quot;%s/%s&quot;, project_name, subject_code)
-subject &lt;- as_rave_subject(subject_id, strict = TRUE)
-subject
-#&gt; RAVE subject &lt;demo/DemoSubject&gt;</code></pre>
-<ol style="list-style-type: decimal">
-<li>Check inputs</li>
-</ol>
-<pre class="r"><code># ---- Check epoch file ----
-if(length(epoch_name) != 1){
-  stop(&quot;Only one epoch is allowed at a time.&quot;)
-}
-if(!isTRUE(epoch_name %in% subject$epoch_names)){
-  stop(&quot;Subject &quot;, subject_id, &quot; has no epoch name called: &quot;, sQuote(epoch_name), &quot;\n  Please check folder\n    &quot;, subject$meta_path, &quot;\n  and make sure &quot;, sQuote(sprintf(&quot;epoch_%s.csv&quot;, epoch_name)), &quot; exists.&quot;)
-}
-epoch_table &lt;- subject$meta_data(meta_type = &#39;epoch&#39;, meta_name = epoch_name)
-
-if(!is.data.frame(epoch_table)){
-  stop(&quot;Cannot load epoch file correctly. A typical RAVE-epoch file contains 4 columns (case-sensitive): Block (characters), Time (numerical), Trial (integer), Condition (characters).&quot;)
-}
-
-# trial starts from -1 sec but only 0.5 seconds are allowed
-invalid_epochs &lt;- 
-  epoch_table$Time + trial_starts &lt; 0
-
-if(any(invalid_epochs)){
-  stop(&quot;Trial &quot;, dipsaus::deparse_svec(epoch_table$Trial[invalid_epochs]), &quot; start too soon after the beginning of the sessions (less than &quot;, sprintf(&quot;%.2f seconds&quot;, -trial_starts), &quot;). Please adjust the trial start time (i.e. &quot;, sQuote(&quot;Pre&quot;), &quot; if you are using the RAVE application).&quot;)
-}
-
-head(epoch_table)
-#&gt;   Block    Time Trial    Condition Duration ExcludedElectrodes X
-#&gt; 1   008  5.3475     1 AknownVmeant       NA                    1
-#&gt; 2   008  9.3685     2 AmeantVdrive       NA                    2
-#&gt; 3   008 13.3370     3      meant_v       NA                    3
-#&gt; 4   008 17.5915     4      drive_v       NA                    4
-#&gt; 5   008 21.4185     5      known_a       NA                    5
-#&gt; 6   008 25.6390     6     known_av       NA                    6</code></pre>
-<pre class="r"><code># ---- Check epoch file ----
-if(length(reference_name) != 1){
-  stop(&quot;Only one reference is allowed at a time.&quot;)
-}
-if(!isTRUE(reference_name %in% subject$reference_names)){
-  stop(&quot;Subject &quot;, subject_id, &quot; has no reference name called: &quot;, sQuote(reference_name), &quot;\n  Please check folder\n    &quot;, subject$meta_path, &quot;\n  and make sure &quot;, sQuote(sprintf(&quot;reference_%s.csv&quot;, reference_name)), &quot; exists.&quot;)
-}
-
-reference_table &lt;- subject$meta_data(meta_type = &#39;reference&#39;, meta_name = reference_name)
-
-if(!is.data.frame(reference_table)){
-  stop(&quot;Cannot load reference file correctly. A typical RAVE-reference file contains 4 columns (case-sensitive): Electrode (integer), Group (characters), Reference (characters), Type (characters).&quot;)
-}
-
-head(reference_table)
-#&gt;   Electrode Group    Reference                     Type
-#&gt; 1        13  Grid ref_13-16,24 Common Average Reference
-#&gt; 2        14  Grid ref_13-16,24 Common Average Reference
-#&gt; 3        15  Grid ref_13-16,24 Common Average Reference
-#&gt; 4        16  Grid ref_13-16,24 Common Average Reference
-#&gt; 5        24  Grid ref_13-16,24 Common Average Reference</code></pre>
-<pre class="r"><code># ---- Check electrodes ----
-# Get electrodes to be loaded
-load_electrodes &lt;- dipsaus::parse_svec(loaded_electrodes)
-valid_electrodes &lt;- subject$valid_electrodes(reference_name = reference_name)
-
-# 1. get electrodes to be truly loaded
-load_electrodes &lt;- load_electrodes[load_electrodes %in% valid_electrodes]
-if(!length(load_electrodes)) {
-  stop(&quot;There is no valid electrodes to be loaded. The valid electrodes are: &quot;, dipsaus::deparse_svec(valid_electrodes), &quot;.&quot;)
-}
-
-preproc &lt;- subject$preprocess_settings
-all_electrodes &lt;- subject$electrodes
-
-sel &lt;- all_electrodes %in% load_electrodes
-if(!all(preproc$has_wavelet[sel])){
-  imcomplete &lt;- all_electrodes[all_electrodes %in% load_electrodes &amp; !preproc$has_wavelet]
-  stop(&quot;The following electrodes do not have power spectrum: \n  &quot;, dipsaus::deparse_svec(imcomplete), 
-       &quot;\nPlease run wavelet module first.&quot;)
-}
-
-electrode_table &lt;- subject$meta_data(&quot;electrodes&quot;)
-
-if(!is.data.frame(electrode_table)){
-  stop(&quot;Cannot load electrode.csv correctly. A basic RAVE-electrode file contains 5 columns (case-sensitive): Electrode (integer), Coord_x (numerical), Coord_y (numerical), Coord_y (numerical), Label (characters).&quot;)
-}
-
-electrode_table &lt;- merge(electrode_table, reference_table, by = &#39;Electrode&#39;, all.x = TRUE, all.y = FALSE)
-electrode_table$isLoaded &lt;- electrode_table$Electrode %in% load_electrodes</code></pre>
-<pre class="r"><code>frequency_table &lt;- subject$meta_data(&#39;frequencies&#39;)</code></pre>
-<ol start="2" style="list-style-type: decimal">
-<li>Load data</li>
-</ol>
-<pre class="r"><code>epoch &lt;- raveio::RAVEEpoch$new(subject = subject, name = epoch_name)
-epoch
-#&gt; &lt;RAVEEpoch&gt;
-#&gt;   Public:
-#&gt;     .columns: Duration ExcludedElectrodes
-#&gt;     clone: function (deep = FALSE) 
-#&gt;     columns: active binding
-#&gt;     data: fastmap2, list
-#&gt;     initialize: function (subject, name) 
-#&gt;     n_trials: active binding
-#&gt;     name: auditory_onset
-#&gt;     set_trial: function (Block, Time, Trial, Condition, ...) 
-#&gt;     subject: RAVESubject, R6
-#&gt;     table: data.frame
-#&gt;     trial_at: function (i, df = TRUE) 
-#&gt;     trials: active binding
-#&gt;     update_table: function () 
-#&gt;   Private:
-#&gt;     basic_columns: Block Time Trial Condition</code></pre>
-<pre class="r"><code>electrode_list &lt;- unique(electrode_table$Electrode[electrode_table$isLoaded])</code></pre>
-<pre class="r"><code>references_list &lt;- unique(reference_table$Reference[reference_table$Electrode %in% electrode_list])</code></pre>
-<pre class="r"><code># load reference first, do not create race conditions
-ref_name &lt;- references_list[[1]]
-ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
-ref$set_epoch(epoch)
-ref$trial_intervals &lt;- list(c(trial_starts, trial_ends))
-reference_data &lt;- ref$load_data(type = &quot;power&quot;)</code></pre>
-<pre class="r"><code>force(reference_data)
-#&gt; Reference class object of class &quot;FileArray&quot;
-#&gt; Mode: readonly 
-#&gt; Dimension: 16x301x287x1 
-#&gt; # of partitions: 1 
-#&gt; Partition size: 1 
-#&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/demo/DemoSubject/auditory_onset/M1-P2/13-16,24/noref/power
-e &lt;- electrode_list[[1]]
-# Load electrodes
-ref_name &lt;- reference_table$Reference[reference_table$Electrode == e]
-el &lt;- raveio::LFP_electrode$new(subject = subject, e, is_reference = FALSE)
-ref &lt;- raveio::LFP_electrode$new(subject = subject, ref_name, is_reference = TRUE)
-el$set_reference(ref)
-#&gt; &lt;LFP_electrode&gt;
-#&gt;   Inherits from: &lt;RAVEAbstarctElectrode&gt;
-#&gt;   Public:
-#&gt;     .load_noref_voltage: function (srate, reload = FALSE) 
-#&gt;     .load_noref_wavelet: function (reload = FALSE) 
-#&gt;     .load_voltage: function (reload = FALSE) 
-#&gt;     .load_wavelet: function (type = c(&quot;power&quot;, &quot;phase&quot;, &quot;coef&quot;), reload = FALSE) 
-#&gt;     .set_reference: function (reference, type) 
-#&gt;     cache_root: active binding
-#&gt;     clear_cache: function (...) 
-#&gt;     clear_memory: function (...) 
-#&gt;     clone: function (deep = FALSE) 
-#&gt;     epoch: NULL
-#&gt;     epoch_name: active binding
-#&gt;     exists: active binding
-#&gt;     h5_fname: active binding
-#&gt;     initialize: function (subject, number, is_reference = FALSE) 
-#&gt;     is_reference: TRUE
-#&gt;     load_data: function (type = c(&quot;power&quot;, &quot;phase&quot;, &quot;voltage&quot;, &quot;wavelet-coefficient&quot;)) 
-#&gt;     load_unreferenced_phase: function (block, persist = FALSE) 
-#&gt;     load_unreferenced_power: function (block, persist = FALSE) 
-#&gt;     load_unreferenced_voltage: function (block, persist = FALSE) 
-#&gt;     number: ref_13-16,24
-#&gt;     phase_file: active binding
-#&gt;     power_file: active binding
-#&gt;     power_sample_rate: active binding
-#&gt;     preprocess_file: active binding
-#&gt;     preprocess_info: active binding
-#&gt;     private: environment
-#&gt;     raw_sample_rate: active binding
-#&gt;     reference: NULL
-#&gt;     reference_name: active binding
-#&gt;     reference_phase: function (block) 
-#&gt;     reference_power: function (block) 
-#&gt;     reference_voltage: function (block) 
-#&gt;     self: LFP_electrode, RAVEAbstarctElectrode, R6
-#&gt;     set_epoch: function (epoch) 
-#&gt;     set_reference: function (reference) 
-#&gt;     subject: RAVESubject, R6
-#&gt;     super: environment
-#&gt;     trial_intervals: active binding
-#&gt;     type: LFP
-#&gt;     valid: active binding
-#&gt;     voltage_file: active binding
-#&gt;   Private:
-#&gt;     intervals: list
-#&gt;     persisted_coef_ref: NULL
-#&gt;     persisted_phase_unref: NULL
-#&gt;     persisted_power_unref: NULL
-#&gt;     persisted_voltage_unref: NULL
-#&gt;     referenced_power_cache_file:
-el$set_epoch(epoch)
-el$trial_intervals &lt;- list(c(trial_starts, trial_ends))
-power_list &lt;- el$load_data(type = &quot;power&quot;)</code></pre>
-<pre class="r"><code>power_dimnames &lt;- dimnames(power_list[[1]])
-power_dimnames$Electrode &lt;- electrode_table$Electrode[electrode_table$isLoaded]</code></pre>
+repository &lt;- prepare_power(
+  subject = subject_id, electrodes = loaded_electrodes, 
+  epoch_name = epoch_name, reference_name = reference_name,
+  time_windows = c(trial_starts, trial_ends))
+repository
+#&gt; &lt;Map, size=11, keys=[electrode_list, power_dimnames, frequency_table, epoch_name, epoch, reference_name, reference_table, electrode_table, subject, references_list, power_list]&gt;</code></pre>
 <div id="build-visualize-run" class="section level2">
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a <code>make-power_explorer.R</code> script with your pipeline markdown file. <code>RAVE</code> will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.</p>
 <p>Once the pipeline script <code>make-power_explorer.R</code> is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use <code>r</code> block instead of <code>rave</code>. (This is because the code blocks are not part of pipeline targets.)</p>
-<div id="htmlwidget-ce4257b1e2763a8a2a2d" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-ce4257b1e2763a8a2a2d">{"x":{"nodes":{"name":["electrode_list","electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_data","reference_name","reference_table","references_list","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","pattern","stem","pattern","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","outdated","outdated","uptodate","outdated","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate","uptodate"],"seconds":[0,0.102,0.225,0.001,0.063,0.046,0,0,0.126,0,0.016,0,0.048,0.001,0.001,0,0.119,0,0,0.001],"bytes":[56,5456,210691,67,3926,170,61,1688,560365,57,112081,60,210,65,13567,155,159202,64,49,49],"branches":[null,null,null,null,null,null,null,null,5,null,1,null,null,null,null,null,null,null,null,null],"id":["electrode_list","electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_data","reference_name","reference_table","references_list","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"label":["electrode_list","electrode_table","epoch","epoch_name","epoch_table","frequency_table","loaded_electrodes","power_dimnames","power_list","project_name","reference_data","reference_name","reference_table","references_list","settings","settings_path","subject","subject_code","trial_ends","trial_starts"],"level":[7,6,5,3,5,5,3,11,10,3,9,3,5,8,2,1,4,3,3,3],"color":["#354823","#354823","#354823","#354823","#354823","#354823","#354823","#78B7C5","#78B7C5","#354823","#78B7C5","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823","#354823"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","square","dot","square","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","reference_data","electrode_list","reference_table","subject","epoch","trial_starts","trial_ends","subject","settings","settings","power_list","electrode_table","project_name","subject_code","settings_path","epoch_name","subject","trial_starts","settings","reference_table","electrode_list","references_list","subject","epoch","trial_starts","trial_ends","subject","epoch_name","settings","electrode_table","settings","settings","loaded_electrodes","subject","reference_name","reference_table","reference_name","subject"],"to":["trial_ends","power_list","power_list","power_list","power_list","power_list","power_list","power_list","frequency_table","loaded_electrodes","trial_starts","power_dimnames","power_dimnames","subject","subject","settings","epoch_table","epoch_table","epoch_table","reference_name","references_list","references_list","reference_data","reference_data","reference_data","reference_data","reference_data","epoch","epoch","epoch_name","electrode_list","project_name","subject_code","electrode_table","electrode_table","electrode_table","electrode_table","reference_table","reference_table"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Up to date","Outdated","Stem","Pattern"],"color":["#354823","#78B7C5","#899DA4","#899DA4"],"shape":["dot","dot","dot","square"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-185e77e07e61d61da3ad" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-185e77e07e61d61da3ad">{"x":{"nodes":{"name":["epoch_name","loaded_electrodes","project_name","reference_name","repository","settings","settings_path","subject_code","trial_ends","trial_starts"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["uptodate","uptodate","uptodate","uptodate","outdated","uptodate","uptodate","uptodate","uptodate","uptodate"],"seconds":[0,0,0,0.001,3.801,0.001,0.001,0,0,0],"bytes":[63,80,57,60,1418755,13533,161,55,49,49],"branches":[null,null,null,null,null,null,null,null,null,null],"id":["epoch_name","loaded_electrodes","project_name","reference_name","repository","settings","settings_path","subject_code","trial_ends","trial_starts"],"label":["epoch_name","loaded_electrodes","project_name","reference_name","repository","settings","settings_path","subject_code","trial_ends","trial_starts"],"level":[3,3,3,3,4,2,1,3,3,3],"color":["#354823","#354823","#354823","#354823","#78B7C5","#354823","#354823","#354823","#354823","#354823"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","project_name","subject_code","loaded_electrodes","epoch_name","reference_name","trial_starts","trial_ends","settings","settings","settings","settings","settings","settings_path"],"to":["epoch_name","reference_name","repository","repository","repository","repository","repository","repository","repository","trial_ends","subject_code","project_name","trial_starts","loaded_electrodes","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Up to date","Outdated","Stem"],"color":["#354823","#78B7C5","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
 <pre class="r"><code>Sys.setenv(&quot;RAVE_PIPELINE&quot; = normalizePath(&quot;.&quot;))
 raveio::pipeline_run(type = &quot;vanilla&quot;)
 #&gt; ✓ skip target settings_path
 #&gt; ✓ skip target settings
 #&gt; ✓ skip target epoch_name
 #&gt; ✓ skip target reference_name
-#&gt; ✓ skip target loaded_electrodes
-#&gt; ✓ skip target trial_ends
-#&gt; ✓ skip target subject_code
-#&gt; ✓ skip target trial_starts
 #&gt; ✓ skip target project_name
-#&gt; ✓ skip target subject
-#&gt; ✓ skip target frequency_table
-#&gt; ✓ skip target reference_table
-#&gt; ✓ skip target epoch
-#&gt; ✓ skip target epoch_table
-#&gt; ✓ skip target electrode_table
-#&gt; ✓ skip target electrode_list
-#&gt; ✓ skip target references_list
-#&gt; • start branch reference_data_6dea04d3
-#&gt; • built branch reference_data_6dea04d3
-#&gt; • built pattern reference_data
-#&gt; • start branch power_list_0d3d010c
-#&gt; • built branch power_list_0d3d010c
-#&gt; • start branch power_list_ba2481fb
-#&gt; • built branch power_list_ba2481fb
-#&gt; • start branch power_list_feec44ae
-#&gt; • built branch power_list_feec44ae
-#&gt; • start branch power_list_889c1bd8
-#&gt; • built branch power_list_889c1bd8
-#&gt; • start branch power_list_36522931
-#&gt; • built branch power_list_36522931
-#&gt; • built pattern power_list
-#&gt; ✓ skip target power_dimnames
+#&gt; ✓ skip target subject_code
+#&gt; ✓ skip target loaded_electrodes
+#&gt; ✓ skip target trial_starts
+#&gt; ✓ skip target trial_ends
+#&gt; • start target repository
+#&gt; • built target repository
 #&gt; • end pipeline
 raveio::pipeline_progress(method = &#39;details&#39;)
-#&gt; # A tibble: 26 × 2
+#&gt; # A tibble: 10 × 2
 #&gt;    name              progress
 #&gt;    &lt;chr&gt;             &lt;chr&gt;   
 #&gt;  1 settings_path     skipped 
 #&gt;  2 settings          skipped 
 #&gt;  3 epoch_name        skipped 
 #&gt;  4 reference_name    skipped 
-#&gt;  5 loaded_electrodes skipped 
-#&gt;  6 trial_ends        skipped 
-#&gt;  7 subject_code      skipped 
+#&gt;  5 project_name      skipped 
+#&gt;  6 subject_code      skipped 
+#&gt;  7 loaded_electrodes skipped 
 #&gt;  8 trial_starts      skipped 
-#&gt;  9 project_name      skipped 
-#&gt; 10 subject           skipped 
-#&gt; # … with 16 more rows</code></pre>
+#&gt;  9 trial_ends        skipped 
+#&gt; 10 repository        built</code></pre>
 </div>
 
 

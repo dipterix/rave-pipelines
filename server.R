@@ -24,35 +24,6 @@ server <- function(input, output, session){
   shared_data$enable_broadcast()
   shared_data$enable_sync()
 
-  tools <- ravedash::register_rave_session(session = session)
-
-  timer <- shiny::reactiveTimer(intervalMs = 1000)
-  shiny::observe({
-    nevents <- length(tools$loop_event)
-
-    if(nevents){
-      lapply(seq_len(min(3, nevents)), function(i){
-        callback <- tools$loop_event$remove(missing = NULL)
-        if(is.function(callback)){
-
-          tryCatch({
-            callback()
-          }, error = function(e){
-
-            try({
-              logger::log_warn("Error `{e$message}` while trying to run callback function:\n",
-                               deparse(callback))
-            }, silent = TRUE)
-
-          })
-
-        }
-      })
-    }
-  }) |>
-    shiny::bindEvent(timer())
-
-
 
   # Fixed usage, call modules
   shiny::observe({

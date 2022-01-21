@@ -74,6 +74,16 @@ module_ui_loader <- function(){
                 value = 2
               )
             )
+          ),
+          shiny::div(
+            class = "padding-left-5",
+            shinyWidgets::prettyCheckbox(
+              inputId = ns("loader_epoch_name_default"),
+              label = "Set this epoch as the default",
+              status = "success",
+              shape = "square",
+              animation = "smooth"
+            )
           )
         ),
 
@@ -93,6 +103,13 @@ module_ui_loader <- function(){
                 choices = '',
                 selected = NULL,
                 multiple = FALSE
+              ),
+              shinyWidgets::prettyCheckbox(
+                inputId = ns("loader_reference_name_default"),
+                label = "Set this reference as the default",
+                status = "success",
+                shape = "square",
+                animation = "smooth"
               )
             )
           ),
@@ -212,22 +229,24 @@ server_loader <- function(input, output, session, tools, ...){
       strict = TRUE)
 
     epoch_choices <- subject$epoch_names
+    epoch_name <- subject$get_default("epoch_name", default_if_missing = pipeline_get("epoch_name")) %OF% epoch_choices
     shiny::updateSelectInput(
       session = session,
       inputId = "loader_epoch_name",
       choices = epoch_choices,
-      selected = pipeline_get("epoch_name", constraint = epoch_choices)
+      selected = epoch_name
     )
 
     ref_choices <- subject$reference_names
     if(!length(ref_choices)){
       ref_choices <- c(ref_choices, "[no reference]")
     }
+    reference_name <- subject$get_default("reference_name", default_if_missing = pipeline_get("epoch_name")) %OF% ref_choices
     shiny::updateSelectInput(
       session = session,
       inputId = "loader_reference_name",
       choices = ref_choices,
-      selected = pipeline_get("reference_name", constraint = ref_choices)
+      selected = reference_name
     )
 
     # electrodes
@@ -322,6 +341,9 @@ server_loader <- function(input, output, session, tools, ...){
       loaded_electrodes = input$loader_electrode_text
     )
 
+    default_epoch <- isTRUE(input$loader_epoch_name_default)
+    default_reference <- isTRUE(input$loader_reference_name_default)
+
     # Run the pipeline!
     tarnames <- raveio::pipeline_target_names(pipe_dir = pipeline_path)
     count <- length(tarnames) + dipsaus::parse_svec(input$loader_electrode_text) + 4
@@ -333,63 +355,67 @@ server_loader <- function(input, output, session, tools, ...){
       ), icon = "info", auto_close = FALSE, buttons = FALSE
     )
 
-    raveio::pipeline_run_async(
-      pipe_dir = pipeline_path, names = c(
-        "power_list", "power_dimnames", "epoch_table", "epoch",
-        "reference_table", "electrode_table", "frequency_table"
-      ),
-      use_future = TRUE, use_rs_job = FALSE,
-      progress_quiet = FALSE, progress_max = count
-    ) |>
-    # ravedash::pipeline_run_background(
-    #   pipeline_path = pipeline_path, names = c(
-    #     "power_list", "power_dimnames", "epoch_table", "epoch",
-    #     "reference_table", "electrode_table", "frequency_table"
-    #   ), progress_max = count
-    # ) |>
-      promises::then(
-        onFulfilled = function(...){
-          tools$rave_event$data_changed <- Sys.time()
-          tools$rave_event$data_loaded <- TRUE
-          logger("Data has been loaded loaded")
-          dipsaus::close_alert2()
-        },
-        onRejected = function(e){
-          dipsaus::close_alert2()
-          dipsaus::shiny_alert2(
-            title = "Errors",
-            text = paste(
-              "Found an error while loading the data:\n\n",
-              paste(e, collapse = "\n"),
-              "\n\nPlease check RAVE console for details."
-            ), icon = "error", danger_mode = TRUE, auto_close = FALSE
-          )
-        }
+    tryCatch({
+      raveio::pipeline_run(
+        pipe_dir = pipeline_path,
+        names = "repository",
+        type = "basic",
+        use_future = FALSE
       )
-    # ravedash::pipeline_run_background(
-    #   pipeline_path = pipeline_path, names = c(
-    #     "power_list", "power_dimnames", "epoch_table", "epoch",
-    #     "reference_table", "electrode_table", "frequency_table"
-    #   ), progress_max = count,
-    #   on_resolved = function(...){
-    #     tools$rave_event$data_changed <- Sys.time()
-    #     tools$rave_event$data_loaded <- TRUE
-    #     logger("Data has been loaded loaded")
-    #     dipsaus::close_alert2()
-    #   },
-    #   on_error = function(e, ...){
-    #     # e <- attr(state, 'rs_exec_error')
-    #     dipsaus::close_alert2()
-    #     dipsaus::shiny_alert2(
-    #       title = "Errors",
-    #       text = paste(
-    #         "Found an error while loading the data:\n\n",
-    #         paste(e, collapse = "\n"),
-    #         "\n\nPlease check RAVE console for details."
-    #       ), icon = "error", danger_mode = TRUE, auto_close = FALSE
-    #     )
-    #   }
-    # )
+      # load subject
+      if(default_epoch || default_reference){
+        repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
+        if(default_epoch){
+          repo$subject$set_default("epoch_name", repo$epoch_name)
+        }
+        if(default_reference) {
+          repo$subject$set_default("reference_name", repo$reference_name)
+        }
+
+      }
+
+      tools$rave_event$data_changed <- Sys.time()
+      tools$rave_event$data_loaded <- TRUE
+      logger("Data has been loaded loaded")
+      dipsaus::close_alert2()
+    }, error = function(e){
+      dipsaus::close_alert2()
+      dipsaus::shiny_alert2(
+        title = "Errors",
+        text = paste(
+          "Found an error while loading the power data:\n\n",
+          paste(e, collapse = "\n")
+        ),
+        icon = "error",
+        danger_mode = TRUE,
+        auto_close = FALSE
+      )
+    })
+    # raveio::pipeline_run_async(
+    #   pipe_dir = pipeline_path, names = "repository",
+    #   use_future = FALSE,
+    #   progress_quiet = FALSE,
+    #   progress_max = count
+    # ) |>
+    #   promises::then(
+    #     onFulfilled = function(...){
+    #       tools$rave_event$data_changed <- Sys.time()
+    #       tools$rave_event$data_loaded <- TRUE
+    #       logger("Data has been loaded loaded")
+    #       dipsaus::close_alert2()
+    #     },
+    #     onRejected = function(e){
+    #       dipsaus::close_alert2()
+    #       dipsaus::shiny_alert2(
+    #         title = "Errors",
+    #         text = paste(
+    #           "Found an error while loading the data:\n\n",
+    #           paste(e, collapse = "\n"),
+    #           "\n\nPlease check RAVE console for details."
+    #         ), icon = "error", danger_mode = TRUE, auto_close = FALSE
+    #       )
+    #     }
+    #   )
 
 
   }) |>
