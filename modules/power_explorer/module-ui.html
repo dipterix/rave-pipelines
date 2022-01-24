@@ -19,6 +19,18 @@
         <a class="nav-link">{{ module_title() }}</a>
       </li>
     </ul>
+    <ul class="navbar-nav ml-auto">
+
+      <!-- Theme switcher -->
+      <li class="nav-item">
+        <div class="theme-switch-wrapper nav-link">
+          <label class="theme-switch" for="__checkbox__">
+            <input type="checkbox" id="__checkbox__">
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </li>
+    </ul>
   </nav>
   <!-- /.navbar -->
 
@@ -36,9 +48,14 @@
     <section class="content">
 
       <!-- Should be customized code ->
-      <div class="container-fluid"-->
 
-        {{ shiny::uiOutput(ns("_module_ui_"), class = "fill-width") }}
+      <div class="container-fluid"-->
+      <div class="module_loader_ui fill-width position-absolute soft-hidden row">
+        {{ module_ui_loader() }}
+      </div>
+      <div class="module_main_ui fill-width soft-hidden row">
+        {{ module_ui_main() }}
+      </div>
 
       <!--/div><!--/. container-fluid -->
 
@@ -52,7 +69,7 @@
 </div>
 <!-- ./wrapper -->
 
-{{ shidashi::back_top_button("rocket") }}
+{{ ravedash::footer_crumb(ns(NULL)) }}
 
 {{ shidashi::include_view("footer.html") }}
 </body>

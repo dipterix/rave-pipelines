@@ -1,7 +1,7 @@
-reference_name: default
-subject_code: KC
-project_name: demo
+reference_name: noref
+subject_code: YAB
+project_name: test1
 trial_starts: -1
 trial_ends: 2
-epoch_name: KCaOutlier
-loaded_electrodes: 6-7,14-15,22-23,30-31,38-39
+epoch_name: auditory_onset
+loaded_electrodes: 13-16

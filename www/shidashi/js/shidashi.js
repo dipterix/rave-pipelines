@@ -1,26 +1,4 @@
 
-// Theme configuration
-$('.content-wrapper').IFrame({
-  onTabClick: (item) => {
-    console.log(item);
-    return item;
-  },
-  onTabChanged: (item) => {
-    console.log(item);
-    return item;
-  },
-  onTabCreated: (item) => {
-    console.log(item);
-    return item;
-  },
-  autoIframeMode: false,
-  autoItemActive: true,
-  autoShowNewTab: true,
-  allowDuplicates: false,
-  loadingScreen: false,
-  useNavbarItems: false
-})
-
 // progress output
 $(function() {
 
@@ -577,6 +555,14 @@ class shidashi {
     }
   }
 
+  // html css operations
+  addClass(selector, cls){
+    $(selector).addClass(cls);
+  }
+  removeClass(selector, cls){
+    $(selector).removeClass(cls);
+  }
+
   // notification
   createNotification(options) {
     // see https://adminlte.io/docs/3.1//javascript/toasts.html
@@ -666,6 +652,11 @@ class shidashi {
       }
     }
     this._shiny.addCustomMessageHandler("shidashi." + action, callback);
+  }
+  shinySetInput(inputId, value) {
+    this.ensureShiny(() => {
+      this._shiny.onInputChange(inputId, value);
+    });
   }
 
   // Finalize function when document is ready
@@ -928,6 +919,13 @@ class shidashi {
       this.toggleCard2(params.selector);
     });
 
+    this.shinyHandler("add_class", (params) => {
+      this.addClass(params.selector, params.class);
+    });
+    this.shinyHandler("remove_class", (params) => {
+      this.removeClass(params.selector, params.class);
+    });
+
     this.shinyHandler("show_notification", (params) => {
       this.createNotification(params);
     });
@@ -967,6 +965,32 @@ $(document).ready(() => {
   window.shidashi._register_shiny(window.Shiny);
 });
 
+// Theme configuration
+$('.content-wrapper').IFrame({
+  onTabClick: (item) => {
+    return item;
+  },
+  onTabChanged: (item) => {
+    // console.log(item);
+    if(item.length) {
+      shidashi.shinySetInput("@shidashi_page@", {
+        id : item[0].id,
+        text : item[0].innerText
+      });
+    }
+    return item;
+  },
+  onTabCreated: (item) => {
+    return item;
+  },
+  autoIframeMode: false,
+  autoItemActive: true,
+  autoShowNewTab: true,
+  allowDuplicates: false,
+  loadingScreen: false,
+  useNavbarItems: false
+});
+
 })();
 
 
@@ -977,3 +1001,5 @@ if (window.hljs) {
     window.setTimeout(function() { hljs.initHighlighting(); }, 0);
   }
 }
+
+

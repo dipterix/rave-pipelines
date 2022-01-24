@@ -1,9 +1,9 @@
 library(shiny)
 page_title <- function(complete = TRUE){
   if(complete){
-    "Shiny Dash | AdminLTE 3"
+    "RAVE"
   } else {
-    "Shiny-Dash"
+    sprintf("RAVE (%s)", as.character(packageVersion('rave')))
   }
 }
 page_logo <- function(size = c("normal", "small", "large")){
@@ -32,10 +32,12 @@ body_class <- function(){
     # "control-sidebar-slide-open",
 
     #--- Fix the sidebar position ---
+    "overflow-hidden",
     "layout-fixed",
+    # "sidebar-collapse",
 
     #--- Default behavior when collapsing sidebar
-    "sidebar-mini", "sidebar-mini-md", "sidebar-mini-xs",
+    # "sidebar-mini", "sidebar-mini-md", "sidebar-mini-xs",
 
     #--- Hide the navbar-nav-iframe
     "navbar-iframe-hidden",
@@ -54,7 +56,8 @@ nav_class <- function(){
     "navbar",
     "navbar-expand",
     "navbar-dark",
-    "navbar-primary"
+    "navbar-primary",
+    "no-padding"
   )
 }
 

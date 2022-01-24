@@ -1,11 +1,14 @@
+library(ravedash)
 # global variables for the module
 
 # Stores global variables
 local_reactives <- shiny::reactiveValues()
 pipeline_name <- "power_explorer"
+module_id <- "power_explorer"
 debug <- TRUE
 
 #' Function to check whether data is loaded.
+#' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is
 #' triggered. This function should only return either \code{TRUE} or
 #' \code{FALSE} indicating the check results. If \code{TRUE} is returned,
@@ -13,41 +16,31 @@ debug <- TRUE
 #' If \code{FALSE} is returned, \code{open_loader} event will be dispatched,
 #' resulting in calling function \code{module_ui_loader}.
 #' @return Logical variable of length one.
-check_data_loaded <- function(){
-  reg <- ravedash::register_rave_session(session = session)
-  return(isTRUE(reg$rave_event$data_loaded))
+check_data_loaded <- function(first_time = FALSE){
+  re <- tryCatch({
+    repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
+    short_msg <- sprintf("%s [%s, %s]", repo$subject$subject_id, repo$epoch_name, repo$reference_name)
+    tools <- ravedash::register_rave_session()
+    ravedash::fire_rave_event('loader_message', short_msg)
+    TRUE
+  }, error = function(e){
+    ravedash::fire_rave_event('loader_message', NULL)
+    FALSE
+  })
+  if(first_time){
+    ravedash::fire_rave_event('loader_message', NULL)
+    re <- FALSE
+  }
+  re
 }
 
 # ----------- Some Utility functions for modules -----------
 
-`%OF%` <- function(lhs, rhs){
-  if(length(rhs)){ de <- rhs[[1]] } else { de <- rhs }
-  lhs <- lhs[!is.na(lhs)]
-  if(!length(lhs)){ return(de) }
-  sel <- lhs %in% rhs
-  if(any(sel)){ return(lhs[sel][[1]]) }
-  return(de)
-}
-
-card <- shidashi::card
-
-get_projects <- local({
-  re <- NULL
-  function(refresh = FALSE){
-    if(refresh || !length(re)){
-      re <<- rave::get_projects()
-    }
-    re
-  }
-})
-
-column_md <- function(width, ..., class = ""){
-  if (!is.numeric(width) || (width < 1) || (width > 12)) {
-    stop("column width must be between 1 and 12")
-  }
-  colClass <- paste0("col-md-", width)
-  colClass <- shidashi:::combine_class(colClass, class)
-  shiny::div(class = colClass, ...)
+if(exists('debug') && isTRUE(get('debug'))){
+  assign(".module_debug", environment(), envir = globalenv())
+  ravedash::logger_threshold("trace", module_id = module_id)
+} else {
+  ravedash::logger_threshold("info", module_id = module_id)
 }
 
 # Get pipeline
@@ -56,7 +49,6 @@ tryCatch({
     if(system.file(package = 'raveio') != ""){
       if(dir.exists("./_pipelines")) {
         raveio::pipeline_root(c("./_pipelines", ".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
-        print(raveio::pipeline_root())
       } else {
         raveio::pipeline_root(c(".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
       }
@@ -105,21 +97,18 @@ tryCatch({
         }
         re
       }
+
+      component_container <- ravedash:::RAVEShinyComponentContainer$new(
+        module_id = module_id, pipeline_name = pipeline_name,
+        settings_file = "settings.yaml"
+      )
     }
 
   }
 
 }, error = function(e){
-  logger::log_warn("[{pipeline_name}] ", e$message)
+  ravedash::logger(e$message, level = "warning")
 })
 
 
-if(exists('debug') && isTRUE(get('debug'))){
-  assign(".module_debug", environment(), envir = globalenv())
-}
-
-
-logger <- function(...){
-  logger::log_info("[{pipeline_name}] ", ...)
-}
 

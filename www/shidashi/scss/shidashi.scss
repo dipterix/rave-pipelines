@@ -185,6 +185,10 @@ input:checked + .slider::before {
   @include display(none, true);
   @include visibility(hidden, true);
 }
+.soft-hidden {
+  height: 0!important;
+  overflow: hidden!important;
+}
 
 .display-block-force {
   @include display(block, true);
@@ -214,6 +218,9 @@ input:checked + .slider::before {
   &>* {
     flex: 1;
   }
+}
+.flex-break {
+  flex-basis: 100%;
 }
 
 @each $type in hidden, auto, visible, scroll {
@@ -402,6 +409,17 @@ body.iframe-mode-fullscreen .navbar-nav-iframe {
     }
   }
 }
+.content-header {
+  padding: 0.5rem;
+}
+
+body {
+  background-color: $light;
+
+  &.dark-mode {
+    background-color: $light-dark;
+  }
+}
 
 body.navbar-iframe-hidden .content-wrapper.iframe-mode {
   max-height: calc(-56px + 100vh);
@@ -538,6 +556,35 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
   & .direct-chat-contacts hr {
     @include border-color( rgb(232,232,232), top );
   }
+}
+
+// group input box
+.group-input-box {
+  border: 1px dashed $light-gray;
+  padding-top: 0.6rem;
+  margin-top: 1.5rem;
+  position: relative;
+
+  &::before {
+    content: attr(title);
+    position: absolute;
+    margin-top: -1.5rem;
+    left: 0.4rem;
+    color: $gray; // $light-dark;
+    background-color: $light;
+    padding: 0.1rem 0.4rem;
+  }
+}
+.dark-mode .group-input-box {
+  border: 1px dashed $light-dark;
+  &::before {
+    color: $light-gray;
+    background-color: $light-dark;
+  }
+}
+
+.form-group {
+  margin-bottom: 0;
 }
 
 // progress-bar
