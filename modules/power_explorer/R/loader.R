@@ -80,7 +80,7 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
 
 }
 
-server_loader <- function(input, output, session, tools, ...){
+server_loader <- function(input, output, session, ...){
 
   event_data <- register_session_events(session = session)
 
@@ -144,7 +144,6 @@ server_loader <- function(input, output, session, tools, ...){
       }
 
       ravedash::fire_rave_event('data_changed', Sys.time())
-      ravedash::fire_rave_event('data_loaded', TRUE)
       ravedash::logger("Data has been loaded loaded")
       dipsaus::close_alert2()
     }, error = function(e){

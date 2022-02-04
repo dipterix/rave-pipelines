@@ -3,10 +3,10 @@ library(shidashi)
 
 server <- function(input, output, session, ...){
 
-  tools <- ravedash::register_rave_session(session = session)
+  ravedash::register_rave_session(session = session)
 
-  server_loader(input, output, session, tools, ...)
-  module_server(input, output, session, tools, ...)
+  server_loader(input, output, session, ...)
+  module_server(input, output, session, ...)
 
 
   local_reactives <- shiny::reactiveValues(
@@ -16,6 +16,7 @@ server <- function(input, output, session, ...){
 
   handler_on_data_changed <- shiny::observe({
     # Check whether is there any missing data for this module
+    check_results <- FALSE
     tryCatch({
 
       shiny::withLogErrors({
@@ -58,35 +59,32 @@ server <- function(input, output, session, ...){
     local_reactives$check_results <- check_results
     if(isTRUE(check_results)){
       shidashi::clear_notifications()
-      ravedash::logger("Skip loader interface")
-      ravedash::fire_rave_event('open_loader', FALSE)
-      # tools$rave_event$open_loader <- FALSE
-      # return(module_ui_main())
+      ravedash::logger("Skip loader interface", level = "debug")
+      ravedash::close_loader()
+      ravedash::fire_rave_event('data_loaded', Sys.time())
     } else {
       ravedash::logger("Opening loader interface")
-      ravedash::fire_rave_event('open_loader', Sys.time())
-      # tools$rave_event$open_loader <- Sys.time()
-      # return(module_ui_loader())
+      ravedash::open_loader()
+      ravedash::fire_rave_event('data_loaded', FALSE)
     }
   }) |>
     shiny::bindEvent(
-      tools$rave_event$data_changed,
+      ravedash::get_rave_event("data_changed"),
       ignoreInit = FALSE, ignoreNULL = FALSE
     )
 
   shiny::observe({
-    if(isFALSE(tools$rave_event$open_loader)){
-      ravedash::fire_rave_event('open_loader', Sys.time())
-      # tools$rave_event$open_loader <- Sys.time()
+
+    if(!ravedash::watch_loader_opened()){
+      ravedash::open_loader()
     } else if(isTRUE(local_reactives$check_results)){
-      ravedash::fire_rave_event('open_loader', FALSE)
-      # tools$rave_event$open_loader <- FALSE
+      ravedash::close_loader()
     }
   }) |>
     shiny::bindEvent(input$loader_show, ignoreInit = TRUE, ignoreNULL = TRUE)
 
   output$loader_short_message <- shiny::renderText({
-    msg <- paste(tools$rave_event$loader_message, collapse = "")
+    msg <- paste(ravedash::get_rave_event('loader_message'), collapse = "")
     if(msg == ""){
       msg <- "Toggle data loader"
     }
@@ -109,8 +107,8 @@ server <- function(input, output, session, ...){
   }
   handler_open_loader <- shiny::observe({
     # Listen to a global event on whether data has changed
-    if(length(tools$rave_event$open_loader) &&
-       !isFALSE(tools$rave_event$open_loader)){
+    loader_open <- ravedash::watch_loader_opened()
+    if(loader_open){
       local_reactives$open_loader <- Sys.time()
       add_html_class(".module_main_ui", "soft-hidden")
       remove_html_class(".module_loader_ui", "soft-hidden")
@@ -121,9 +119,9 @@ server <- function(input, output, session, ...){
     }
   }) |>
     shiny::bindEvent(
-      tools$rave_event$open_loader,
+      ravedash::watch_loader_opened(),
       ignoreInit = FALSE,
-      ignoreNULL = TRUE
+      ignoreNULL = FALSE
     )
 
   # output[['_module_ui_']] <- shiny::renderUI({

@@ -31,7 +31,7 @@ source("common.R", local = TRUE, chdir = TRUE)
         {
             library(raveio)
             subject_id <- sprintf("%s/%s", project_name, subject_code)
-            repository <- prepare_power(subject = subject_id, 
+            repository <- prepare_subject_power(subject = subject_id, 
                 electrodes = loaded_electrodes, epoch_name = epoch_name, 
                 reference_name = reference_name, time_windows = c(trial_starts, 
                   trial_ends))

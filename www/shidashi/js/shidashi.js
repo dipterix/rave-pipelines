@@ -973,7 +973,7 @@ $('.content-wrapper').IFrame({
   onTabChanged: (item) => {
     // console.log(item);
     if(item.length) {
-      shidashi.shinySetInput("@shidashi_page@", {
+      window.shidashi.shinySetInput("@shidashi_page@", {
         id : item[0].id,
         text : item[0].innerText
       });

@@ -2,10 +2,15 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables
-local_reactives <- shiny::reactiveValues()
 pipeline_name <- "power_explorer"
 module_id <- "power_explorer"
 debug <- TRUE
+
+baseline_choices <- c("% Change Power", "% Change Amplitude", "z-score Power", "z-score Amplitude", "Decibel")
+baseline_along_choices <- c("Per frequency, trial and electrode", "Across electrode", "Across trial", "Across trial and electrode")
+analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
+max_analysis_ranges <- 2
+gray_label_color <- "#c8c9ca"
 
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
@@ -20,21 +25,21 @@ check_data_loaded <- function(first_time = FALSE){
   re <- tryCatch({
     repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
     short_msg <- sprintf("%s [%s, %s]", repo$subject$subject_id, repo$epoch_name, repo$reference_name)
-    tools <- ravedash::register_rave_session()
     ravedash::fire_rave_event('loader_message', short_msg)
     TRUE
   }, error = function(e){
     ravedash::fire_rave_event('loader_message', NULL)
     FALSE
   })
-  if(first_time){
-    ravedash::fire_rave_event('loader_message', NULL)
-    re <- FALSE
-  }
+  # if(first_time){
+  #   ravedash::fire_rave_event('loader_message', NULL)
+  #   re <- FALSE
+  # }
   re
 }
 
 # ----------- Some Utility functions for modules -----------
+
 
 if(exists('debug') && isTRUE(get('debug'))){
   assign(".module_debug", environment(), envir = globalenv())
