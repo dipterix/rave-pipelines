@@ -1,7 +1,5 @@
 
 module_ui_main <- function(){
-  theme <- ravedash::current_shiny_theme()
-  print(theme)
 
   shiny::fluidPage(
     shiny::fluidRow(
@@ -14,25 +12,29 @@ module_ui_main <- function(){
             width = 12L,
 
             ravedash::input_card(
+              toggle_advanced = TRUE,
               class_header = "shidashi-anchor",
               title = shiny::tagList(
                 "Select Electrodes ",
                 shiny::textOutput(ns("card_electrode_selector"), inline = TRUE, shiny::tags$small)
               ),
-              shiny::selectInput(
-                inputId = ns("electrode_category_selector"),
-                label = "Electrode categories",
-                choices = ""
-              ),
-              shiny::selectInput(
-                inputId = ns("electrode_category_selector_choices"),
-                label = "Select electrode by category (multi-select)",
-                choices = "",
-                multiple = TRUE
-              ),
-              shiny::checkboxInput(
-                inputId = ns("merge_hemisphere_labels"),
-                label = "Merge LH/RH categories"
+              shiny::div(
+                class = "rave-optional",
+                shiny::selectInput(
+                  inputId = ns("electrode_category_selector"),
+                  label = "Electrode categories",
+                  choices = ""
+                ),
+                shiny::selectInput(
+                  inputId = ns("electrode_category_selector_choices"),
+                  label = "Select electrode by category (multi-select)",
+                  choices = "",
+                  multiple = TRUE
+                ),
+                shiny::checkboxInput(
+                  inputId = ns("merge_hemisphere_labels"),
+                  label = "Merge LH/RH categories"
+                )
               ),
               shiny::textInput(
                 inputId = ns("electrode_text"),
@@ -87,6 +89,9 @@ module_ui_main <- function(){
             ravedash::input_card(
               class_header = "shidashi-anchor",
               title = "Configure analysis",
+              footer = list(
+                ravedash::run_analysis_button(width = "100%")
+              ),
 
               ravedash::flex_group_box(
                 title = "Baseline settings",
@@ -242,7 +247,6 @@ module_server <- function(input, output, session, ...){
     if(!length(value) || !is.list(value) || !all(value$group_conditions %in% conditions)){
       value <- default
     }
-    print(value)
     dipsaus::updateCompoundInput2(
       session = session,
       inputId = "condition_groups",
@@ -361,6 +365,199 @@ module_server <- function(input, output, session, ...){
       value = analysis_ranges
     )
   }
+
+  shiny::observe({
+    try({
+      repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+      subject_id <- repository$subject$subject_id
+      if(length(subject_id)){
+        shidashi::show_notification(
+          title = "Saving pipeline",
+          type = "info",
+          message = as.character(
+            shiny::tagList(shiny::p(
+              raveio::glue("Saving pipeline [{pipeline_name}] to subject [{subject_id}]. Please name your pipeline below:")
+            ),
+            shidashi::flex_container(
+              direction = "column",
+              shiny::textInput(
+                ns("save_pipeline_name"), label = "Pipeline name",
+                value = sprintf("%s-%s", pipeline_name, strftime(Sys.time(), "%y_%m_%d-%H_%M_%S"))),
+              shiny::actionButton(
+                ns("save_pipeline_name_btn"), label = "Confirm", width = "100%"
+              )
+            ))
+
+          ),
+          close = TRUE, autohide = FALSE, fixed = TRUE, class = "rave-notification-save-pipeline"
+        )
+      }
+
+    })
+
+    # # Save current pipeline
+    # # load current subject information
+    # repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+    # file.path(repository$subject$pipeline_path, pipeline_name, )
+    # raveio::pipeline_fork(src = pipeline_path, dest = )
+  }) |>
+    shiny::bindEvent(
+      ravedash::get_rave_event("save_pipeline"),
+      ignoreNULL = TRUE,
+      ignoreInit = FALSE
+    )
+
+  local({
+    sv <- shinyvalidate::InputValidator$new(session = session)
+    sv$add_rule("save_pipeline_name", function(name){
+      if(grepl("[^a-zA-Z0-9_-]", x = name)){
+        return("Pipeline name can only contain letters, digits, '_', and '-'")
+      }
+      return(NULL)
+    })
+  })
+
+  shiny::observe({
+    try({
+      repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+      if(!inherits(repository, "rave_prepare_subject")){ return() }
+      name <- input$save_pipeline_name
+      name <- gsub("[^a-zA-Z0-9_-]", "_", name)
+      name <- gsub("[_]+", "_", name)
+      name <- gsub("[\\-]+", "-", name)
+      dest <- file.path(repository$subject$pipeline_path, pipeline_name, name)
+      if(dir.exists(dest)){
+        shidashi::show_notification(
+          title = "Saving pipeline",
+          type = "danger",
+          message = "A pipeline with this name has already existed. Please choose another name.",
+          close = TRUE, autohide = TRUE, fixed = TRUE, class = "rave-notification-save-pipeline"
+        )
+        return()
+      }
+
+      shidashi::clear_notifications(class = "rave-notification-save-pipeline")
+      dipsaus::shiny_alert2(
+        title = "Saving in progress",
+        icon = "info",
+        text = sprintf("Saving pipeline %s", name),
+        auto_close = FALSE,
+        buttons = FALSE
+      )
+
+      tryCatch({
+        raveio::pipeline_fork(src = pipeline_path, dest = dest, activate = FALSE)
+        dipsaus::close_alert2()
+        dipsaus::shiny_alert2(
+          title = "Saved!",
+          icon = "success",
+          auto_close = TRUE,
+          buttons = list("Dismiss" = TRUE)
+        )
+      }, error = function(e){
+        dipsaus::close_alert2()
+        dipsaus::shiny_alert2(
+          title = "Error!",
+          icon = "error",
+          auto_close = TRUE,
+          buttons = list("Dismiss" = TRUE),
+          danger_mode = TRUE,
+          text = raveio::glue("An error found while saving the pipeline. Reason: \n  {e$message}")
+        )
+      })
+
+    })
+
+  }) |>
+    shiny::bindEvent(
+      input$save_pipeline_name_btn,
+      ignoreNULL = TRUE,
+      ignoreInit = TRUE
+    )
+
+  shiny::observe({
+    try({
+
+      if(inherits(repository, "rave_prepare_subject")){
+        subject <- repository$subject
+      } else {
+        project_name <- pipeline_get("project_name")
+        subject_code <- pipeline_get("subject_code")
+        if(!length(project_name) || !length(subject_code)){ return() }
+        subject <- raveio::as_rave_subject(sprintf("%s/%s", project_name, subject_code))
+      }
+
+      saved_path <- file.path(subject$pipeline_path, pipeline_name)
+      dirs <- list.dirs(saved_path, full.names = FALSE, recursive = FALSE)
+
+      if(!length(dirs)){ return() }
+
+      dirs <- sort(dirs, decreasing = TRUE)
+
+      shidashi::show_notification(
+        title = "Load pipeline",
+        type = "info",
+        message = as.character(shiny::fluidRow(
+          shiny::column(
+            width = 12L,
+            shiny::p("Please choose a pipeline to load from the list below:"),
+            # shinyWidgets::pickerInput(ns("load_pipeline"), label = NULL, choices = dirs,
+            #                           options = list(
+            #                             "live-search" = TRUE
+            #                           )),
+            shiny::selectInput(ns("load_pipeline"), label = NULL, choices = dirs, selectize = FALSE, width = "100%", size = 10),
+            shiny::actionButton(ns("load_pipeline_btn"), label = "Confirm", width = "100%")
+          )
+        )),
+        autohide = FALSE, close = TRUE, class = "rave-notification-load-pipeline"
+      )
+
+    })
+  }) |>
+    shiny::bindEvent(
+      ravedash::get_rave_event("load_pipeline"),
+      ignoreNULL = TRUE,
+      ignoreInit = FALSE
+    )
+
+  shiny::observe({
+    on.exit({
+      shidashi::clear_notifications(class = "rave-notification-load-pipeline")
+    })
+    try({
+      name <- input$load_pipeline
+      if(!length(name)){ return() }
+      if(inherits(repository, "rave_prepare_subject")){
+        subject <- repository$subject
+      } else {
+        project_name <- pipeline_get("project_name")
+        subject_code <- pipeline_get("subject_code")
+        if(!length(project_name) || !length(subject_code)){ return() }
+        subject <- raveio::as_rave_subject(sprintf("%s/%s", project_name, subject_code))
+      }
+      src <- file.path(subject$pipeline_path, pipeline_name, name, 'settings.yaml')
+      if(!file.exists(src)){ return() }
+      file.copy(src, file.path(pipeline_path, 'settings.yaml'), recursive = FALSE, overwrite = TRUE)
+      new_repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+      if(!inherits(new_repository, "rave_prepare_power")){
+        return()
+      }
+
+      repository <<- new_repository
+      reset_electrode_selectors(new_repository, from_pipeline = TRUE)
+      reset_condition_groups(new_repository, from_pipeline = TRUE)
+      reset_baselines(new_repository, from_pipeline = TRUE)
+      reset_analysis_ranges(new_repository, from_pipeline = TRUE)
+      local_reactives$refresh <- Sys.time()
+    })
+
+  }) |>
+    shiny::bindEvent(
+      input$load_pipeline_btn,
+      ignoreNULL = TRUE,
+      ignoreInit = TRUE
+    )
+
 
   shiny::observe({
     if(!ravedash::watch_data_loaded()){ return() }

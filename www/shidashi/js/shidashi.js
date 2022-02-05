@@ -56,7 +56,7 @@ $(function() {
       if(!el_.hasClass("clipboard-btn")){
         el_ = $(el).find(".clipboard-btn");
       }
-      $(el_).attr("data-clipboard-text", value)
+      $(el_).attr("data-clipboard-text", value);
     },
     renderError: function(el, err) {
       let el_ = $(el);
@@ -77,7 +77,7 @@ $(function() {
       autohide: true,
       icon: "fa fas fa-copy",
       "class" : "bg-success"
-    })
+    });
     e.clearSelection();
   });
 
@@ -106,9 +106,10 @@ const default_scroll_opt = {
   }
 };
 
-class shidashi {
+class Shidashi {
 
   constructor (Shiny){
+    this._active_module = undefined;
     this._shiny = Shiny;
     this.$window = $(window);
     this.$document = $(document);
@@ -181,7 +182,7 @@ class shidashi {
         last_edit: this._private_id,
         inputs_changed: [],
         _key: key
-      })
+      });
     } else {
       return (defaultIfNotFound);
     }
@@ -205,7 +206,7 @@ class shidashi {
       items.splice(items.length - maxEntries);
       items.forEach((item) => {
         this._localStorage.removeItem(item._key);
-      })
+      });
     }
   }
 
@@ -269,7 +270,7 @@ class shidashi {
         shared_id: this._shared_id,
         private_id: this._private_id
       });
-    })
+    });
   }
   registerListener(type, callback, replace = true) {
     const event_str = "shidashi-event-" + type;
@@ -443,7 +444,7 @@ class shidashi {
 
     this.ensureShiny(() => {
       this._shiny.bindAll($(elbody));
-    })
+    });
 
     if(active){
       return(this.tabsetActivate(inputId, title));
@@ -653,9 +654,30 @@ class shidashi {
     }
     this._shiny.addCustomMessageHandler("shidashi." + action, callback);
   }
-  shinySetInput(inputId, value) {
+  shinySetInput(inputId, value, add_timestamp = true, children = false) {
     this.ensureShiny(() => {
+      if( add_timestamp ){
+        value.timestamp = new Date();
+      }
+      value._active_module = this._active_module;
+      value.parent_frame = this.$body.hasClass("parent-frame");
       this._shiny.onInputChange(inputId, value);
+
+      if(children){
+
+        if(this.$iframeWrapper.length){
+          const $iframes = this.$iframeWrapper.find("iframe");
+          $iframes.each((_, iframe) => {
+            if(iframe.contentWindow.shidashi){
+              iframe.contentWindow.shidashi.ensureShiny(() => {
+                iframe.contentWindow.shidashi._shiny.onInputChange(inputId, value);
+              });
+            }
+          });
+        }
+
+      }
+
     });
   }
 
@@ -680,7 +702,7 @@ class shidashi {
     const anchors = $(".shidashi-anchor");
 
     // Scroll-top widgets
-    anchors.each((i, item) => {
+    anchors.each((_, item) => {
       const $item = $(item);
       let item_id = $item.attr("id");
       if( typeof(item_id) !== "string" ){
@@ -805,7 +827,7 @@ class shidashi {
       });
 
     $(".theme-switch-wrapper .theme-switch input[type='checkbox']")
-      .change((evt) => {
+      .change((_) => {
         if(this.isDarkMode()){
           this.asLightMode();
         } else {
@@ -825,6 +847,34 @@ class shidashi {
 
       this.matchSelector(
         evt.target,
+        '.rave-button',
+        () => {
+          let action = evt.target.getAttribute("rave-action");
+
+          if(!action){ return; }
+          try {
+            action = JSON.parse(action);
+
+            if(!action.type) {
+              console.warn("Cannot parse RAVE-action: " + action);
+              return;
+            }
+            // check if body has parent-frame class
+            this.shinySetInput("@rave_action@", {
+              type: action.type,
+              details: action,
+              element_class: evt.target.className
+            }, true, true);
+
+          } catch (e) {
+            console.warn("Cannot parse RAVE-action: " + action);
+          }
+
+        }
+      );
+
+      this.matchSelector(
+        evt.target,
         '.card-tools .btn-tool[data-card-widget="flip"]',
         (el) => {
           const $card = $(el).parents(".card");
@@ -832,6 +882,17 @@ class shidashi {
           $($card[0]).find(".card-body .flip-box").toggleClass("active");
         }
       );
+
+      this.matchSelector(
+        evt.target,
+        '.toggle-advance-options',
+        (el) => {
+          const $card = $(el).parents(".card");
+          if(!$card.length){ return; }
+          $($card[0]).find(".rave-optional").toggleClass("soft-hidden");
+        }
+      );
+
 
     });
 
@@ -851,6 +912,14 @@ class shidashi {
         }
       );
 
+    });
+
+    this.$document.on("keydown", (evt) => {
+      if(evt.key === "Enter" && (evt.ctrlKey || evt.metaKey)) {
+        this.shinySetInput("@rave_action@", {
+          type: "run_analysis"
+        }, true, true);
+      }
     });
 
   }
@@ -936,7 +1005,7 @@ class shidashi {
     this.shinyHandler("set_progress", (params) => {
       this.setProgress(params.outputId, params.value,
         params.max || 100, params.description);
-    })
+    });
 
     this.shinyHandler("make_scroll_fancy", (params) => {
       if(!params.selector || params.selector === ''){ return; }
@@ -951,18 +1020,21 @@ class shidashi {
       this.broadcastSessionData(params.shared_id, params.private_id);
     });
 
-    this.shinyHandler("get_theme", (params) => {
+    this.shinyHandler("get_theme", (_) => {
       this._reportTheme();
     });
 
   }
 }
 
-window.shidashi = new shidashi(window.Shiny);
+const shiny = window.Shiny;
+const shidashi = new Shidashi(shiny);
+
+window.shidashi = shidashi;
 
 $(document).ready(() => {
-  window.shidashi._finalize_initialization();
-  window.shidashi._register_shiny(window.Shiny);
+  shidashi._finalize_initialization();
+  shidashi._register_shiny(window.Shiny);
 });
 
 // Theme configuration
@@ -973,10 +1045,18 @@ $('.content-wrapper').IFrame({
   onTabChanged: (item) => {
     // console.log(item);
     if(item.length) {
-      window.shidashi.shinySetInput("@shidashi_page@", {
-        id : item[0].id,
-        text : item[0].innerText
-      });
+
+      const re = /^tab-module-(.*)-shared_id-[a-zA-Z0-9]+$/g;
+      let module_id = re.exec(item[0].id);
+      module_id = module_id[1];
+
+      shidashi._active_module = module_id;
+      shidashi.shinySetInput("@rave_action@", {
+        type: "active_module",
+        id : module_id,
+        label : item[0].innerText.trim()
+      }, true, true);
+
     }
     return item;
   },
@@ -1001,5 +1081,3 @@ if (window.hljs) {
     window.setTimeout(function() { hljs.initHighlighting(); }, 0);
   }
 }
-
-

@@ -25,7 +25,6 @@ server <- function(input, output, session){
 
   tools <- ravedash::register_rave_session(session = session)
 
-
   # Fixed usage, call modules
   shiny::observe({
     try({
@@ -46,11 +45,17 @@ server <- function(input, output, session){
               "Loading - { module_table$label[1] } ({group_name}/{ module_table$id })"
             )
           }
-          tools$rave_event$active_module <- list(
+          rave_action <- list(
+            type = "active_module",
             id = module_table$id,
             label = module_table$label[1]
           )
-          shiny::moduleServer(resource$module$id, resource$module$server, session = session)
+          ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
+          ravedash::logger("[{rave_action$type}] (rave-action).", level = "trace")
+          shiny::moduleServer(resource$module$id, function(input, output, session, ...){
+            ravedash::register_rave_session(session = session)
+            resource$module$server(input,output,session, ...)
+          }, session = session)
         }
       }
     })
@@ -58,14 +63,39 @@ server <- function(input, output, session){
     shiny::bindEvent(session$clientData$url_search, ignoreNULL = TRUE)
 
   shiny::observe({
-    tab_info <- input[["@shidashi_page@"]]
-    id <- sub("^tab-module-", "", tab_info$id)
-    id <- sub("-shared_id-[a-zA-Z0-9]+$", "", id)
-    tools$rave_event$active_module <- list(
-      id = id,
-      label = tab_info$text
-    )
+    rave_action <- input[["@rave_action@"]]
+    if(!length(rave_action$type)){ return() }
+
+    parent_frame <- FALSE
+    if(rave_action$parent_frame){
+      parent_frame <- TRUE
+      active_module <- rave_action$`_active_module`
+      rave_events <- session$cache$get("rave_reactives", missing = NULL)
+      expected_module <- rave_events$active_module$id
+      if(length(active_module) && !identical(active_module, expected_module)){
+        return()
+      }
+    }
+    ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
+    ravedash::logger("[{rave_action$type}] ({ifelse(parent_frame, 'frame-level ', '')}rave-action).", level = "trace")
   }) |>
-    shiny::bindEvent(input[["@shidashi_page@"]], ignoreNULL = TRUE, ignoreInit = FALSE)
+    shiny::bindEvent(
+      input[["@rave_action@"]],
+      ignoreNULL = TRUE, ignoreInit = FALSE)
+
+
+  simplified <- FALSE
+  shiny::observe({
+    simplified <<- !simplified
+
+    if(simplified){
+      ravedash::add_html_class(".rave-optional", "soft-hidden")
+    } else {
+      ravedash::remove_html_class(".rave-optional", "soft-hidden")
+    }
+
+  }) |>
+    shiny::bindEvent(ravedash::get_rave_event("simplify_toggle"),
+                     ignoreInit = FALSE, ignoreNULL = TRUE)
 
 }

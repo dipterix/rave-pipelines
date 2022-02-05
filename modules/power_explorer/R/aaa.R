@@ -7,7 +7,7 @@ module_id <- "power_explorer"
 debug <- TRUE
 
 baseline_choices <- c("% Change Power", "% Change Amplitude", "z-score Power", "z-score Amplitude", "Decibel")
-baseline_along_choices <- c("Per frequency, trial and electrode", "Across electrode", "Across trial", "Across trial and electrode")
+baseline_along_choices <- c("Per frequency, trial, and electrode", "Across electrode", "Across trial", "Across trial and electrode")
 analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
 max_analysis_ranges <- 2
 gray_label_color <- "#c8c9ca"

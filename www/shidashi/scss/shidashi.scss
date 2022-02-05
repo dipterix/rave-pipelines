@@ -781,6 +781,24 @@ fieldset,
   }
 }
 
+.irs--shiny .irs-from, .irs--shiny .irs-to, .irs--shiny .irs-single {
+  color: inherit;
+  padding: 0 3px;
+  background-color: transparent;
+  border: transparent;
+}
+.dark-mode .irs--shiny .irs-grid-pol {
+  background-color: $white;
+}
+
+.toggle-advance-options {
+  color: $gray;
+
+  &:hover {
+    color: #0056b3;
+  }
+}
+
 .col-xs-12 {
   -webkit-flex: 0 0 100%;
   -ms-flex: 0 0 100%;
