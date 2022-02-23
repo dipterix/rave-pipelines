@@ -1,0 +1,43 @@
+baseline_windows:
+- - -1
+  - 0
+unit_of_analysis: Decibel
+analysis_electrodes: 13-16,24
+trial_starts: -1
+reference_name: default
+project_name: demo
+trial_ends: 2
+electrode_category_selector: freesurferlabel
+analysis_ranges:
+- frequency:
+  - 75
+  - 150
+  time:
+  - 0
+  - 2
+epoch_name: auditory_onset
+loaded_electrodes: 13-16,24
+global_baseline_choice: Per frequency, trial, and electrode
+subject_code: DemoSubject
+condition_groups:
+  '1':
+    group_name: All Conditions
+    group_conditions:
+    - AdriveVlast
+    - AknownVmeant
+    - AlastVknown
+    - AmeantVdrive
+    - drive_a
+    - drive_av
+    - drive_v
+    - known_a
+    - known_av
+    - known_v
+    - last_a
+    - last_av
+    - last_v
+    - meant_a
+    - meant_av
+    - meant_v
+    - press_AV
+analysis_lock: Unlocked

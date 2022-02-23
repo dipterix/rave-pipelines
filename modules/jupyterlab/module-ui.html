@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ module_title() }}</title>
+
+  {{ shidashi::include_view("header.html") }}
+
+</head>
+<body class="layout-top-nav overflow-hidden">
+
+<div class="module_loader_ui fill-width position-absolute soft-hidden">
+  {{ module_ui_loader() }}
+</div>
+<div class="module_main_ui fill-width fill-height soft-hidden">
+  {{ module_ui_main() }}
+</div>
+
+
+{{ shidashi::include_view("footer.html") }}
+</body>
+</html>

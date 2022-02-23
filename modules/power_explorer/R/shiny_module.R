@@ -42,18 +42,21 @@ module_ui_main <- function(){
                 value = "",
                 placeholder = "E.g. 1-30,55-60,88"
               ),
-              shiny::div(
-                class = "form-group",
-                shiny::actionLink(
-                  inputId = ns("electrode_selectors_reset"),
-                  label = "Reset electrode selectors"
-                )
-              ),
-              shiny::div(
-                class = "form-group",
-                shiny::downloadLink(
-                  outputId = ns("electrode_csv_download"),
-                  label = "Download copy of meta data for all electrodes"
+              footer = shiny::div(
+                class = "rave-optional",
+                shiny::div(
+                  class = "form-group",
+                  shiny::actionLink(
+                    inputId = ns("electrode_selectors_reset"),
+                    label = "Reset electrode selectors"
+                  )
+                ),
+                shiny::div(
+                  class = "form-group",
+                  shiny::downloadLink(
+                    outputId = ns("electrode_csv_download"),
+                    label = "Download copy of meta data for all electrodes"
+                  )
                 )
               )
             ),
@@ -90,7 +93,11 @@ module_ui_main <- function(){
               class_header = "shidashi-anchor",
               title = "Configure analysis",
               footer = list(
-                ravedash::run_analysis_button(width = "100%")
+                ravedash::run_analysis_button(width = "100%"),
+                shiny::checkboxInput(
+                  inputId = ns("auto_recalculate"),
+                  label = "Automatically re-calculate",
+                  value = FALSE)
               ),
 
               ravedash::flex_group_box(
@@ -181,6 +188,16 @@ module_ui_main <- function(){
 
           )
         )
+      ),
+
+
+      shiny::column(
+        width = 9L,
+        ravedash::output_card(
+          'Collapsed over frequency',
+          class_body = "no-padding",
+          shiny::plotOutput(ns("collapse_over_trial"))
+        )
       )
     )
   )
@@ -261,6 +278,9 @@ module_server <- function(input, output, session, ...){
       value = value,
       ncomp = length(value)
     )
+    # shinyWidgets::updatePickerInput(
+    #   session = session, selected =
+    #   inputId = "condition_groups_group_conditions_1")
   }
 
   reset_baselines <- function(repo, from_pipeline = TRUE){
@@ -406,6 +426,7 @@ module_server <- function(input, output, session, ...){
       ignoreNULL = TRUE,
       ignoreInit = FALSE
     )
+
 
   local({
     sv <- shinyvalidate::InputValidator$new(session = session)

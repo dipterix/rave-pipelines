@@ -1,0 +1,4 @@
+force: no
+port: 17284
+host: 127.0.0.1
+token: ''

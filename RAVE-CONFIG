@@ -34,5 +34,6 @@ SubPipelines:
     _pipelines/import-LFP,
     _pipelines/notch-filter,
     _pipelines/morlet-wavelet
+    modules/power_explorer
 InteractiveModules:
     modules/import_raw

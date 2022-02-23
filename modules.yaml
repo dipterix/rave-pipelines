@@ -11,3 +11,7 @@ modules:
     label: "Power Explorer"
     order: 11
     badge: "New!|badge-info"
+  jupyterlab:
+    label: "JupyterLab"
+    order: 100
+    badge: "Experimental|badge-warning"

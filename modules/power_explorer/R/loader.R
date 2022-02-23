@@ -82,6 +82,8 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
 
 server_loader <- function(input, output, session, ...){
 
+  list2env(list(session = session, input = input), envir=globalenv())
+
   event_data <- register_session_events(session = session)
 
   # Add validator

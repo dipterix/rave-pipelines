@@ -1032,7 +1032,7 @@ const shidashi = new Shidashi(shiny);
 
 window.shidashi = shidashi;
 
-$(document).ready(() => {
+$(document).on("shiny:connected", () => {
   shidashi._finalize_initialization();
   shidashi._register_shiny(window.Shiny);
 });

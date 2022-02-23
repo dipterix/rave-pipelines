@@ -2,15 +2,10 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables
-pipeline_name <- "power_explorer"
-module_id <- "power_explorer"
+pipeline_name <- "jupyterlab"
+module_id <- "jupyterlab"
 debug <- TRUE
 
-baseline_choices <- c("% Change Power", "% Change Amplitude", "z-score Power", "z-score Amplitude", "Decibel")
-baseline_along_choices <- c("Per frequency, trial, and electrode", "Across electrode", "Across trial", "Across trial and electrode")
-analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
-max_analysis_ranges <- 2
-gray_label_color <- "#c8c9ca"
 
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
@@ -22,20 +17,19 @@ gray_label_color <- "#c8c9ca"
 #' resulting in calling function \code{module_ui_loader}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  re <- tryCatch({
-    repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
-    short_msg <- sprintf("%s [%s, %s]", repo$subject$subject_id, repo$epoch_name, repo$reference_name)
-    ravedash::fire_rave_event('loader_message', short_msg)
-    TRUE
+
+  if(isTRUE(raveio::raveio_getopt("jupyter_disabled"))){
+    return(FALSE)
+  }
+  port <- raveio::raveio_getopt("jupyter_port", default = 17284)
+
+  tryCatch({
+    jupyter_list <- jupyter_server_status(port = port, force = FALSE, verbose = FALSE)
+    return(jupyter_list$alive)
   }, error = function(e){
-    ravedash::fire_rave_event('loader_message', NULL)
+    ravedash::logger("Encountered the following error while checking Jupyter servers: {e$message}", level = "error")
     FALSE
   })
-  # if(first_time){
-  #   ravedash::fire_rave_event('loader_message', NULL)
-  #   re <- FALSE
-  # }
-  re
 }
 
 # ----------- Some Utility functions for modules -----------
@@ -53,9 +47,9 @@ tryCatch({
   if(exists('pipeline_name')){
     if(system.file(package = 'raveio') != ""){
       if(dir.exists("./_pipelines")) {
-        raveio::pipeline_root(c("./modules", "./_pipelines", ".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
+        raveio::pipeline_root(c("./_pipelines", ".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
       } else {
-        raveio::pipeline_root(c("./modules", ".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
+        raveio::pipeline_root(c(".", file.path(raveio:::R_user_dir('raveio', 'data'), "pipelines")))
       }
     }
     pipeline_name <- get('pipeline_name')
@@ -116,4 +110,44 @@ tryCatch({
 })
 
 
+local_ips <- dipsaus::get_ip(get_public = FALSE)
+local_ips <- local_ips$available[-2]
 
+local_data <- dipsaus::fastmap2()
+dipsaus::list_to_fastmap2(list(
+  host = pipeline_get("host", missing = local_ips),
+  port = pipeline_get("port", missing = 17284, constraint = c(17284, 1000:65535)),
+  token = pipeline_get("token", missing = '')
+), map = local_data)
+
+
+jupyter_server_status <- function(port, force = FALSE, verbose = TRUE){
+  jupyter_alive <- FALSE
+  jupyter_instances <- NULL
+  tryCatch({
+    jupyter_instances <- rpymat::jupyter_server_list()
+    sel <- jupyter_instances$port %in% port
+    if(any(sel)){
+      if( verbose ){
+        ravedash::logger("Jupyter is running at port: {port}")
+      }
+
+      if(force){
+        if( verbose ){
+          ravedash::logger("Force stopping this instance and restart a new one")
+        }
+        rpymat::jupyter_server_stop(port)
+      } else {
+        jupyter_alive <- TRUE
+      }
+    }
+  }, error = function(e){
+    if( verbose ){
+      ravedash::logger("No jupyter server found. Will start a new one")
+    }
+  })
+  list(
+    alive = jupyter_alive,
+    instances = jupyter_instances
+  )
+}
