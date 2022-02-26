@@ -51,22 +51,11 @@
     <!-- /.content-header -->
 
     <!-- Main content -->
-    <section class="content">
-
-      <!-- Should be customized code ->
-
-      <div class="container-fluid"-->
-      <div class="module_loader_ui fill-width position-absolute soft-hidden row">
-        {{ module_ui_loader() }}
-      </div>
-      <div class="module_main_ui fill-width soft-hidden row">
-        {{ module_ui_main() }}
-      </div>
-
-      <!--/div><!--/. container-fluid -->
-
-      <!-- / Module code -->
-
+    <section class="module_loader_ui position-absolute soft-hidden fill-width">
+      {{ module_ui_loader() }}
+    </section>
+    <section class="module_main_ui soft-hidden fill-width">
+      {{ module_ui_main() }}
     </section>
     <!-- /.content -->
   </div>

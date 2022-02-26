@@ -125,14 +125,21 @@ server_loader <- function(input, output, session, ...){
     )
 
     tryCatch({
-      raveio::with_future_parallel(bquote({
-        raveio::pipeline_run(
-          pipe_dir = .(pipeline_path),
-          names = "repository",
-          type = "basic",
-          use_future = FALSE
-        )
-      }), quoted = TRUE, env = new.env(parent = asNamespace('raveio')))
+      raveio::pipeline_run(
+        pipe_dir = pipeline_path,
+        names = "repository",
+        scheduler = "none",
+        type = "smart",
+        callr_function = NULL
+      )
+      # raveio::with_future_parallel(bquote({
+      #   raveio::pipeline_run(
+      #     pipe_dir = .(pipeline_path),
+      #     names = "repository",
+      #     type = "basic",
+      #     use_future = FALSE
+      #   )
+      # }), quoted = TRUE, env = new.env(parent = asNamespace('raveio')))
 
       # load subject
       if(default_epoch || default_reference){

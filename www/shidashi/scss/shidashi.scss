@@ -234,6 +234,12 @@ input:checked + .slider::before {
   }
 }
 
+// larger scroll corner so when cards expand, we still have room to resize
+.os-theme-thin-light > .os-scrollbar-corner {
+  height: 28px;
+  width: 28px;
+}
+
 .overflow-visible-on-hover {
   @include overflow(hidden);
 
@@ -297,6 +303,11 @@ input:checked + .slider::before {
 
 .no-padding { padding: 0!important; }
 .no-margin { margin: 0!important; }
+
+
+.shiny-output-error-validation {
+  text-align: center;
+}
 
 .no-padding > .shiny-output-error {
   padding: 0.75rem 1.25rem;
@@ -415,6 +426,22 @@ body.iframe-mode-fullscreen .navbar-nav-iframe {
   height: 100%;
 }
 
+section.module_main_ui .screen-height {
+  max-height: calc(100vh - 16px);
+  overflow-y: hidden;
+
+  @each $type in auto, visible, scroll {
+    &.overflow-#{$type} {
+      @include overflow($type);
+    }
+    @each $d in x, y {
+      &.overflow-#{$d}-#{$type} {
+        @include overflow($type, $d);
+      }
+    }
+  }
+}
+
 .content-header {
   padding: 0.5rem;
 }
@@ -462,6 +489,11 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
       background-color: $light-dark;
     }
   }
+}
+
+.navbar-expand .navbar-nav .nav-link {
+  padding-right: 0.8rem;
+  padding-left: 0.8rem;
 }
 
 

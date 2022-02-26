@@ -7,7 +7,7 @@ module_ui_main <- function(){
         width = 3L,
         shiny::div(
           # class = "row fancy-scroll-y stretch-inner-height",
-          class = "row",
+          class = "row screen-height overflow-y-scroll fancy-scroll-y",
           shiny::column(
             width = 12L,
 
@@ -193,10 +193,19 @@ module_ui_main <- function(){
 
       shiny::column(
         width = 9L,
-        ravedash::output_card(
-          'Collapsed over frequency',
-          class_body = "no-padding",
-          shiny::plotOutput(ns("collapse_over_trial"))
+        shiny::div(
+          class = "row screen-height overflow-y-scroll fancy-scroll-y",
+          shiny::column(
+            width = 12L,
+            ravedash::output_card(
+              'Collapsed over frequency',
+              class_body = "no-padding",
+              shiny::div(
+                class = "fill-width height-450 min-height-450 resize-vertical",
+                shiny::plotOutput(ns("collapse_over_trial"), width = '100%', height = "100%")
+              )
+            )
+          )
         )
       )
     )
@@ -207,8 +216,143 @@ module_server <- function(input, output, session, ...){
 
   repository <- list()
   local_reactives <- shiny::reactiveValues(
-    refresh = NULL
+    refresh = NULL,
+    results = NULL,
+    update_outputs = NULL
   )
+
+  run_analysis <- shiny::debounce(shiny::reactive({
+    ravedash::get_rave_event("run_analysis")
+  }), millis = 300, priority = 99)
+
+  shiny::observe({
+
+    if(length(shiny::isolate(local_reactives$results))) {
+      local_reactives$results$invalidate()
+      ravedash::logger("Invalidating previous run", level = "trace")
+    }
+
+    # ravedash::logger("Run Analysis - Power Explorer", level = "info")
+
+    # flush inputs to settings.yaml
+    electrode_category_selector <- input$electrode_category_selector
+    unit_of_analysis <- input$unit_of_analysis
+    analysis_electrodes <- input$electrode_text
+    condition_groups <- input$condition_groups
+    global_baseline_choice <- input$global_baseline_choice
+    baseline_windows <- unname(dipsaus::drop_nulls(lapply(input$baseline_windows, function(x){
+      if(length(x$window_interval) == 2){ unname(unlist(x)) } else {NULL}
+    })))
+    analysis_lock <- input$analysis_lock
+    analysis_ranges <- unname(lapply(input$analysis_ranges, function(x){
+      list(
+        frequency = unlist(x$frequency),
+        time = unlist(x$time)
+      )
+    }))
+    pipeline_set(
+      electrode_category_selector = electrode_category_selector,
+      unit_of_analysis = unit_of_analysis,
+      analysis_electrodes = analysis_electrodes,
+      condition_groups = condition_groups,
+      global_baseline_choice = global_baseline_choice,
+      baseline_windows = baseline_windows,
+      analysis_lock = analysis_lock,
+      analysis_ranges = analysis_ranges
+    )
+
+
+    # shidashi::card_operate(title = "Select Electrodes", method = "collapse")
+    results <- raveio::pipeline_run(
+      pipe_dir = pipeline_path,
+      scheduler = "none",
+      type = "smart",
+      callr_function = NULL,
+      progress_title = "Calculating in progress",
+      async = TRUE,
+      check_interval = 0.1,
+      shortcut = TRUE,
+      names = c(
+        "settings", "baseline_windows", "unit_of_analysis",
+        "analysis_electrodes", "electrode_category_selector", "analysis_ranges",
+        "global_baseline_choice", "condition_groups", "analysis_lock",
+        "requested_electrodes", "analysis_ranges_index", "cond_groups",
+        "bl_power", "collapsed_data"
+      )
+    )
+    # results <- raveio::pipeline_run_async(
+    #   pipe_dir = pipeline_path, type = "basic", progress_title = "Calculating in progress",
+    #   use_future = TRUE, progress_max = 12, check_interval = 0.1, shortcut = TRUE, )
+
+
+    local_reactives$results <- results
+    ravedash::logger("Scheduled: Power Explorer", level = 'debug')
+
+    results$promise$then(
+      onFulfilled = function(...){
+        ravedash::logger("Fulfilled: Power Explorer", level = 'debug')
+        shidashi::clear_notifications(class = "pipeline-error")
+        local_reactives$update_outputs <- Sys.time()
+        return(TRUE)
+      },
+      onRejected = function(e, ...){
+        msg <- paste(e$message, collapse = "\n")
+        if(inherits(e, "error")){
+          ravedash::logger(msg, level = 'error')
+          ravedash::logger(traceback(e), level = 'error', .sep = "\n")
+          shidashi::show_notification(
+            message = msg,
+            title = "Error while running pipeline", type = "danger",
+            autohide = FALSE, close = TRUE, class = "pipeline-error"
+          )
+          # } else {
+          #   ravedash::logger(msg, level = 'debug')
+        }
+        return(msg)
+      }
+    )
+
+    return()
+
+  }) |>
+    shiny::bindEvent(
+      run_analysis(),
+      ignoreNULL = TRUE, ignoreInit = TRUE
+    )
+
+  shiny::observe({
+    local_reactives$update_outputs <- NULL
+  }) |>
+    shiny::bindEvent(
+      local_reactives$refresh,
+      ignoreNULL = TRUE
+    )
+
+  output$collapse_over_trial <- shiny::renderPlot({
+    shiny::validate(
+      shiny::need(
+        length(local_reactives$update_outputs) &&
+          !isFALSE(local_reactives$update_outputs),
+        message = "Please run the module first"
+      )
+    )
+    shiny::validate(
+      shiny::need(
+          isTRUE(shiny::isolate(local_reactives$results$valid)),
+        message = "One or more errors while executing pipeline. Please check the notification."
+      )
+    )
+
+    collapsed_data <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "collapsed_data")
+    repository <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "repository")
+
+    time_points <- repository$time_points
+    frequencies <- repository$frequency
+
+    data <- collapsed_data[[1]]$collasped$range_1
+    image(t(data$freq_time), x = time_points[data$cube_index$Time], y = frequencies[data$cube_index$Frequency])
+
+  })
 
   # get pipeline's default, or subject's default, or program default
   reset_electrode_selectors <- function(repo, from_pipeline = TRUE){

@@ -536,9 +536,15 @@ class Shidashi {
   }
 
   // card, card2, cardset...
-  card(inputId, method){
+  card(args){
     // method: expand, minimize, maximize, ...
-    $("#" + inputId).CardWidget(method);
+    if( !args.method ){ return; }
+    if( args.inputId ){
+      $(".card#" + args.inputId).CardWidget(args.method);
+    } else if (args.title){
+      $(`.card[data-title='${args.title}']`).CardWidget(args.method);
+    }
+
   }
 
   toggleCard2(selector){
@@ -916,6 +922,7 @@ class Shidashi {
 
     this.$document.on("keydown", (evt) => {
       if(evt.key === "Enter" && (evt.ctrlKey || evt.metaKey)) {
+        evt.preventDefault();
         this.shinySetInput("@rave_action@", {
           type: "run_analysis"
         }, true, true);
@@ -982,7 +989,7 @@ class Shidashi {
     });
 
     this.shinyHandler("cardwidget", (params) => {
-      this.card(params.inputId, params.method);
+      this.card(params);
     });
     this.shinyHandler("card2widget", (params) => {
       this.toggleCard2(params.selector);

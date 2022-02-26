@@ -107,7 +107,6 @@ source("common.R", local = TRUE, chdir = TRUE)
                       x$frequency), Time = which(repository$time_points %within%
                       x$time))
                   })
-                Sys.sleep(10)
             }
             return(analysis_ranges_index)
         }), deps = c("analysis_ranges", "repository"), cue = targets::tar_cue("thorough"),

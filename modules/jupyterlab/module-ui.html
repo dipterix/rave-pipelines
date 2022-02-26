@@ -11,7 +11,7 @@
 <body class="layout-top-nav overflow-hidden">
 
 <div class="module_loader_ui fill-width position-absolute soft-hidden">
-  {{ module_ui_loader() }}
+  {{ shidashi::include_view("500.html", .env = list(error = "Jupyter server has not been launched yet.")) }}
 </div>
 <div class="module_main_ui fill-width fill-height soft-hidden">
   {{ module_ui_main() }}

@@ -16,7 +16,7 @@ analysis_ranges:
   - 0
   - 2
 epoch_name: auditory_onset
-loaded_electrodes: 13-16,24
+loaded_electrodes: 13-100
 global_baseline_choice: Per frequency, trial, and electrode
 subject_code: DemoSubject
 condition_groups:
