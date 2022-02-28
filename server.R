@@ -42,7 +42,8 @@ server <- function(input, output, session){
           if(system.file(package = "logger") != ''){
             ravedash::logger(
               level = "info",
-              "Loading - { module_table$label[1] } ({group_name}/{ module_table$id })"
+              "Loading - { module_table$label[1] } ({group_name}/{ module_table$id })",
+              use_glue = TRUE
             )
           }
           rave_action <- list(
@@ -51,7 +52,7 @@ server <- function(input, output, session){
             label = module_table$label[1]
           )
           ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
-          ravedash::logger("[{rave_action$type}] (rave-action).", level = "trace")
+          ravedash::logger("[{rave_action$type}] (rave-action).", level = "trace", use_glue = TRUE)
           shiny::moduleServer(resource$module$id, function(input, output, session, ...){
             ravedash::register_rave_session(session = session)
             resource$module$server(input,output,session, ...)
@@ -77,7 +78,7 @@ server <- function(input, output, session){
       }
     }
     ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
-    ravedash::logger("[{rave_action$type}] ({ifelse(parent_frame, 'frame-level ', '')}rave-action).", level = "trace")
+    ravedash::logger("[{rave_action$type}] ({ifelse(parent_frame, 'frame-level ', '')}rave-action).", level = "trace", use_glue = TRUE)
   }) |>
     shiny::bindEvent(
       input[["@rave_action@"]],
@@ -89,9 +90,9 @@ server <- function(input, output, session){
     simplified <<- !simplified
 
     if(simplified){
-      ravedash::add_html_class(".rave-optional", "soft-hidden")
+      shidashi::add_class(".rave-optional", "soft-hidden")
     } else {
-      ravedash::remove_html_class(".rave-optional", "soft-hidden")
+      shidashi::remove_class(".rave-optional", "soft-hidden")
     }
 
   }) |>

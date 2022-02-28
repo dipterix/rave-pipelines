@@ -27,7 +27,7 @@ check_data_loaded <- function(first_time = FALSE){
     jupyter_list <- jupyter_server_status(port = port, force = FALSE, verbose = FALSE)
     return(jupyter_list$alive)
   }, error = function(e){
-    ravedash::logger("Encountered the following error while checking Jupyter servers: {e$message}", level = "error")
+    ravedash::logger("Encountered the following error while checking Jupyter servers: {e$message}", level = "error", use_glue = TRUE)
     FALSE
   })
 }
@@ -129,7 +129,7 @@ jupyter_server_status <- function(port, force = FALSE, verbose = TRUE){
     sel <- jupyter_instances$port %in% port
     if(any(sel)){
       if( verbose ){
-        ravedash::logger("Jupyter is running at port: {port}")
+        ravedash::logger("Jupyter is running at port: {port}", use_glue = TRUE)
       }
 
       if(force){

@@ -2110,7 +2110,7 @@ body.iframe-mode-fullscreen .navbar-nav-iframe {
 }
 
 section.module_main_ui .screen-height {
-  max-height: calc(100vh - 16px);
+  max-height: calc(100vh - 57px);
   overflow-y: hidden;
 }
 section.module_main_ui .screen-height.overflow-auto {
@@ -2139,6 +2139,10 @@ section.module_main_ui .screen-height.overflow-x-scroll {
 }
 section.module_main_ui .screen-height.overflow-y-scroll {
   overflow-y: scroll;
+}
+
+body.iframe-mode section.module_main_ui .screen-height {
+  max-height: calc(100vh - 16px);
 }
 
 .content-header {

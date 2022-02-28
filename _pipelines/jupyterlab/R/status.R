@@ -5,7 +5,7 @@ jupyter_server_status <- function(port, force = FALSE){
     jupyter_instances <- rpymat::jupyter_server_list()
     sel <- jupyter_instances$port %in% port
     if(any(sel)){
-      ravedash::logger("Jupyter is running at port: {port}")
+      ravedash::logger("Jupyter is running at port: {port}", use_glue = TRUE)
 
       if(force){
         ravedash::logger("Force stopping this instance and restart a new one")

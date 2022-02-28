@@ -33,10 +33,10 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
         ravedash::flex_group_box(
           title = "Project and Subject",
 
-          ravedash::flex_item2(
+          shidashi::flex_item(
             loader_project$ui_func()
           ),
-          ravedash::flex_item2(
+          shidashi::flex_item(
             loader_subject$ui_func()
           )
         ),
@@ -47,11 +47,11 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
           title = "Electrodes and Reference",
 
           loader_reference$ui_func(),
-          ravedash::flex_new_line(),
-          ravedash::flex_item2(
+          shidashi::flex_break(),
+          shidashi::flex_item(
             loader_electrodes$ui_func()
           ),
-          ravedash::flex_item2(
+          shidashi::flex_item(
             shiny::fileInput(
               inputId = ns("loader_mask_file"),
               label = "or Mask file"

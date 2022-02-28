@@ -102,7 +102,7 @@ module_ui_main <- function(){
 
               ravedash::flex_group_box(
                 title = "Baseline settings",
-                ravedash::flex_item2(
+                shidashi::flex_item(
                   shiny::selectInput(
                     inputId = ns("unit_of_analysis"),
                     label = "Electrode unit of analysis",
@@ -115,8 +115,8 @@ module_ui_main <- function(){
                     choices = baseline_along_choices
                   )
                 ),
-                ravedash::flex_new_line(),
-                ravedash::flex_item2(
+                shidashi::flex_break(),
+                shidashi::flex_item(
                   shiny::tags$label("Baseline windows"),
                   dipsaus::compoundInput2(
                     inputId = ns("baseline_windows"),
@@ -139,7 +139,7 @@ module_ui_main <- function(){
               ravedash::flex_group_box(
                 title = "Analysis ranges",
 
-                ravedash::flex_item2(
+                shidashi::flex_item(
                   # shiny::radioButtons(
                   #   inputId = ns("analysis_lock"),
                   #   label = "Lock selection",
@@ -159,8 +159,8 @@ module_ui_main <- function(){
                   )
 
                 ),
-                ravedash::flex_new_line(),
-                ravedash::flex_item2(
+                shidashi::flex_break(),
+                shidashi::flex_item(
                   dipsaus::compoundInput2(
                     inputId = ns("analysis_ranges"),
                     label = "Analysis range",
@@ -376,13 +376,13 @@ module_server <- function(input, output, session, ...){
       electrode_category_selector <- repo$subject$get_default("electrode_category_selector", default_if_missing = c('freesurferlabel', "FSLabel")) %OF% electrode_table_names
     }
 
-    ravedash::logger("Initializing `electrode_category_selector`: {electrode_category_selector}", level = "debug")
+    ravedash::logger("Initializing `electrode_category_selector`: {electrode_category_selector}", level = "debug", use_glue = TRUE)
     shiny::updateSelectInput(
       session = session, inputId = "electrode_category_selector",
       choices = electrode_table_names,
       selected = electrode_category_selector
     )
-    ravedash::logger("Initializing `electrode_text`: {electrode_text}", level = "debug")
+    ravedash::logger("Initializing `electrode_text`: {electrode_text}", level = "debug", use_glue = TRUE)
     shiny::updateTextInput(
       session = session, inputId = "electrode_text",
       label = sprintf("Select electrode by number (currently loaded: %s)", dipsaus::deparse_svec(repo$electrode_list)),
@@ -736,7 +736,7 @@ module_server <- function(input, output, session, ...){
     # check if the repository has the same subject as current one
     if(inherits(repository, "rave_prepare_power")){
       if( identical(repository$signature, new_repository$signature) ){
-        ravedash::logger("The repository data remain unchanged ({new_repository$subject$subject_id}), skip initialization", level = "debug")
+        ravedash::logger("The repository data remain unchanged ({new_repository$subject$subject_id}), skip initialization", level = "debug", use_glue = TRUE)
         return()
       }
     }
