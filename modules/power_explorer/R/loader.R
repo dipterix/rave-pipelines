@@ -124,51 +124,45 @@ server_loader <- function(input, output, session, ...){
       ), icon = "info", auto_close = FALSE, buttons = FALSE
     )
 
-    tryCatch({
-      raveio::pipeline_run(
-        pipe_dir = pipeline_path,
-        names = "repository",
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL
-      )
-      # raveio::with_future_parallel(bquote({
-      #   raveio::pipeline_run(
-      #     pipe_dir = .(pipeline_path),
-      #     names = "repository",
-      #     type = "basic",
-      #     use_future = FALSE
-      #   )
-      # }), quoted = TRUE, env = new.env(parent = asNamespace('raveio')))
+    res <- raveio::pipeline_run(
+      pipe_dir = pipeline_path,
+      names = "repository",
+      scheduler = "none",
+      type = "smart",  # parallel
+      # async = TRUE,
+      callr_function = NULL,
+      progress_quiet = TRUE
+    )
+    res$promise$then(
+      onFulfilled = function(e){
+        if(default_epoch || default_reference){
+          repo <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+          if(default_epoch){
+            repo$subject$set_default("epoch_name", repo$epoch_name)
+          }
+          if(default_reference) {
+            repo$subject$set_default("reference_name", repo$reference_name)
+          }
+        }
 
-      # load subject
-      if(default_epoch || default_reference){
-        repo <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
-        if(default_epoch){
-          repo$subject$set_default("epoch_name", repo$epoch_name)
-        }
-        if(default_reference) {
-          repo$subject$set_default("reference_name", repo$reference_name)
-        }
+        ravedash::fire_rave_event('data_changed', Sys.time())
+        ravedash::logger("Data has been loaded loaded")
+        dipsaus::close_alert2()
+      },
+      onRejected = function(e){
+        dipsaus::close_alert2()
+        dipsaus::shiny_alert2(
+          title = "Errors",
+          text = paste(
+            "Found an error while loading the power data:\n\n",
+            paste(e$message, collapse = "\n")
+          ),
+          icon = "error",
+          danger_mode = TRUE,
+          auto_close = FALSE
+        )
       }
-
-      ravedash::fire_rave_event('data_changed', Sys.time())
-      ravedash::logger("Data has been loaded loaded")
-      dipsaus::close_alert2()
-    }, error = function(e){
-      dipsaus::close_alert2()
-      dipsaus::shiny_alert2(
-        title = "Errors",
-        text = paste(
-          "Found an error while loading the power data:\n\n",
-          paste(e, collapse = "\n")
-        ),
-        icon = "error",
-        danger_mode = TRUE,
-        auto_close = FALSE
-      )
-    })
-
+    )
   }) |>
     shiny::bindEvent(input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE)
 

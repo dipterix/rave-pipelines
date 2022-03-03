@@ -93,11 +93,15 @@ module_ui_main <- function(){
               class_header = "shidashi-anchor",
               title = "Configure analysis",
               footer = list(
-                ravedash::run_analysis_button(width = "100%"),
-                shiny::checkboxInput(
+                ravedash::run_analysis_button(width = "100%",
+                                              class = "margin-bottom-7"),
+                shinyWidgets::prettyCheckbox(
                   inputId = ns("auto_recalculate"),
                   label = "Automatically re-calculate",
-                  value = FALSE)
+                  value = FALSE,
+                  animation = "jelly",
+                  width = "100%"
+                )
               ),
 
               ravedash::flex_group_box(
@@ -199,11 +203,8 @@ module_ui_main <- function(){
             width = 12L,
             ravedash::output_card(
               'Collapsed over frequency',
-              class_body = "no-padding",
-              shiny::div(
-                class = "fill-width height-450 min-height-450 resize-vertical",
-                shiny::plotOutput(ns("collapse_over_trial"), width = '100%', height = "100%")
-              )
+              class_body = "no-padding fill-width height-450 min-height-450 resize-vertical",
+              shiny::plotOutput(ns("collapse_over_trial"), width = '100%', height = "100%")
             )
           )
         )
@@ -221,9 +222,13 @@ module_server <- function(input, output, session, ...){
     update_outputs = NULL
   )
 
-  run_analysis <- shiny::debounce(shiny::reactive({
-    ravedash::get_rave_event("run_analysis")
-  }), millis = 300, priority = 99)
+  server_tools <- get_default_handlers(session = session)
+
+  # Set auto-recalculate
+  server_tools$run_analysis_onchange(auto_recalculate_onchange)
+  shiny::observe({
+    server_tools$auto_recalculate(isTRUE(input$auto_recalculate))
+  })
 
   shiny::observe({
 
@@ -286,7 +291,7 @@ module_server <- function(input, output, session, ...){
 
 
     local_reactives$results <- results
-    ravedash::logger("Scheduled: Power Explorer", level = 'debug')
+    ravedash::logger("Scheduled: Power Explorer", level = 'debug', reset_timer = TRUE)
 
     results$promise$then(
       onFulfilled = function(...){
@@ -316,12 +321,13 @@ module_server <- function(input, output, session, ...){
 
   }) |>
     shiny::bindEvent(
-      run_analysis(),
+      server_tools$run_analysis_flag(),
       ignoreNULL = TRUE, ignoreInit = TRUE
     )
 
   shiny::observe({
-    local_reactives$update_outputs <- NULL
+    # local_reactives$update_outputs <- NULL
+    shidashi::reset_output("collapse_over_trial")
   }) |>
     shiny::bindEvent(
       local_reactives$refresh,
@@ -756,60 +762,120 @@ module_server <- function(input, output, session, ...){
       ignoreInit = FALSE
     )
 
+  dipsaus::sync_shiny_inputs(
+    input, session,
+    c(
+      'electrode_text',
+      'electrode_category_selector_choices'
+    ),
+    uniform = list(
+      function(electrode_text) {
+        electrodes <- dipsaus::parse_svec(electrode_text)
+        electrodes <- electrodes[electrodes %in% repository$electrode_list]
+        if(!length(electrodes)){ electrodes <- NULL }
+        electrodes
+      },
+      function(category_selected) {
+        category_name <- input$electrode_category_selector
+        current_electrodes <- dipsaus::parse_svec(input$electrode_text)
+        current_electrodes <- current_electrodes[current_electrodes %in% repository$electrode_list]
+        if(!length(current_electrodes)){ current_electrodes <- NULL }
+
+        if(
+          length(category_name) &&
+          category_name %in% names(repository$electrode_table) &&
+          length(repository$electrode_table[[category_name]])
+        ) {
+          choices <- repository$electrode_table[[category_name]]
+          all_electrodes <- repository$electrode_table$Electrode
+          expected_category <- choices[all_electrodes %in% current_electrodes]
+          if(!setequal(expected_category, category_selected)){
+
+            electrodes <- all_electrodes[
+              choices %in% category_selected &
+                repository$electrode_table$isLoaded
+            ]
+            return(electrodes)
+          }
+        }
+
+        return(current_electrodes)
+
+      }
+    ),
+    updates = list(
+      function(electrodes) {
+        if(length(electrodes)){
+          new_value <- dipsaus::deparse_svec(electrodes)
+          if(!identical(new_value, input$electrode_text)){
+            ravedash::logger("Updating `electrode_text`", level = "trace")
+            shiny::updateTextInput(
+              session = session, inputId = "electrode_text",
+              value = dipsaus::deparse_svec(electrodes)
+            )
+          }
+        }
+      },
+      function(electrodes) {
+        if(length(electrodes)){
+          category_name <- input$electrode_category_selector
+          if(
+            length(category_name) &&
+            category_name %in% names(repository$electrode_table) &&
+            length(repository$electrode_table[[category_name]])
+          ) {
+            choices <- repository$electrode_table[[category_name]]
+            all_electrodes <- repository$electrode_table$Electrode
+            expected_category <- choices[all_electrodes %in% electrodes]
+            category_selected <- input$electrode_category_selector_choices
+            if(!setequal(expected_category, category_selected)){
+
+              if(!length(expected_category)){
+                expected_category <- character(0L)
+              }
+
+              ravedash::logger("Updating `electrode_category_selector_choices`", level = "trace")
+
+              shiny::updateSelectInput(
+                session = session,
+                inputId = "electrode_category_selector_choices",
+                selected = expected_category
+              )
+            }
+          }
+
+        }
+      }
+    )
+  )
   shiny::observe({
     electrodes <- dipsaus::parse_svec(input$electrode_text)
     electrodes <- electrodes[electrodes %in% repository$electrode_list]
-    if(!length(electrodes)){ return() }
-
     category <- input$electrode_category_selector
-    if(!length(category)){ return() }
-    choices <- repository$electrode_table[[category]]
-    if(!length(choices)){ choices <- character(0L) }
 
-    selected <- choices[repository$electrode_table$Electrode %in% electrodes]
-    ravedash::logger("Updating `electrode_category_selector_choices`", level = "trace")
+    choices <- character(0L)
+    if(category %in% names(repository$electrode_table)) {
+      choices <- repository$electrode_table[[category]]
+      if(!length(choices)){ choices <- character(0L) }
+    }
+
+    # selected <- choices[repository$electrode_table$Electrode %in% electrodes]
+    # ravedash::logger("Updating `electrode_category_selector_choices`", level = "trace")
     shiny::updateSelectInput(
-      session = session, inputId = "electrode_category_selector_choices",
-      choices = unique(choices), selected = selected
+      session = session,
+      inputId = "electrode_category_selector_choices",
+      choices = unique(choices),
+      selected = character(0L)
     )
-
-  }) |>
-    shiny::bindEvent(
-      input$electrode_text,
-      input$electrode_category_selector,
-      local_reactives$refresh,
-      ignoreNULL = TRUE,
-      ignoreInit = TRUE
-    )
-
-  shiny::observe({
-    category_name <- input$electrode_category_selector
-    if(!length(category_name)){ return() }
-    choices <- repository$electrode_table[[category_name]]
-    if(!length(choices)){ return() }
-    category_selected <- input$electrode_category_selector_choices
-    current_electrodes <- dipsaus::parse_svec(input$electrode_text)
-
-    all_electrodes <- repository$electrode_table$Electrode
-    expected_category <- choices[all_electrodes %in% current_electrodes]
-
-    if(setequal(expected_category, category_selected)){ return() }
-
-    electrodes <- dipsaus::deparse_svec(all_electrodes[
-      choices %in% category_selected &
-        repository$electrode_table$isLoaded
-    ])
-
-    ravedash::logger("Updating `electrode_text`", level = "trace")
     shiny::updateTextInput(
-      session = session, inputId = "electrode_text",
-      value = electrodes
+      session = session,
+      inputId = "electrode_text",
+      value = sprintf("%s ", input$electrode_text)
     )
 
   }) |>
     shiny::bindEvent(
       input$electrode_category_selector,
-      input$electrode_category_selector_choices,
       local_reactives$refresh,
       ignoreNULL = TRUE,
       ignoreInit = TRUE

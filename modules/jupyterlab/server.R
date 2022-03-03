@@ -3,9 +3,6 @@ library(shidashi)
 
 server <- function(input, output, session, ...){
 
-  # Register a loader screen
-  ravedash::module_server_common(input, output, session, check_data_loaded = check_data_loaded, ...)
-
   server_loader(input, output, session, ...)
   module_server(input, output, session, ...)
 

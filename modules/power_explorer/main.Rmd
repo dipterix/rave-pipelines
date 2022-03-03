@@ -59,7 +59,6 @@ analysis_ranges_index <- lapply(analysis_ranges, function(x){
     # Electrode = which(repository$power$LFP$electrodes %in% requested_electrodes)
   )
 })
-Sys.sleep(10)
 ```
 
 ```{rave check_condition_groups, language = "R", export = "cond_groups"}

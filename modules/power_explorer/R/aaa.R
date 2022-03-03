@@ -12,6 +12,17 @@ analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
 max_analysis_ranges <- 2
 gray_label_color <- "#c8c9ca"
 
+auto_recalculate_onchange <- c(
+  "merge_hemisphere_labels",
+  "analysis_lock",
+  "baseline_windows",
+  "global_baseline_choice",
+  "unit_of_analysis",
+  "analysis_ranges",
+  "electrode_text",
+  "condition_groups"
+)
+
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is

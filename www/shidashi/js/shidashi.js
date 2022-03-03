@@ -110,7 +110,10 @@ class Shidashi {
 
   constructor (Shiny){
     this._active_module = undefined;
+    this._shiny_inactive = false;
+    this._shiny_callstacks = [];
     this._shiny = Shiny;
+    this.shiny_connected = false;
     this.$window = $(window);
     this.$document = $(document);
     this.$body = $("body");
@@ -143,13 +146,22 @@ class Shidashi {
     if(!this._shiny){
       this._shiny = window.Shiny;
     }
-    if(this._shiny && typeof(then) === "function"){
-      try{
-        then(this._shiny);
-      }catch(e){
-        console.warn(e);
-      }
+    if( typeof(then) === "function" ){
+      this._shiny_callstacks.push(then);
+    }
+    if(document.readyState && document.readyState === "complete" &&
+      this._shiny && this.shiny_connected) {
 
+      while(this._shiny_callstacks.length) {
+        const f = this._shiny_callstacks.shift();
+        try{
+          f(this._shiny);
+        }catch(e){
+          console.warn(e);
+        }
+      }
+    } else {
+      console.debug(`Shiny is not connected, defering request... ($(this._shiny_callstacks.length))`);
     }
   }
 
@@ -262,9 +274,9 @@ class Shidashi {
     });
     this._dummy.dispatchEvent(event);
     // also send to shiny
-    this.ensureShiny(() => {
-      if(typeof(this._shiny.onInputChange) !== "function"){ return; }
-      this._shiny.onInputChange("@shidashi_event@", {
+    this.ensureShiny((shiny) => {
+      if(typeof(shiny.setInputValue) !== "function"){ return; }
+      shiny.setInputValue("@shidashi_event@", {
         type: type,
         message: message,
         shared_id: this._shared_id,
@@ -294,7 +306,7 @@ class Shidashi {
     if(col.length < 4){ return("#000000"); }
     if(col[0] === "#"){
       if(col.length === 7){ return(col); }
-      col = "#"+col[1]+col[1]+col[2]+col[2]+col[3]+col[3]
+      col = "#"+col[1]+col[1]+col[2]+col[2]+col[3]+col[3];
       return(col);
     }
     let parts = col.match(/rgb[a]{0,1}\((\d+),\s*(\d+),\s*(\d+)[\),]/);
@@ -324,6 +336,20 @@ class Shidashi {
       foreground: this._col2Hex(this.$body.css("color"))
     });
   }
+
+  notifyIframes(method, args){
+    if(this.$iframeWrapper.length){
+      const $iframes = this.$iframeWrapper.find("iframe");
+      $iframes.each((_, iframe) => {
+        try {
+          if(iframe.contentWindow.shidashi){
+            iframe.contentWindow.shidashi[method](...args);
+          }
+        } catch (e) {}
+      });
+    }
+  }
+
   // theme-mode
   asLightMode(){
     this.$body.removeClass("dark-mode");
@@ -442,8 +468,8 @@ class Shidashi {
     elbody.appendChild(body_el);
 
 
-    this.ensureShiny(() => {
-      this._shiny.bindAll($(elbody));
+    this.ensureShiny((shiny) => {
+      shiny.bindAll($(elbody));
     });
 
     if(active){
@@ -479,8 +505,8 @@ class Shidashi {
           const tabid = rem.attr("aria-controls");
           const tab = $("#" + tabid);
           const is_active = rem.attr("aria-selected");
-          this.ensureShiny(() => {
-            this._shiny.unbindAll(tab);
+          this.ensureShiny((shiny) => {
+            shiny.unbindAll(tab);
           });
           rem.parent().remove();
           tab.remove();
@@ -661,30 +687,66 @@ class Shidashi {
     this._shiny.addCustomMessageHandler("shidashi." + action, callback);
   }
   shinySetInput(inputId, value, add_timestamp = true, children = false) {
-    this.ensureShiny(() => {
+    this.ensureShiny((shiny) => {
       if( add_timestamp ){
         value.timestamp = new Date();
       }
       value._active_module = this._active_module;
       value.parent_frame = this.$body.hasClass("parent-frame");
-      this._shiny.onInputChange(inputId, value);
+      shiny.setInputValue(inputId, value);
+
+      console.debug(`[${this._private_id}] shiny input [${inputId}] <- ${ JSON.stringify(value) }`);
 
       if(children){
 
         if(this.$iframeWrapper.length){
           const $iframes = this.$iframeWrapper.find("iframe");
+
+          const f = (shidashi) => {
+            shidashi.ensureShiny((shiny) => {
+              shiny.setInputValue(inputId, value);
+            });
+          };
+
           $iframes.each((_, iframe) => {
-            if(iframe.contentWindow.shidashi){
-              iframe.contentWindow.shidashi.ensureShiny(() => {
-                iframe.contentWindow.shidashi._shiny.onInputChange(inputId, value);
+            // maybe restricted due to CORS
+            try {
+              /* code */
+              $(iframe.contentDocument).ready(() => {
+                if(iframe.contentWindow.shidashi){
+                  f(iframe.contentWindow.shidashi);
+                }
               });
-            }
+            } catch (e) {}
           });
         }
 
       }
 
     });
+  }
+
+  shinyResetOutput(outputId, message = ""){
+    const el = document.getElementById(outputId);
+    if(el && el.parentElement){
+      this.ensureShiny(() => {
+        const $pa_el = $(el.parentElement);
+        Object.keys(this._shiny.outputBindings.bindingNames).forEach((key) => {
+          const binding = shidashi._shiny.outputBindings.bindingNames[key].binding;
+          $(binding.find($pa_el)).each((_, el2) => {
+            if($(el2)[0].id === el.id){
+
+              binding.renderError(el, {
+                message: message,
+                type: "shiny-output-error-shiny.silent.error shiny-output-error-validation"
+              });
+
+            }
+          });
+        });
+      });
+    }
+
   }
 
   // Finalize function when document is ready
@@ -823,8 +885,8 @@ class Shidashi {
           if(new Date() - last_saved < this._storageDuration){
             if(item.storage_key === storage_key) {
               if(private_id !== item.private_id){
-                this.ensureShiny(() => {
-                  this._shiny.onInputChange("@shidashi@", this._localStorage.getItem(storage_key));
+                this.ensureShiny((shiny) => {
+                  shiny.onInputChange("@shidashi@", this._localStorage.getItem(storage_key));
                 });
               }
             }
@@ -1031,6 +1093,10 @@ class Shidashi {
       this._reportTheme();
     });
 
+    this.shinyHandler("reset_output", (params) => {
+      this.shinyResetOutput(params.outputId, params.message || "");
+    });
+
   }
 }
 
@@ -1040,8 +1106,12 @@ const shidashi = new Shidashi(shiny);
 window.shidashi = shidashi;
 
 $(document).on("shiny:connected", () => {
-  shidashi._finalize_initialization();
+  console.log("shiny connected");
   shidashi._register_shiny(window.Shiny);
+  shidashi._finalize_initialization();
+  shidashi.shiny_connected = true;
+  // ensure all callbacks are scheduled
+  shidashi.ensureShiny();
 });
 
 // Theme configuration
@@ -1058,12 +1128,13 @@ $('.content-wrapper').IFrame({
       module_id = module_id[1];
 
       shidashi._active_module = module_id;
-      shidashi.shinySetInput("@rave_action@", {
+      const data = {
         type: "active_module",
         id : module_id,
         label : item[0].innerText.trim()
-      }, true, true);
-
+      };
+      shidashi.shinySetInput("@rave_action@", data, true, true);
+      shidashi.notifyIframes("shinySetInput", ["@rave_action@", data, true, true]);
     }
     return item;
   },
