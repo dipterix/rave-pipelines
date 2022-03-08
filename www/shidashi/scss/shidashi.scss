@@ -76,6 +76,9 @@ $color-error: #dc3545;
 @mixin position($type, $force: false) {
   position: $type add_force($force);
 }
+@mixin pointer-events($type, $force: false){
+  pointer-events: $type add_force($force);
+}
 @mixin set-size($type, $direction: all, $force: false, $sizes...) {
   $style: as_pixel_size($sizes...) add_force($force);
   @if $direction == all {
@@ -198,6 +201,10 @@ input:checked + .slider::before {
   @include display(block, true);
 }
 
+.display-flex {
+  @include display(flex, false);
+}
+
 .inline-all {
   @include display(inline, true);
 
@@ -221,6 +228,12 @@ input:checked + .slider::before {
 }
 .flex-break {
   flex-basis: 100%;
+}
+
+@each $type in none, all, visible, auto, fill, painted, stroke {
+  .pointer-events-#{$type} {
+    @include pointer-events($type);
+  }
 }
 
 @each $type in hidden, auto, visible, scroll {

@@ -6,8 +6,6 @@ pipeline_name <- "power_explorer"
 module_id <- "power_explorer"
 debug <- TRUE
 
-baseline_choices <- c("% Change Power", "% Change Amplitude", "z-score Power", "z-score Amplitude", "Decibel")
-baseline_along_choices <- c("Per frequency, trial, and electrode", "Across electrode", "Across trial", "Across trial and electrode")
 analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
 max_analysis_ranges <- 2
 gray_label_color <- "#c8c9ca"
@@ -28,13 +26,16 @@ auto_recalculate_onchange <- c(
 #' @details The function will be called whenever \code{data_changed} event is
 #' triggered. This function should only return either \code{TRUE} or
 #' \code{FALSE} indicating the check results. If \code{TRUE} is returned,
-#' \code{module_ui_main} will be called, and module 'UI' should be displayed.
+#' \code{module_html} will be called, and module 'UI' should be displayed.
 #' If \code{FALSE} is returned, \code{open_loader} event will be dispatched,
-#' resulting in calling function \code{module_ui_loader}.
+#' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
   re <- tryCatch({
     repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
+    if(!inherits(repo, "rave_prepare_power")) {
+      stop("No repository found")
+    }
     short_msg <- sprintf("%s [%s, %s]", repo$subject$subject_id, repo$epoch_name, repo$reference_name)
     ravedash::fire_rave_event('loader_message', short_msg)
     TRUE
@@ -48,6 +49,8 @@ check_data_loaded <- function(first_time = FALSE){
   # }
   re
 }
+
+
 
 # ----------- Some Utility functions for modules -----------
 
@@ -77,8 +80,8 @@ tryCatch({
       pipeline_settings <- local({
         settings <- raveio::load_yaml(pipeline_settings_path)
         list(
-          set = function(...){
-            args <- list(...)
+          set = function(..., .list = NULL){
+            args <- c(list(...), as.list(.list))
             argnames <- names(args)
             if(!length(argnames)){
               return(as.list(settings))
@@ -91,7 +94,7 @@ tryCatch({
             for(nm in argnames){
               settings[[nm]] <<- args[[nm]]
             }
-            raveio::save_yaml(x = settings, file = pipeline_settings_path)
+            raveio::save_yaml(x = settings, file = pipeline_settings_path, sorted = TRUE)
             return(as.list(settings))
           },
           get = function(key, default = NA){
@@ -114,10 +117,6 @@ tryCatch({
         re
       }
 
-      component_container <- ravedash:::RAVEShinyComponentContainer$new(
-        module_id = module_id, pipeline_name = pipeline_name,
-        settings_file = "settings.yaml"
-      )
     }
 
   }
@@ -127,4 +126,5 @@ tryCatch({
 })
 
 
+# ---- presets
 

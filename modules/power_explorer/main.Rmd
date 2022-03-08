@@ -24,8 +24,8 @@ if(FALSE){
 subject_id <- sprintf("%s/%s", project_name, subject_code)
 repository <- raveio::prepare_subject_power(
   subject = subject_id, electrodes = loaded_electrodes, 
-  epoch_name = epoch_name, reference_name = reference_name,
-  time_windows = c(trial_starts, trial_ends))
+  epoch_name = epoch_choice, reference_name = reference_name,
+  time_windows = c(epoch_choice__trial_starts, epoch_choice__trial_ends))
 repository
 ```
 
@@ -88,7 +88,7 @@ if(!has_trials){
 
 ```{rave calculate_baseline, language = "R", export = "bl_power", cue = "always"}
 baseline_along_choices <- c("Per frequency, trial, and electrode", "Across electrode", "Across trial", "Across trial and electrode")
-baseline_choice <- which(baseline_along_choices %in% global_baseline_choice)
+baseline_choice <- which(baseline_along_choices %in% baseline__global_baseline_choice)
 units <- list(
   c("Trial", "Frequency", "Electrode"),
   c("Trial", "Frequency"),
@@ -98,13 +98,13 @@ units <- list(
 
 method <- list(`% Change Power` = "percentage", `% Change Amplitude` = "sqrt_percentage", 
         `z-score Power` = "zscore", `z-score Amplitude` = "sqrt_zscore", 
-        Decibel = "decibel")[[unit_of_analysis]]
+        Decibel = "decibel")[[baseline__unit_of_analysis]]
 
 old_file <- repository$baselined$LFP$.filebase
 
 raveio::power_baseline(
   x = repository,
-  baseline_windows = unlist(baseline_windows),
+  baseline_windows = unlist(baseline__windows),
   method = method,
   units = units,
   signal_types = "LFP",

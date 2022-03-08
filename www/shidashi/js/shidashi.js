@@ -569,6 +569,8 @@ class Shidashi {
       $(".card#" + args.inputId).CardWidget(args.method);
     } else if (args.title){
       $(`.card[data-title='${args.title}']`).CardWidget(args.method);
+    } else if (args.selector) {
+      $(`.card${args.selector}`).CardWidget(args.method);
     }
 
   }
@@ -753,6 +755,7 @@ class Shidashi {
   _finalize_initialization(){
     if(this._initialized){ return; }
     this._initialized = true;
+    const _this = this;
 
     // set theme first
     const theme = this._sessionStorage.getItem(this._keyTheme);
@@ -903,6 +906,42 @@ class Shidashi {
         }
       });
 
+    $(".shidashi-button").click(function(evt){
+      let el = this;
+      let action = el.getAttribute('shidashi-action');
+      if(typeof action === "string"){
+        action = JSON.parse(action);
+        if( typeof action.method === "string" &&
+            typeof _this[action.method] === "function" ){
+          _this[action.method].apply(_this, action.args);
+        }
+      }
+    });
+
+    $('.rave-button').click(function(evt){
+      let el = this;
+      let action = el.getAttribute("rave-action");
+      if(typeof action === "string"){
+        try {
+          action = JSON.parse(action);
+
+          if( typeof action.type !== "string" ) {
+            console.warn("Cannot parse RAVE-action: " + action);
+            return;
+          }
+          // check if body has parent-frame class
+          _this.shinySetInput("@rave_action@", {
+            type: action.type,
+            details: action,
+            element_class: evt.target.className
+          }, true, true);
+
+        } catch (e) {
+          console.warn("Cannot parse RAVE-action: " + action);
+        }
+      }
+    });
+
     this.$document.on("click", (evt) => {
 
       this.matchSelector(
@@ -910,34 +949,6 @@ class Shidashi {
         '.card-tools .btn-tool[data-card-widget="refresh"]',
         () => {
           this.triggerResize(50);
-        }
-      );
-
-      this.matchSelector(
-        evt.target,
-        '.rave-button',
-        () => {
-          let action = evt.target.getAttribute("rave-action");
-
-          if(!action){ return; }
-          try {
-            action = JSON.parse(action);
-
-            if(!action.type) {
-              console.warn("Cannot parse RAVE-action: " + action);
-              return;
-            }
-            // check if body has parent-frame class
-            this.shinySetInput("@rave_action@", {
-              type: action.type,
-              details: action,
-              element_class: evt.target.className
-            }, true, true);
-
-          } catch (e) {
-            console.warn("Cannot parse RAVE-action: " + action);
-          }
-
         }
       );
 
@@ -960,7 +971,6 @@ class Shidashi {
           $($card[0]).find(".rave-optional").toggleClass("soft-hidden");
         }
       );
-
 
     });
 

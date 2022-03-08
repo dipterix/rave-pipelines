@@ -64,6 +64,7 @@ if (window.hljs) {
 
 
 
+
 <style type="text/css">
 .main-container {
   max-width: 940px;
@@ -84,6 +85,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -176,8 +180,8 @@ pre code {
 subject_id &lt;- sprintf(&quot;%s/%s&quot;, project_name, subject_code)
 repository &lt;- raveio::prepare_subject_power(
   subject = subject_id, electrodes = loaded_electrodes, 
-  epoch_name = epoch_name, reference_name = reference_name,
-  time_windows = c(trial_starts, trial_ends))
+  epoch_name = epoch_choice, reference_name = reference_name,
+  time_windows = c(epoch_choice__trial_starts, epoch_choice__trial_ends))
 repository
 #&gt; &lt;Map, size=20, keys=[frequency, project, electrode_list, power_dimnames, reference_name, reference_table, electrode_table, power, subject, references_list, electrode_signal_types, time_points, signature, epoch_name, epoch, power_dim, electrode_instances, reference_instances, time_windows, power_list]&gt;</code></pre>
 <pre class="r"><code>requested_electrodes &lt;- dipsaus::parse_svec(analysis_electrodes, sep=&#39;,|;&#39;, connect  = &#39;:-&#39;)
@@ -205,14 +209,7 @@ analysis_ranges_index &lt;- lapply(analysis_ranges, function(x){
     Time = which(repository$time_points %within% x$time)
     # Electrode = which(repository$power$LFP$electrodes %in% requested_electrodes)
   )
-})
-print(analysis_ranges)
-#&gt; [[1]]
-#&gt; [[1]]$frequency
-#&gt; [1]  44 150
-#&gt; 
-#&gt; [[1]]$time
-#&gt; [1] 0 2</code></pre>
+})</code></pre>
 <pre class="r"><code># clean groups
 cond_groups &lt;- lapply(seq_along(condition_groups), function(idx){
   g &lt;- condition_groups[[idx]]
@@ -235,7 +232,7 @@ if(!has_trials){
   stop(&quot;No trial condition selected&quot;)
 }</code></pre>
 <pre class="r"><code>baseline_along_choices &lt;- c(&quot;Per frequency, trial, and electrode&quot;, &quot;Across electrode&quot;, &quot;Across trial&quot;, &quot;Across trial and electrode&quot;)
-baseline_choice &lt;- which(baseline_along_choices %in% global_baseline_choice)
+baseline_choice &lt;- which(baseline_along_choices %in% baseline__global_baseline_choice)
 units &lt;- list(
   c(&quot;Trial&quot;, &quot;Frequency&quot;, &quot;Electrode&quot;),
   c(&quot;Trial&quot;, &quot;Frequency&quot;),
@@ -245,13 +242,13 @@ units &lt;- list(
 
 method &lt;- list(`% Change Power` = &quot;percentage&quot;, `% Change Amplitude` = &quot;sqrt_percentage&quot;, 
         `z-score Power` = &quot;zscore&quot;, `z-score Amplitude` = &quot;sqrt_zscore&quot;, 
-        Decibel = &quot;decibel&quot;)[[unit_of_analysis]]
+        Decibel = &quot;decibel&quot;)[[baseline__unit_of_analysis]]
 
 old_file &lt;- repository$baselined$LFP$.filebase
 
 raveio::power_baseline(
   x = repository,
-  baseline_windows = unlist(baseline_windows),
+  baseline_windows = unlist(baseline__windows),
   method = method,
   units = units,
   signal_types = &quot;LFP&quot;,
@@ -287,34 +284,34 @@ raveio::pipeline_run(type = &quot;vanilla&quot;)
 #&gt; • built target settings_path
 #&gt; • start target settings
 #&gt; • built target settings
-#&gt; • start target epoch_name
-#&gt; • built target epoch_name
+#&gt; • start target baseline__global_baseline_choice
+#&gt; • built target baseline__global_baseline_choice
+#&gt; • start target analysis_electrodes__category
+#&gt; • built target analysis_electrodes__category
 #&gt; • start target reference_name
 #&gt; • built target reference_name
+#&gt; • start target analysis_ranges__lock
+#&gt; • built target analysis_ranges__lock
 #&gt; • start target condition_groups
 #&gt; • built target condition_groups
-#&gt; • start target global_baseline_choice
-#&gt; • built target global_baseline_choice
 #&gt; • start target project_name
 #&gt; • built target project_name
 #&gt; • start target subject_code
 #&gt; • built target subject_code
 #&gt; • start target loaded_electrodes
 #&gt; • built target loaded_electrodes
-#&gt; • start target trial_starts
-#&gt; • built target trial_starts
-#&gt; • start target trial_ends
-#&gt; • built target trial_ends
-#&gt; • start target analysis_lock
-#&gt; • built target analysis_lock
+#&gt; • start target epoch_choice
+#&gt; • built target epoch_choice
+#&gt; • start target epoch_choice__trial_starts
+#&gt; • built target epoch_choice__trial_starts
+#&gt; • start target epoch_choice__trial_ends
+#&gt; • built target epoch_choice__trial_ends
 #&gt; • start target analysis_electrodes
 #&gt; • built target analysis_electrodes
-#&gt; • start target baseline_windows
-#&gt; • built target baseline_windows
-#&gt; • start target electrode_category_selector
-#&gt; • built target electrode_category_selector
-#&gt; • start target unit_of_analysis
-#&gt; • built target unit_of_analysis
+#&gt; • start target baseline__windows
+#&gt; • built target baseline__windows
+#&gt; • start target baseline__unit_of_analysis
+#&gt; • built target baseline__unit_of_analysis
 #&gt; • start target analysis_ranges
 #&gt; • built target analysis_ranges
 #&gt; • start target repository
@@ -324,36 +321,32 @@ raveio::pipeline_run(type = &quot;vanilla&quot;)
 #&gt; • start target requested_electrodes
 #&gt; • built target requested_electrodes
 #&gt; • start target analysis_ranges_index
-#&gt; [[1]]
-#&gt; [[1]]$frequency
-#&gt; [1]  44 150
-#&gt; 
-#&gt; [[1]]$time
-#&gt; [1] 0 2
-#&gt; 
-#&gt; 
 #&gt; • built target analysis_ranges_index
 #&gt; • start target bl_power
 #&gt; • built target bl_power
-#&gt; ✓ skip target collapsed_data
+#&gt; • start target collapsed_data
+#&gt; • built target collapsed_data
 #&gt; • end pipeline
+#&gt; &lt;Pipeline result container&gt; 
+#&gt; process: native
+#&gt; status: running (0 of 23)
 raveio::pipeline_progress(method = &#39;details&#39;)
 #&gt; # A tibble: 23 × 2
-#&gt;    name                   progress
-#&gt;    &lt;chr&gt;                  &lt;chr&gt;   
-#&gt;  1 settings_path          built   
-#&gt;  2 settings               built   
-#&gt;  3 epoch_name             built   
-#&gt;  4 reference_name         built   
-#&gt;  5 condition_groups       built   
-#&gt;  6 global_baseline_choice built   
-#&gt;  7 project_name           built   
-#&gt;  8 subject_code           built   
-#&gt;  9 loaded_electrodes      built   
-#&gt; 10 trial_starts           built   
+#&gt;    name                             progress
+#&gt;    &lt;chr&gt;                            &lt;chr&gt;   
+#&gt;  1 settings_path                    built   
+#&gt;  2 settings                         built   
+#&gt;  3 baseline__global_baseline_choice built   
+#&gt;  4 analysis_electrodes__category    built   
+#&gt;  5 reference_name                   built   
+#&gt;  6 analysis_ranges__lock            built   
+#&gt;  7 condition_groups                 built   
+#&gt;  8 project_name                     built   
+#&gt;  9 subject_code                     built   
+#&gt; 10 loaded_electrodes                built   
 #&gt; # … with 13 more rows</code></pre>
-<div id="htmlwidget-61c92e0b1206bc5cd1d0" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-61c92e0b1206bc5cd1d0">{"x":{"nodes":{"name":["analysis_electrodes","analysis_lock","analysis_ranges","analysis_ranges_index","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated"],"seconds":[0,0,0,0.393,0,0.021,0.416,0,0,0,0,0.001,0,0,0,1.002,0,0.001,0,0,0,0,0],"bytes":[61,61,105,450,56,99563,517272,831,216,68,67,88,61,57,60,624733,62,14596,772,64,49,49,60],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"id":["analysis_electrodes","analysis_lock","analysis_ranges","analysis_ranges_index","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"label":["analysis_electrodes","analysis_lock","analysis_ranges","analysis_ranges_index","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"level":[3,3,3,5,3,6,7,5,3,3,3,3,3,3,3,4,5,2,1,3,3,3,3],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","settings","settings","project_name","subject_code","loaded_electrodes","epoch_name","reference_name","trial_starts","trial_ends","settings","condition_groups","repository","analysis_electrodes","repository","settings","settings","settings","settings","global_baseline_choice","unit_of_analysis","repository","baseline_windows","requested_electrodes","analysis_ranges","repository","cond_groups","analysis_ranges_index","bl_power","settings","settings","settings","settings","settings","settings_path","settings"],"to":["epoch_name","reference_name","condition_groups","global_baseline_choice","repository","repository","repository","repository","repository","repository","repository","analysis_lock","cond_groups","cond_groups","requested_electrodes","requested_electrodes","subject_code","trial_ends","baseline_windows","electrode_category_selector","bl_power","bl_power","bl_power","bl_power","bl_power","analysis_ranges_index","analysis_ranges_index","collapsed_data","collapsed_data","collapsed_data","unit_of_analysis","project_name","trial_starts","analysis_electrodes","loaded_electrodes","settings","analysis_ranges"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-d8065543c8d9ecf25bf8" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d8065543c8d9ecf25bf8">{"x":{"nodes":{"name":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated"],"seconds":[0,0,0.001,0,0,0,0.001,0,0.002,0.029,0.001,0,0,0,0,0,0,0.001,0.137,0,0.001,0.001,0.001],"bytes":[55,62,115,61,457,88,60,107,99309,336758,646,216,63,49,49,80,57,60,290690,51,8331,880,55],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"id":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"label":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"level":[3,3,3,3,5,3,3,3,6,7,5,3,3,3,3,3,3,3,4,5,2,1,3],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","settings","settings","settings","project_name","subject_code","loaded_electrodes","epoch_choice","reference_name","epoch_choice__trial_starts","epoch_choice__trial_ends","condition_groups","repository","analysis_electrodes","repository","settings","settings","settings","baseline__global_baseline_choice","baseline__unit_of_analysis","repository","baseline__windows","requested_electrodes","analysis_ranges","repository","settings","cond_groups","analysis_ranges_index","bl_power","settings","settings","settings","settings","settings","settings_path","settings"],"to":["baseline__global_baseline_choice","analysis_electrodes__category","reference_name","analysis_ranges__lock","condition_groups","repository","repository","repository","repository","repository","repository","repository","cond_groups","cond_groups","requested_electrodes","requested_electrodes","epoch_choice__trial_starts","subject_code","baseline__windows","bl_power","bl_power","bl_power","bl_power","bl_power","analysis_ranges_index","analysis_ranges_index","baseline__unit_of_analysis","collapsed_data","collapsed_data","collapsed_data","epoch_choice","project_name","analysis_electrodes","epoch_choice__trial_ends","loaded_electrodes","settings","analysis_ranges"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

@@ -65,8 +65,9 @@ server <- function(input, output, session){
             ravedash::module_server_common(
               resource$module$id,
               check_data_loaded = parse_env$check_data_loaded,
-              ...,
-              session = session
+              session = session,
+              parse_env = parse_env,
+              ...
             )
 
             resource$module$server(input, output, session, ...)
@@ -79,50 +80,5 @@ server <- function(input, output, session){
     shiny::bindEvent(session$clientData$url_search, ignoreNULL = TRUE)
 
 
-  # get_active_module <- shiny::debounce(shiny::reactive({
-  #   shidashi::get_jsevent(
-  #     event_data = tools$theme_event,
-  #     type = "rave_active_module",
-  #     default = input[["@rave_action@"]],
-  #     session = session
-  #   )
-  # }), millis = 50, priority = 1001)
-  #
-  # shiny::observe({
-  #   rave_action <- get_active_module()
-  #     #input[["@rave_action@"]]
-  #   if(!length(rave_action$type)){ return() }
-  #
-  #   parent_frame <- FALSE
-  #   if(rave_action$parent_frame){
-  #     parent_frame <- TRUE
-  #     active_module <- rave_action$`_active_module`
-  #     rave_events <- session$cache$get("rave_reactives", missing = NULL)
-  #     expected_module <- rave_events$active_module$id
-  #     if(length(active_module) && !identical(active_module, expected_module)){
-  #       return()
-  #     }
-  #   }
-  #   ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
-  #   ravedash::logger("[{rave_action$type}] ({ifelse(parent_frame, 'frame-level ', '')}rave-action).", level = "trace", use_glue = TRUE)
-  # }) |>
-  #   shiny::bindEvent(
-  #     get_active_module(),
-  #     ignoreNULL = TRUE, ignoreInit = FALSE)
-
-
-  # simplified <- FALSE
-  # shiny::observe({
-  #   simplified <<- !simplified
-  #
-  #   if(simplified){
-  #     shidashi::add_class(".rave-optional", "soft-hidden")
-  #   } else {
-  #     shidashi::remove_class(".rave-optional", "soft-hidden")
-  #   }
-  #
-  # }) |>
-  #   shiny::bindEvent(ravedash::get_rave_event("simplify_toggle"),
-  #                    ignoreInit = FALSE, ignoreNULL = TRUE)
 
 }

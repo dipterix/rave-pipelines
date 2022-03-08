@@ -70,6 +70,10 @@ input:checked + .slider::before {
   display: block !important;
 }
 
+.display-flex {
+  display: flex;
+}
+
 .inline-all {
   display: inline !important;
 }
@@ -91,6 +95,34 @@ input:checked + .slider::before {
 
 .flex-break {
   flex-basis: 100%;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.pointer-events-all {
+  pointer-events: all;
+}
+
+.pointer-events-visible {
+  pointer-events: visible;
+}
+
+.pointer-events-auto {
+  pointer-events: auto;
+}
+
+.pointer-events-fill {
+  pointer-events: fill;
+}
+
+.pointer-events-painted {
+  pointer-events: painted;
+}
+
+.pointer-events-stroke {
+  pointer-events: stroke;
 }
 
 .overflow-hidden {

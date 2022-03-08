@@ -1,36 +1,33 @@
-baseline_windows:
-- - -1
-  - 0
-unit_of_analysis: Decibel
-analysis_electrodes: 1-2
-trial_starts: -1
-reference_name: car_withrefgrd
-project_name: EMU_NoisyWords
-trial_ends: 2
-electrode_category_selector: Electrode
+analysis_electrodes: '13-16 '
+analysis_electrodes__category: Electrode
 analysis_ranges:
-- frequency:
-  - 2
-  - 200
-  time:
-  - -1
-  - 2
-epoch_name: YDP_ALL
-loaded_electrodes: 1-224
-global_baseline_choice: Per frequency, trial, and electrode
-subject_code: YDP
+  '1':
+    frequency:
+    - 2
+    - 152
+    time:
+    - -1
+    - 2
+analysis_ranges__lock: Unlocked
+baseline__global_baseline_choice: Per frequency, trial, and electrode
+baseline__unit_of_analysis: Decibel
+baseline__windows:
+  '1':
+    window_interval:
+    - -1
+    - 0
 condition_groups:
   '1':
     group_name: All Conditions
     group_conditions:
-    - Ac0
-    - Ac1
-    - AcV0
-    - AcV1
-    - An0
-    - An1
-    - AnV0
-    - AnV1
-    - V0
-    - V1
-analysis_lock: Unlocked
+    - drive_a
+    - known_a
+    - last_a
+    - meant_a
+epoch_choice: auditory_onset
+epoch_choice__trial_ends: 2
+epoch_choice__trial_starts: -1
+loaded_electrodes: 13-16,24
+project_name: demo
+reference_name: default
+subject_code: DemoSubject

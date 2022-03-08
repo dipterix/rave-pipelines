@@ -1,24 +1,5 @@
-# .module_id  <-  "power_explorer"
-# if(interactive() && !dipsaus::shiny_is_running()){
-#   setwd(rstudioapi::getActiveProject())
-#   source('./modules/power_explorer/R/aaa.R')
-# }
 
-# Define components
-loader_project <- ravedash::presets_loader_project()
-loader_subject <- ravedash::presets_loader_subject()
-loader_epoch <- ravedash::presets_loader_epoch()
-loader_electrodes <- ravedash::presets_loader_electrodes()
-loader_reference <- ravedash::presets_loader_reference()
-loader_viewer <- ravedash::presets_loader_3dviewer()
-
-component_container$add_components(
-  loader_project, loader_subject, loader_epoch,
-  loader_electrodes, loader_reference, loader_viewer
-)
-
-
-module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
+loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
 
   ravedash::simple_layout(
@@ -80,42 +61,44 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
 
 }
 
-server_loader <- function(input, output, session, ...){
+loader_server <- function(input, output, session, ...){
 
   list2env(list(session = session, input = input), envir=globalenv())
 
-  event_data <- register_session_events(session = session)
-
   # Add validator
   # session <- shiny::MockShinySession$new()
-  loader_project$server_func(input, output, session)
-  loader_subject$server_func(input, output, session)
-  loader_epoch$server_func(input, output, session)
-  loader_electrodes$server_func(input, output, session)
-  loader_reference$server_func(input, output, session)
-  loader_viewer$server_func(input, output, session)
+  # loader_project$server_func(input, output, session)
+  # loader_subject$server_func(input, output, session)
+  # loader_epoch$server_func(input, output, session)
+  # loader_electrodes$server_func(input, output, session)
+  # loader_reference$server_func(input, output, session)
+  # loader_viewer$server_func(input, output, session)
   loader_validator_subject_code <- loader_subject$sv
 
 
 
-  shiny::observe({
+  ravedash::safe_observe({
     # gather information
-    pipeline_set(
-      project_name = input[[loader_project$id]],
-      subject_code = input[[loader_subject$id]],
-      epoch_name = input$loader_epoch_name,
-      trial_starts = -input$loader_epoch_name_pre,
-      trial_ends = input$loader_epoch_name_post,
-      reference_name = input[[loader_reference$id]],
-      loaded_electrodes = input[[loader_electrodes$id]]
-    )
+    settings <- dipsaus::fastmap2()
 
-    default_epoch <- isTRUE(input$loader_epoch_name_default)
-    default_reference <- isTRUE(input$loader_reference_name_default)
+    settings <- component_container$collect_settings(
+      ids = c(
+        "loader_project_name",
+        "loader_subject_code",
+        "loader_electrode_text",
+        "loader_epoch_name",
+        "loader_reference_name"
+      )
+    )
+    pipeline_set(.list = settings)
+
+    default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
+    default_reference <- isTRUE(loader_epoch$get_sub_element_input("default"))
 
     # Run the pipeline!
     tarnames <- raveio::pipeline_target_names(pipe_dir = pipeline_path)
-    count <- length(tarnames) + dipsaus::parse_svec(input$loader_electrode_text) + 4
+
+    count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
 
     dipsaus::shiny_alert2(
       title = "Loading in progress",
