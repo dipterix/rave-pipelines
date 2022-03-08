@@ -10,6 +10,7 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
       # project & subject
       ravedash::input_card(
         title = "Data Selection",
+        class_header = "",
 
         ravedash::flex_group_box(
           title = "Project and Subject",

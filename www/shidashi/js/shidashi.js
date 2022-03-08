@@ -768,7 +768,7 @@ class Shidashi {
     // scroll-top widget
     const gotop_el = $(".back-to-top");
     const gotop_btn = $(".back-to-top .btn-go-top");
-    const root_btn = $(".back-to-top [data-toggle='dropdown']");
+    const root_btn = $(".back-to-top .dropdown-toggle");
     const menu = $(".back-to-top .dropdown-menu");
     const anchors = $(".shidashi-anchor");
 
@@ -790,13 +790,18 @@ class Shidashi {
     root_btn.mouseenter(() => {
       if(root_btn.attr("aria-expanded") === "false"){
         root_btn.dropdown("toggle");
+        menu.addClass("show");
+        root_btn.attr("aria-expanded", "true");
       }
     });
-    menu.mouseleave(() => {
+    gotop_el.mouseleave(() => {
       if(root_btn.attr("aria-expanded") === "true"){
         root_btn.dropdown("toggle");
+        menu.removeClass("show");
+        root_btn.attr("aria-expanded", "false");
       }
     });
+
     gotop_btn.click(() => { this.scrollTop() });
 
     // --------------- Triggers resize -------------------------
@@ -819,9 +824,11 @@ class Shidashi {
 
     });
     this.$document.on('maximized.lte.cardwidget', () => {
+      this.$body.addClass("card-expanded");
       this.triggerResize(50);
     });
     this.$document.on('minimized.lte.cardwidget', () => {
+      this.$body.removeClass("card-expanded");
       this.triggerResize(50);
     });
     this.$document.on("loaded.lte.cardrefresh", () => {

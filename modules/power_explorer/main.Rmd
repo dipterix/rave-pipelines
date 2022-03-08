@@ -38,6 +38,8 @@ if(!length(requested_electrodes)){ stop("No electrode selected") }
 ```{rave check_analysis_ranges, language = "R", export = "analysis_ranges_index"}
 library(rutabaga)
 analysis_ranges_index <- lapply(analysis_ranges, function(x){
+  x$frequency <- unlist(x$frequency)
+  x$time <- unlist(x$time)
   if(length(x$frequency) == 2){
     if(!any(repository$frequency %within% x$frequency)){
       stop(sprintf("No frequencies available within specified range: %.1f ~ %.1f", x$frequency[[1]], x$frequency[[2]]))

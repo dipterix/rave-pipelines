@@ -33,7 +33,7 @@ $dark: #343a40;
 $light-dark: #454d55;
 
 /** global variables **/
-$sizes-margin-padding: 0,1,2,3,4,5,6,7,8,9,10,11,12,15,20,25,30,50,60,80,100;
+$sizes-margin-padding: 0,1,2,3,4,5,6,7,8,9,10,11,12,15,20,25,30,40,50,60,70,80,90,100;
 $code-background: #e5e5e5;
 $code-color-operator: rgb(104, 118, 135);
 $code-color-parenthesis: rgb(104, 118, 135);
@@ -117,6 +117,10 @@ $color-error: #dc3545;
     overflow: $type add_force($force);
   } @else {
     overflow-#{$direction}: $type add_force($force);
+  }
+  @if $type != hidden {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
   }
 }
 @mixin code-font-family { font-family: unquote($string: $code-font-family); }
@@ -554,13 +558,18 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
 }
 
 .back-to-top [role="group"] {
-  opacity: 0.4;
-  transition: opacity 200ms;
+  // opacity: 0.4;
+  // transition: opacity 200ms;
   z-index: 10000;
+  box-shadow: 0 0 10px 1px adjust-color($gray, $alpha: -0.5);
 
   &.show,
   &:hover {
     opacity: 1;
+  }
+
+  & .dropdown-menu {
+    margin-bottom: 0;
   }
 }
 
@@ -577,6 +586,11 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
 
 .code-display pre {
   @include padding($size: 0);
+}
+
+.card-expanded .output-wrapper {
+  position: relative;
+  z-index: 1040;
 }
 
 .card-footer.code-display .info-box {

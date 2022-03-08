@@ -85,6 +85,8 @@ source("common.R", local = TRUE, chdir = TRUE)
                 library(rutabaga)
                 analysis_ranges_index <- lapply(analysis_ranges, 
                   function(x) {
+                    x$frequency <- unlist(x$frequency)
+                    x$time <- unlist(x$time)
                     if (length(x$frequency) == 2) {
                       if (!any(repository$frequency %within% 
                         x$frequency)) {

@@ -139,38 +139,56 @@ input:checked + .slider::before {
 
 .overflow-auto {
   overflow: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-x-auto {
   overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-y-auto {
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-visible {
   overflow: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-x-visible {
   overflow-x: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-y-visible {
   overflow-y: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-scroll {
   overflow: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-x-scroll {
   overflow-x: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .overflow-y-scroll {
   overflow-y: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .os-theme-thin-light > .os-scrollbar-corner {
@@ -183,6 +201,8 @@ input:checked + .slider::before {
 }
 .overflow-visible-on-hover:hover {
   overflow: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
   position: absolute;
   min-height: 100%;
   min-width: 100%;
@@ -1540,6 +1560,66 @@ input:checked + .slider::before {
   margin-left: 30px;
 }
 
+.padding-40 {
+  padding: 40px;
+}
+
+.padding-top-40 {
+  padding-top: 40px;
+}
+
+.padding-bottom-40 {
+  padding-bottom: 40px;
+}
+
+.padding-vertical-40 {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.padding-left-40 {
+  padding-left: 40px;
+}
+
+.padding-right-40 {
+  padding-right: 40px;
+}
+
+.padding-horizontal-40 {
+  padding-right: 40px;
+  padding-left: 40px;
+}
+
+.margin-40 {
+  margin: 40px;
+}
+
+.margin-top-40 {
+  margin-top: 40px;
+}
+
+.margin-bottom-40 {
+  margin-bottom: 40px;
+}
+
+.margin-vertical-40 {
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+
+.margin-left-40 {
+  margin-left: 40px;
+}
+
+.margin-right-40 {
+  margin-right: 40px;
+}
+
+.margin-horizontal-40 {
+  margin-right: 40px;
+  margin-left: 40px;
+}
+
 .padding-50 {
   padding: 50px;
 }
@@ -1660,6 +1740,66 @@ input:checked + .slider::before {
   margin-left: 60px;
 }
 
+.padding-70 {
+  padding: 70px;
+}
+
+.padding-top-70 {
+  padding-top: 70px;
+}
+
+.padding-bottom-70 {
+  padding-bottom: 70px;
+}
+
+.padding-vertical-70 {
+  padding-top: 70px;
+  padding-bottom: 70px;
+}
+
+.padding-left-70 {
+  padding-left: 70px;
+}
+
+.padding-right-70 {
+  padding-right: 70px;
+}
+
+.padding-horizontal-70 {
+  padding-right: 70px;
+  padding-left: 70px;
+}
+
+.margin-70 {
+  margin: 70px;
+}
+
+.margin-top-70 {
+  margin-top: 70px;
+}
+
+.margin-bottom-70 {
+  margin-bottom: 70px;
+}
+
+.margin-vertical-70 {
+  margin-top: 70px;
+  margin-bottom: 70px;
+}
+
+.margin-left-70 {
+  margin-left: 70px;
+}
+
+.margin-right-70 {
+  margin-right: 70px;
+}
+
+.margin-horizontal-70 {
+  margin-right: 70px;
+  margin-left: 70px;
+}
+
 .padding-80 {
   padding: 80px;
 }
@@ -1718,6 +1858,66 @@ input:checked + .slider::before {
 .margin-horizontal-80 {
   margin-right: 80px;
   margin-left: 80px;
+}
+
+.padding-90 {
+  padding: 90px;
+}
+
+.padding-top-90 {
+  padding-top: 90px;
+}
+
+.padding-bottom-90 {
+  padding-bottom: 90px;
+}
+
+.padding-vertical-90 {
+  padding-top: 90px;
+  padding-bottom: 90px;
+}
+
+.padding-left-90 {
+  padding-left: 90px;
+}
+
+.padding-right-90 {
+  padding-right: 90px;
+}
+
+.padding-horizontal-90 {
+  padding-right: 90px;
+  padding-left: 90px;
+}
+
+.margin-90 {
+  margin: 90px;
+}
+
+.margin-top-90 {
+  margin-top: 90px;
+}
+
+.margin-bottom-90 {
+  margin-bottom: 90px;
+}
+
+.margin-vertical-90 {
+  margin-top: 90px;
+  margin-bottom: 90px;
+}
+
+.margin-left-90 {
+  margin-left: 90px;
+}
+
+.margin-right-90 {
+  margin-right: 90px;
+}
+
+.margin-horizontal-90 {
+  margin-right: 90px;
+  margin-left: 90px;
 }
 
 .padding-100 {
@@ -1811,6 +2011,8 @@ input:checked + .slider::before {
 }
 .resize-vertical:hover {
   overflow: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 .resize-vertical .os-content {
   min-height: 100%;
@@ -2065,6 +2267,8 @@ input:checked + .slider::before {
 pre {
   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
   overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
   max-width: 100%;
   background-color: #e5e5e5;
 }
@@ -2147,30 +2351,48 @@ section.module_main_ui .screen-height {
 }
 section.module_main_ui .screen-height.overflow-auto {
   overflow: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-x-auto {
   overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-y-auto {
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-visible {
   overflow: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-x-visible {
   overflow-x: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-y-visible {
   overflow-y: visible;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-scroll {
   overflow: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-x-scroll {
   overflow-x: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 section.module_main_ui .screen-height.overflow-y-scroll {
   overflow-y: scroll;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 body.iframe-mode section.module_main_ui .screen-height {
@@ -2256,12 +2478,14 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider::before, body.dark-mode .nav
 }
 
 .back-to-top [role=group] {
-  opacity: 0.4;
-  transition: opacity 200ms;
   z-index: 10000;
+  box-shadow: 0 0 10px 1px rgba(108, 117, 125, 0.5);
 }
 .back-to-top [role=group].show, .back-to-top [role=group]:hover {
   opacity: 1;
+}
+.back-to-top [role=group] .dropdown-menu {
+  margin-bottom: 0;
 }
 
 .info-box .code-display {
@@ -2274,6 +2498,11 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider::before, body.dark-mode .nav
 
 .code-display pre {
   padding: 0;
+}
+
+.card-expanded .output-wrapper {
+  position: relative;
+  z-index: 1040;
 }
 
 .card-footer.code-display .info-box {
