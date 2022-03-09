@@ -18,7 +18,7 @@ loader_subject <- ravedash::presets_loader_subject()
 loader_epoch <- ravedash::presets_loader_epoch()
 loader_electrodes <- ravedash::presets_loader_electrodes()
 loader_reference <- ravedash::presets_loader_reference()
-loader_viewer <- ravedash::presets_loader_3dviewer()
+loader_viewer <- ravedash::presets_loader_3dviewer(height = "100%")
 
 import_export_pipeline <- ravedash::presets_import_export_subject_pipeline()
 electrode_selector <- ravedash::presets_analysis_electrode_selector2()

@@ -54,7 +54,7 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
     output_ui = {
       ravedash::output_card(
         title = "3D Viewer",
-        class_body = "no-padding",
+        class_body = "no-padding min-height-650 height-650",
         loader_viewer$ui_func()
       )
     }
