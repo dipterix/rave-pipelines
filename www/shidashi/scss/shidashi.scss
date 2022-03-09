@@ -414,6 +414,10 @@ pre, code {
   }
 }
 
+button, [type="button"], [type="reset"], [type="submit"] {
+  -webkit-appearance: none;
+}
+
 /** shidashi objects **/
 // navbar-nav-iframe (iframe tablist)
 
@@ -522,6 +526,8 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
 
 .nav-sidebar .nav-header.nav-divider {
   display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   color: $light-gray;
 
   &::before,

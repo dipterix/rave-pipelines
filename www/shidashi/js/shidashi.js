@@ -784,7 +784,11 @@ class Shidashi {
       const el = document.createElement("a");
       el.className = "dropdown-item";
       el.href = "#" + item_id;
-      el.innerText = item.innerText;
+      if(item.textContent) {
+        el.innerText = item.textContent.trim();
+      } else {
+        el.innerText = item.innerText.trim();
+      }
       menu.append( el );
     });
     root_btn.mouseenter(() => {

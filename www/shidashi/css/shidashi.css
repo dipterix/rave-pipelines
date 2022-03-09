@@ -2321,6 +2321,10 @@ pre[class], code[class] {
   font-size: 92% !important;
 }
 
+button, [type=button], [type=reset], [type=submit] {
+  -webkit-appearance: none;
+}
+
 /** shidashi objects **/
 body.navbar-iframe-hidden .navbar-nav-iframe {
   display: none;
@@ -2446,6 +2450,8 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
 
 .nav-sidebar .nav-header.nav-divider {
   display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   color: #c8c9ca;
 }
 .nav-sidebar .nav-header.nav-divider::before, .nav-sidebar .nav-header.nav-divider::after {
