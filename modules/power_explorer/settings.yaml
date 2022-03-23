@@ -1,24 +1,24 @@
-analysis_electrodes: 38-39
+analysis_electrodes: 14-15
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
-    - 26
-    - 87.5
-    time:
-    - -1
     - 2
+    - 152
+    time:
+    - 0.09
+    - 1.56
   '2':
     frequency:
-    - 26
-    - 87.5
+    - 2
+    - 152
     time:
     - -1
-    - 2
+    - 0
 analysis_ranges__lock: Lock frequency
 baseline__global_baseline_choice: Across trial
-baseline__unit_of_analysis: z-score Amplitude
+baseline__unit_of_analysis: Decibel
 baseline__windows:
   '1':
     window_interval:
@@ -42,15 +42,15 @@ condition_groups:
     - AlastVknown
     - drive_a
 electrode_category_selector: Electrode
-epoch_choice: KCaOutlier
+epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 6-7,14-15,22-23,30-31,38-39
+loaded_electrodes: 13-16,24
 project_name: demo
 reference_name: default
-subject_code: KC
+subject_code: DemoSubject
 trial_ends: 2
 trial_starts: -1
 unit_of_analysis: z-score Power

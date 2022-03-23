@@ -89,7 +89,8 @@ loader_server <- function(input, output, session, ...){
         "loader_electrode_text",
         "loader_epoch_name",
         "loader_reference_name"
-      )
+      ),
+      map = settings
     )
     pipeline_set(.list = settings)
 

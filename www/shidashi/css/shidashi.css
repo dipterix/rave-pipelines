@@ -2533,6 +2533,12 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider::before, body.dark-mode .nav
 
 .card2-body {
   overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+}
+.card2-body .direct-chat-contacts {
+  background-color: rgba(52, 58, 64, 0.5);
 }
 .card2-body .direct-chat-contacts hr {
   border-top-color: #e8e8e8;
@@ -2697,6 +2703,10 @@ body.dark-mode #shiny-notification-panel .shiny-notification {
 .dark-mode .selectize-control.multi .selectize-input > div {
   background-color: #6c757d;
   color: #fff;
+}
+
+.selectize-input {
+  min-height: calc(2.25rem + 2px);
 }
 
 /* Shiny input & output fixes */

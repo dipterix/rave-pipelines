@@ -627,9 +627,15 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
 // card2
 .card2-body {
   @include overflow(hidden, x);
+  @include overflow(auto, y);
 
-  & .direct-chat-contacts hr {
-    @include border-color( rgb(232,232,232), top );
+  & .direct-chat-contacts {
+
+    background-color: adjust-color($gray-dark, $alpha: -0.5);
+
+    & hr {
+      @include border-color( rgb(232,232,232), top );
+    }
   }
 }
 
@@ -815,7 +821,9 @@ body.dark-mode #shiny-notification-panel .shiny-notification {
     }
   }
 }
-
+.selectize-input {
+  min-height: calc(2.25rem + 2px);
+}
 
 
 

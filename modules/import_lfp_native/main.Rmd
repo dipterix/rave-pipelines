@@ -1,0 +1,168 @@
+---
+title: "Import Native Formats to RAVE"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+# This code block sets up the engine environment
+# Please do not remove me
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+build_pipeline <- raveio::configure_knitr()
+# build_pipeline(make_file = "make-import_lfp_native.R")
+if(FALSE){
+  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", 'import_lfp_native', "settings.yaml"))
+  list2env(as.list(settings), envir = environment())
+}
+```
+
+```{rave obtain_subject_instance, language = "R", export = "subject"}
+# raveio::pipeline_debug(quick = FALSE)
+subject_id <- sprintf("%s/%s",
+                      import_setup__project_name,
+                      import_setup__subject_code)
+
+subject <- raveio::RAVESubject$new(
+  project_name = import_setup__project_name,
+  subject_code = import_setup__subject_code,
+  strict = FALSE
+)
+
+```
+
+```{rave validate_data, language = "R", export = "validation_result"}
+
+blocks <- import_blocks__session_block
+miss_b <- blocks[!blocks%in% subject$preprocess_settings$all_blocks]
+
+if(length(miss_b)) {
+  stop("The following block folders are missing: ",
+       paste(miss_b, collapse = ", "))
+}
+
+electrodes <- dipsaus::parse_svec(import_channels__electrodes)
+if(!length(electrodes)) {
+  stop("No electrode is set.")
+}
+
+sample_rate <- import_channels__sample_rate
+
+if(!length(sample_rate) || !isTRUE(sample_rate > 1)) {
+  stop("Sample rate is invalid")
+}
+
+format <- import_blocks__format
+if(!is.numeric(format)) {
+  format <- which(startsWith(names(raveio::IMPORT_FORMATS), trimws(format)))
+}
+
+if(skip_validation) {
+  ravedash::logger("`skip_validation` is on.", level = "warn")
+  validation_result <- TRUE
+} else {
+  validation_result <- raveio::validate_raw_file(
+    subject_code = subject$subject_code,
+    blocks = blocks, electrodes = electrodes,
+    format = format
+  )
+  if(!validation_result) {
+    reasons <- attr(validation_result, 'reason')
+    if(!is.list(reasons) || !length(reasons)){ stop('rave_import error: unknown reason.') }
+    msg <- sapply(seq_along(reasons), function(ii){
+      nm <- names(reasons)[[ii]]
+      items <- reasons[[ii]]
+      paste0(ii, ' - ', nm, '\n', paste0('    ', items, collapse = '\n'))
+    })
+    stop('The following issues found when importing subject ',
+         sQuote(subject$subject_code), ' into project ', sQuote(subject$project_name),
+         '.\n', msg, call. = bquote(raveio::validate_raw_file(
+      subject_code = .(subject$subject_code),
+      blocks = .(blocks), electrodes = .(electrodes),
+      format = .(format)
+    )))
+  }
+}
+
+```
+
+```{rave check_import_signals, language = "R", export = "preprocess_info"}
+
+force(validation_result)
+
+# ensure subject path
+subject$initialize_paths(include_freesurfer = FALSE)
+
+blocks <- import_blocks__session_block
+electrodes <- dipsaus::parse_svec(import_channels__electrodes)
+sample_rate <- import_channels__sample_rate
+format <- import_blocks__format
+if(!is.numeric(format)) {
+  format <- which(startsWith(names(raveio::IMPORT_FORMATS), trimws(format)))
+}
+physical_unit <- import_channels__unit
+if(length(physical_unit) != 1 || is.na(physical_unit) ||
+   physical_unit == "NA") {
+  physical_unit <- NA
+} else if (!physical_unit %in% c("V", "mV", "uV")) {
+  physical_unit <- NA
+}
+
+if(force_import) {
+  preproc <- subject$preprocess_settings
+  preproc$data$checklevel <- 0L
+  lapply(preproc$electrodes, function(e){
+    preproc$data[[as.character(e)]]$data_imported <- FALSE
+  })
+  preproc$set_blocks(blocks)
+  preproc$set_electrodes(electrodes, type = "LFP")
+  preproc$set_sample_rates(sample_rate, type = "LFP")
+  preproc$save()
+}
+
+raveio::rave_import(
+  project_name = subject$project_name,
+  subject_code = subject$subject_code,
+  blocks = blocks, electrodes = electrodes,
+  sample_rate = sample_rate, format = format,
+  conversion = physical_unit,
+  data_type = "LFP", add = FALSE, 
+  skip_validation = TRUE
+)
+
+preprocess_info <- raveio::RAVEPreprocessSettings$new(subject$subject_id, read_only = TRUE)
+```
+
+
+
+## Build, Visualize, & Run
+
+Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-import_lfp_native.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
+
+```{r build, echo=FALSE, results='hide'}
+build_pipeline(make_file = "make-import_lfp_native.R")
+```
+
+
+Once the pipeline script `make-import_lfp_native.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
+
+```{r execute}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_run(type = "vanilla")
+raveio::pipeline_progress(method = 'details')
+```
+
+```{r visualize, echo=FALSE}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_visualize()
+```
+
+
+
+
+
+
+
+

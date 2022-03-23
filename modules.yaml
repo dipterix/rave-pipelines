@@ -4,8 +4,8 @@ divider:
   "Built-ins":
     order: 10
 modules:
-  import_raw:
-    label: "Import Data"
+  import_lfp_native:
+    label: "Import LFP (Native)"
     order: 1
   power_explorer:
     label: "Power Explorer"

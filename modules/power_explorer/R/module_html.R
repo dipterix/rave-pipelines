@@ -22,18 +22,6 @@ module_html <- function(){
             baseline_choices$ui_func(),
 
             comp_analysis_ranges$ui_func()
-              # footer = list(
-              #   ravedash::run_analysis_button(width = "100%",
-              #                                 class = "margin-bottom-7"),
-              #   shinyWidgets::prettyCheckbox(
-              #     inputId = ns("auto_recalculate"),
-              #     label = "Automatically re-calculate",
-              #     value = FALSE,
-              #     animation = "jelly",
-              #     width = "100%"
-              #   )
-              # ),
-
 
           )
         )
