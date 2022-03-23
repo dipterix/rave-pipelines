@@ -132,6 +132,25 @@ raveio::rave_import(
   skip_validation = TRUE
 )
 
+module_id <- "import_lfp_native"
+subject$set_default(
+  namespace = module_id,
+  key = "import_parameters",
+  value = list(
+    project_name = subject$project_name,
+    subject_code = subject$subject_code,
+    blocks = blocks,
+    electrodes = dipsaus::deparse_svec(electrodes),
+    sample_rate = sample_rate,
+    format = format,
+    format_readable = names(raveio::IMPORT_FORMATS)[[format]],
+    conversion = physical_unit,
+    data_type = "LFP",
+    add = FALSE,
+    timestamp = strftime(Sys.time(), usetz = TRUE)
+  )
+)
+
 preprocess_info <- raveio::RAVEPreprocessSettings$new(subject$subject_id, read_only = TRUE)
 ```
 

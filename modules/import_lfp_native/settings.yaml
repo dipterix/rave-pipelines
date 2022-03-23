@@ -6,7 +6,7 @@ import_blocks__session_block:
 - '011'
 - '012'
 import_channels__electrode_file: auto
-import_channels__electrodes: 14-24
+import_channels__electrodes: 1-84
 import_channels__sample_rate: 2000
 import_channels__unit: NA
 import_setup__project_name: test2

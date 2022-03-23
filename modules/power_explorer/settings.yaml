@@ -1,4 +1,4 @@
-analysis_electrodes: 14-15
+analysis_electrodes: '14-15 '
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
