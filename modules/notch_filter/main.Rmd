@@ -1,0 +1,67 @@
+---
+title: "RAVE Preprocess: Notch Filter"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include = FALSE}
+# This code block sets up the engine environment
+# Please do not remove me
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+build_pipeline <- raveio::configure_knitr()
+if(FALSE){
+  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", "notch_filter", "settings.yaml"))
+  list2env(as.list(settings), envir = environment())
+}
+```
+
+```{rave load_subject, language = "R", export = "subject"}
+subject <- raveio::RAVESubject$new(
+  project_name = project_name, 
+  subject_code = subject_code, 
+  strict = FALSE
+)
+```
+
+
+```{rave check_imported_electrodes, language = "R", export = "imported_electrodes"}
+imported_electrodes <- subject$electrodes[
+  subject$preprocess_settings$data_imported
+]
+
+if(!length(imported_electrodes)){
+  stop("The subject exists but its signal has not been imported yet.")
+}
+
+```
+
+
+## Build, Visualize, & Run
+
+Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-notch_filter.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
+
+```{r build, echo=FALSE, results='hide'}
+build_pipeline(make_file = "make-notch_filter.R")
+```
+
+
+Once the pipeline script `make-notch_filter.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
+
+```{r visualize, echo=FALSE}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_visualize()
+```
+
+
+```{r execute}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+raveio::pipeline_run(type = "vanilla")
+raveio::pipeline_progress(method = 'details')
+```
+
+
+
+
+
+

@@ -1,3 +1,4 @@
+
 module_server <- function(input, output, session, ...){
 
 
@@ -154,7 +155,7 @@ module_server <- function(input, output, session, ...){
     )
     shiny::validate(
       shiny::need(
-        isTRUE(local_data$results$valid),
+          isTRUE(local_data$results$valid),
         message = "One or more errors while executing pipeline. Please check the notification."
       )
     )

@@ -1,4 +1,4 @@
-analysis_electrodes: '14-15 '
+analysis_electrodes: '14'
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
@@ -18,7 +18,7 @@ analysis_ranges:
     - 0
 analysis_ranges__lock: Lock frequency
 baseline__global_baseline_choice: Across trial
-baseline__unit_of_analysis: Decibel
+baseline__unit_of_analysis: z-score Amplitude
 baseline__windows:
   '1':
     window_interval:
