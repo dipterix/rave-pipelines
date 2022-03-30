@@ -1,2 +1,19 @@
+diagnostic_plot_params:
+  path: /var/folders/d1/_9fw182j7_d8tbx7xpttfyfr0000gn/T//RtmprGjN9Y/filecfeb340cc048.pdf
+  window_length: 2048
+  max_frequency: 300
+  histogram_bins: 60
+  background: '#ffffff'
+  foreground: '#212529'
+  font_size: 2.0
+  quiet: no
+notch_filter_lowerbound:
+- 59.0
+- 118.0
+- 178.0
+notch_filter_upperbound:
+- 61.0
+- 122.0
+- 182.0
 project_name: test2
 subject_code: YAB
