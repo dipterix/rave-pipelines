@@ -27,6 +27,20 @@ diagnose_notch_filters <- function(
 
   progress <- dipsaus::progress2("Generating diagnostic plots", max = length(electrodes) * 2, quiet = quiet, shiny_auto_close = TRUE)
 
+  old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub"))
+  graphics::par(
+    fg = fg,
+    bg = bg,
+    col.axis = fg,
+    col.lab = fg,
+    col.main = fg,
+    col.sub = fg
+  )
+  on.exit({
+    do.call(graphics::par, old_theme)
+    progress$inc(sprintf("Electrode %s (end)", electrodes[[ii]]))
+  }, add = TRUE)
+
   FUN <- function(ii) {
 
     progress$inc(sprintf("Electrode %s (start)", electrodes[[ii]]))
@@ -35,19 +49,6 @@ diagnose_notch_filters <- function(
     etype <- etypes[[ii]]
     srate <- sample_rates[[ii]]
 
-    old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub"))
-    graphics::par(
-      fg = fg,
-      bg = bg,
-      col.axis = fg,
-      col.lab = fg,
-      col.main = fg,
-      col.sub = fg
-    )
-    on.exit({
-      do.call(graphics::par, old_theme)
-      progress$inc(sprintf("Electrode %s (end)", electrodes[[ii]]))
-    }, add = TRUE)
 
     if(isTRUE(winlen == "auto")) {
       winlen <- floor(srate * 2)

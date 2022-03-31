@@ -4,7 +4,7 @@ module_server <- function(input, output, session, ...){
 
   # Local reactive values, used to store reactive event triggers
   local_reactives <- shiny::reactiveValues(
-    update_outputs = NULL
+    refresh = NULL
   )
 
   # Local non-reactive values, used to store static variables
@@ -13,126 +13,202 @@ module_server <- function(input, output, session, ...){
   # get server tools to tweek
   server_tools <- get_default_handlers(session = session)
 
-  # Run analysis once the following input IDs are changed
-  # This is used by auto-recalculation feature
-  server_tools$run_analysis_onchange(
-    component_container$get_input_ids(c(
-      "electrode_text", "baseline_choices",
-      "analysis_ranges", "condition_groups"
-    ))
-  )
+  error_notification <- function(e) {
+    shidashi::show_notification(
+      message = e$message,
+      title = "Error found!",
+      type = "danger",
+      close = TRUE,
+      autohide = TRUE,
+      class = ns("error_notif"),
+      collapse = "\n"
+    )
+  }
+
 
   # Register event: main pipeline need to run
   shiny::bindEvent(
     ravedash::safe_observe({
 
-      # Invalidate previous results (stop them because they are no longer needed)
-      if(!is.null(local_data$results)) {
-        local_data$results$invalidate()
-        ravedash::logger("Invalidating previous run", level = "trace")
-      }
-
-
-      # Collect input data
-      settings <- component_container$collect_settings(ids = c(
-        "electrode_text", "baseline_choices", "condition_groups", "analysis_ranges"
-      ))
-
-      pipeline_set(.list = settings)
-
-      #' Run pipeline without blocking the main session
-      #' The trick to speed up is to set
-      #' `async=TRUE` will run the pipeline in the background
-      #' `shortcut=TRUE` will ignore the dependencies and directly run `names`
-      #' `names` are the target nodes to run
-      #' `scheduler="none"` will try to avoid starting any schedulers and
-      #' run targets sequentially. Combined with `callr_function=NULL`,
-      #' scheduler's overhead can be removed.
-      #' `type="smart"` will start `future` plan in the background, allowing
-      #' multicore calculation
-      results <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL,
-        progress_title = "Calculating in progress",
-        async = TRUE,
-        check_interval = 0.1,
-        shortcut = TRUE,
-        names = c(
-          "settings",
-          names(settings),
-          "requested_electrodes", "analysis_ranges_index", "cond_groups",
-          "bl_power", "collapsed_data"
-        )
-      )
-
-
-      local_data$results <- results
-      ravedash::logger("Scheduled: ", pipeline_name, level = 'debug', reset_timer = TRUE)
-
-      results$promise$then(
-        onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline_name, level = 'debug')
-          shidashi::clear_notifications(class = "pipeline-error")
-          local_reactives$update_outputs <- Sys.time()
-          return(TRUE)
-        },
-        onRejected = function(e, ...){
-          msg <- paste(e$message, collapse = "\n")
-          if(inherits(e, "error")){
-            ravedash::logger(msg, level = 'error')
-            ravedash::logger(traceback(e), level = 'error', .sep = "\n")
-            shidashi::show_notification(
-              message = msg,
-              title = "Error while running pipeline", type = "danger",
-              autohide = FALSE, close = TRUE, class = "pipeline-error"
-            )
-          }
-          return(msg)
+      tryCatch({
+        if(!sv$is_valid()) {
+          stop("There are some invalid inputs. Please fix them before applying wavelet")
         }
-      )
+
+        # collect information
+        tbl <- kernel_params()
+        if(!is.data.frame(tbl)) {
+          stop("No kernel table found. ")
+        }
+
+        use_float <- input$precision
+        target_sample_rate <- as.numeric(input$target_sample_rate)
+        pre_downsample <- as.numeric(input$pre_downsample)
+        pipeline_set(
+          precision = ifelse(use_float, "float", "double"),
+          pre_downsample = pre_downsample,
+          target_sample_rate = target_sample_rate,
+          kernel_table = tbl
+        )
+
+        res <- raveio::pipeline_run(pipe_dir = pipeline_path, names = "kernels")
+
+        res$promise$then(
+          onFulfilled = function(...){
+
+            settings <- pipeline_get()
+
+            shiny::showModal(shiny::modalDialog(
+              title = "Confirmation",
+              size = "l",
+              easyClose = FALSE,
+              shiny::p("Wavelet will take a while to run. Please make sure that the following information is correct before proceeding."),
+              shiny::tags$ul(
+                shiny::tags$li(
+                  shiny::strong("Subject: "),
+                  settings$project_name, "/", settings$subject_code
+                ),
+                shiny::tags$li(
+                  shiny::strong("Frequencies: "),
+                  dipsaus::deparse_svec(settings$kernel_table$Frequency, collapse = ", ")
+                ),
+                shiny::tags$li(
+                  shiny::strong("# of cycles: "),
+                  paste(sprintf("%.1f", settings$kernel_table$Cycles), collapse = ", ")
+                ),
+                shiny::tags$li(
+                  shiny::strong("Precision: "),
+                  settings$precision
+                )
+              ),
+              shiny::p("The following steps will be performed:"),
+              shiny::tags$ol(
+                shiny::tags$li(
+                  ifelse(
+                    settings$pre_downsample == 1,
+                    "No down-sample will be performed before wavelet",
+                    sprintf("Signals will be down-sampled by %s", settings$pre_downsample)
+                  )
+                ),
+                shiny::tags$li("Wavelet will run on each block"),
+                shiny::tags$li(sprintf("The wavelet coefficients will be down-sampled to %.1fHz before saving to disk", settings$target_sample_rate))
+              ),
+              footer = shiny::tagList(
+                shiny::modalButton("Cancel"),
+                dipsaus::actionButtonStyled(ns("wavelet_confirm_btn"), "Confirm")
+              )
+            ))
+
+          },
+          onRejected = function(e){
+            error_notification(e)
+          }
+        )
+
+
+      }, error = function(e){
+        error_notification(e)
+      })
 
       return()
 
     }),
+    input$wavelet_do_btn,
     server_tools$run_analysis_flag(),
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
 
-  # (Optional) check whether the loaded data is valid
+      dipsaus::shiny_alert2(
+        title = "Running Wavelet in progress",
+        text = ravedash::be_patient_text(),
+        icon = 'info',
+        auto_close = FALSE,
+        buttons = FALSE
+      )
+
+      res <- raveio::pipeline_run(
+        pipe_dir = pipeline_path,
+        names = "wavelet_params",
+        scheduler = "none",
+        type = "smart",
+        callr_function = NULL,
+        async = FALSE,
+        check_interval = 1
+      )
+
+      res$promise$then(
+        onFulfilled = function(...){
+
+          dipsaus::close_alert2()
+          shiny::removeModal()
+          dipsaus::shiny_alert2(
+            title = "Done!",
+            text = paste(ravedash::finished_text(), " \nPlease proceed to the next module"),
+            icon = 'success',
+            auto_close = TRUE,
+            buttons = list("OK" = TRUE)
+          )
+
+        },
+        onRejected = function(e){
+
+          dipsaus::close_alert2()
+          dipsaus::shiny_alert2(
+            title = "Errors",
+            text = paste(c("The following error is found while applying wavelet:",
+                           e$message), collapse = " \n"),
+            icon = 'error',
+            danger_mode = TRUE
+            auto_close = FALSE,
+            buttons = list("OK" = TRUE)
+          )
+
+        }
+    }),
+    input$wavelet_confirm_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+
   shiny::bindEvent(
     ravedash::safe_observe({
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
-      new_repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
-      if(!inherits(new_repository, "rave_prepare_power")){
-        ravedash::logger("Repository read from the pipeline, but it is not an instance of `rave_prepare_power`. Abort initialization", level = "warning")
-        return()
-      }
-      ravedash::logger("Repository read from the pipeline; initializing the module UI", level = "debug")
 
-      # check if the repository has the same subject as current one
-      old_repository <- component_container$data$repository
-      if(inherits(old_repository, "rave_prepare_power")){
 
-        if( !attr(loaded_flag, "force") &&
-            identical(old_repository$signature, new_repository$signature) ){
-          ravedash::logger("The repository data remain unchanged ({new_repository$subject$subject_id}), skip initialization", level = "debug", use_glue = TRUE)
-          return()
-        }
-      }
+      subject <- raveio::pipeline_read("subject", pipe_dir = pipeline_path)
 
-      # TODO: reset UIs to default
+      all_electrodes <- subject$electrodes
+      etypes <- subject$preprocess_settings$electrode_types
+      notch_filtered <- subject$preprocess_settings$notch_filtered
 
-      # Reset preset UI & data
-      component_container$reset_data()
-      component_container$data$repository <- new_repository
-      component_container$initialize_with_new_data()
+      electrodes <- all_electrodes[
+        etypes %in% c("LFP", "EKG", "Audio") & notch_filtered
+      ]
+      sample_rates <- subject$raw_sample_rates
+      sample_rates <- sapply(electrodes, function(e){
+        sample_rates[all_electrodes == e]
+      })
+      etypes <- sapply(electrodes, function(e){
+        etypes[all_electrodes == e]
+      })
+
+      local_data$subject <- subject
+      local_data$electrodes <- electrodes
+      local_data$sample_rates <- sample_rates
+      local_data$electrode_types <- etypes
+
+
+      local_reactives$refresh <- Sys.time()
+
+      # reset inputs
+
 
       # Reset outputs
-      shidashi::reset_output("collapse_over_trial")
+      shidashi::reset_output("kernel_plot", message = "Subject has been reset")
 
     }, priority = 1001),
     ravedash::watch_data_loaded(),
@@ -140,38 +216,239 @@ module_server <- function(input, output, session, ...){
     ignoreInit = FALSE
   )
 
+  # validator
+  sv <- shinyvalidate::InputValidator$new(session = session)
+  sv$add_rule(
+    "target_sample_rate",
+    function(value) {
+      if(value <= 1) {
+        return("Cannot down-sample wavelet coefficients to a sample rate less-equal than 1")
+      }
+      return()
+    }
+  )
+  sv$add_rule(
+    "pre_downsample",
+    function(value) {
+      if(!length(value)) {
+        return("Please choose a value. (I suggest `1`)")
+      }
+      return()
+    }
+  )
+  sv$add_rule(
+    "preset_upload",
+    function(value) {
+      if(isTRUE(input$use_preset == "Upload preset")) {
+        if(!is.data.frame(local_reactives$wavelet_param_tbl)) {
+          return("Please upload a preset kernel table in csv format. The table should contain two columns: `Frequency` and `Cycle`")
+        }
+      }
+
+      return()
+    }
+  )
+  sv$enable()
 
 
+  # updates
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      if(is.null(local_data$subject)){ return() }
+      target_sample_rate <- input$target_sample_rate
+      if(!length(target_sample_rate) ||
+         is.na(target_sample_rate) ||
+         target_sample_rate < 1){ return() }
 
-
-  # Register outputs
-  output$collapse_over_trial <- shiny::renderPlot({
-    shiny::validate(
-      shiny::need(
-        length(local_reactives$update_outputs) &&
-          !isFALSE(local_reactives$update_outputs),
-        message = "Please run the module first"
+      dsamp <- floor(min(local_data$sample_rates) / target_sample_rate / 2)
+      if(dsamp <= 1){
+        dsamp <- 1
+      }
+      dsamp <- 2^(seq_len(floor(log2(dsamp)) + 1) - 1)
+      shiny::updateSelectInput(
+        session = session,
+        inputId = "pre_downsample",
+        choices = dsamp,
+        selected = as.integer(input$pre_downsample) %OF% dsamp
       )
-    )
-    shiny::validate(
-      shiny::need(
-          isTRUE(local_data$results$valid),
-        message = "One or more errors while executing pipeline. Please check the notification."
+
+    }),
+    input$target_sample_rate,
+    local_reactives$refresh,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      if(is.null(local_data$subject)){ return() }
+      dsamp <- input$pre_downsample
+      if(!length(dsamp)) { return() }
+      dsamp <- as.integer(dsamp)
+      if(is.na(dsamp)){ return() }
+
+      max_freq <- floor(min(local_data$sample_rates) / 2 / dsamp)
+
+      shiny::updateSliderInput(
+        session = session,
+        inputId = "freq_range",
+        max = max_freq
       )
-    )
 
-    collapsed_data <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "collapsed_data")
-    repository <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "repository")
+    }),
+    input$pre_downsample,
+    local_reactives$refresh,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
 
-    time_points <- repository$time_points
-    frequencies <- repository$frequency
 
-    data <- collapsed_data[[1]]$collasped$range_1
-    image(t(data$freq_time), x = time_points[data$cube_index$Time], y = frequencies[data$cube_index$Frequency])
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      tryCatch({
+
+        datapath <- input$preset_upload$datapath
+        if(!file.exists(datapath)){ stop("The uploaded file is corrupted") }
+
+        tbl <- utils::read.csv(datapath)
+        if(!all(c("Frequency", "Cycles") %in% names(tbl))){
+          stop("The uploaded csv table must contain the following two columns: 'Frequency', 'Cycles' (case-sensitive)")
+        }
+        tbl <- tbl[
+          !is.na(tbl$Frequency) && tbl$Frequency != "" &&
+            !is.na(tbl$Cycles) && tbl$Cycles != "",
+        ]
+        freqs <- as.numeric(tbl$Frequency)
+        cycle <- as.numeric(tbl$Cycles)
+
+        if(any(is.na(freqs)) || any(is.na(cycle))) {
+          stop("Cannot parse the parameter table: none numerical values detected.")
+        }
+
+        local_reactives$wavelet_param_tbl <- data.frame(
+          Frequency = freqs,
+          Cycles = cycle
+        )
+
+      }, error = function(e){
+        error_notification(e)
+      })
+
+    }),
+    input$preset_upload,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+
+  kernel_params <- shiny::reactive({
+
+    use_preset <- input$use_preset
+
+    if(isTRUE(use_preset == "Builtin tool")) {
+      freq_range <- input$freq_range
+      step <- input$freq_step
+      cycle_range <- input$cycle_range
+      if(length(freq_range) != 2){
+        freq_range <- c(2, 200)
+      }
+      if(length(cycle_range) != 2){
+        cycle_range <- c(3, 20)
+      }
+      if(length(step) != 1){
+        step <- 2
+      }
+
+      freqs <- seq(freq_range[1], freq_range[2], by = step)
+
+      v1 <- log(cycle_range[[1]])
+      v2 <- log(cycle_range[[2]])
+
+      cycle <- (v2 - v1) / (freq_range[[2]] - freq_range[[1]]) *
+        (freqs - freq_range[[1]]) + v1
+
+      cycle <- round(exp(cycle))
+
+      tbl <- data.frame(
+        Frequency = freqs,
+        Cycles = cycle
+      )
+      return(tbl)
+    } else {
+      return(local_reactives$wavelet_param_tbl)
+    }
 
   })
 
 
 
+  # shiny::outputOptions(output, "kernel_table", suspendWhenHidden = FALSE)
+  output$kernel_table <- DT::renderDataTable({
+    tbl <- kernel_params()
+    shiny::validate(
+      shiny::need(
+        is.data.frame(tbl),
+        message = "Please upload preset table"
+      )
+    )
+    DT::datatable(tbl)
+  })
+
+  output$download_kernel_table <- shiny::downloadHandler(
+    "RAVE-wavelet-parameters.csv",
+    function(conn){
+      tryCatch({
+        tbl <- kernel_params()
+        utils::write.csv(tbl, file = conn, row.names = FALSE)
+      }, error = function(e){
+        error_notification(list(message = "The wavelet does not have any configurations"))
+      })
+    }
+  )
+
+
+  output$kernel_plot <- shiny::renderPlot({
+
+    local_reactives$refresh
+    tbl <- kernel_params()
+
+    srate <- local_data$sample_rates
+    etypes <- local_data$electrode_types
+    theme <- ravedash::current_shiny_theme()
+
+    shiny::validate(
+      shiny::need(
+        is.data.frame(tbl),
+        message = "Please upload preset table"
+      ),
+      shiny::need(
+        length(srate) > 0,
+        message = "No electrodes found"
+      )
+    )
+
+    if('LFP' %in% etypes){
+      srate <- srate[etypes == "LFP"][[1]]
+    } else {
+      srate <- min(srate)
+    }
+
+    old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub"))
+    graphics::par(
+      fg = theme$foreground,
+      bg = theme$background,
+      col.axis = theme$foreground,
+      col.lab = theme$foreground,
+      col.main = theme$foreground,
+      col.sub = theme$foreground
+    )
+    on.exit({
+      do.call(graphics::par, old_theme)
+    }, add = TRUE)
+    kernel <- ravetools::wavelet_kernels(
+      freqs = tbl$Frequency, wave_num = tbl$Cycles,
+      srate = srate
+    )
+    plot(kernel, cex = 1.4, mai = c(1.02,0.82,0.82,0.42))
+  })
 
 }

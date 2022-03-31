@@ -10,216 +10,304 @@ output:
 # Please do not remove me
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
+if(FALSE){
+  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", "wavelet_module", "settings.yaml"))
+  list2env(as.list(settings), envir = environment())
+}
+
 ```
 
-## Introduction
-
-A RAVE pipeline markdown is an interactive notebook that can keep your notes, code blocks, and corresponding results together, generating reports in various formats such as `PDF`, `html`, `Word`, `PowerPoint`. 
-
-The note parts are simply `markdown`s - the same as `jupyter notebook`, or github documentations. The code blocks support `R`, `python`, `c++`. When you hit the `Knit` button in this code editor panel, the r-markdown file will be compiled, generating reproducible documentation.
-
-With carefully designed structures, this r-markdown file will automatically generate `RAVE` pipeline scripts during the compilation. The pipeline script can be used by `RAVE` to convert your pipeline into interactive dashboard application. (This feature is currently under development)
-
-## "RAVE" Pipeline Code Block
-
-A `RAVE` pipeline markdown code block starts with ` ```{rave ... `. The block label following `rave` informative description of the target. After the target, the following RAVE-specific parameters configures how the block should be treated:
-
-* `language`: specifies the programming language used; choices are: `R`, `python`
-* `export`: variable name to be exported that will be available to the rest chunks
-* `depends`: indicates current block depends on variables generated from other blocks; this helps `RAVE` to build non-interactive pipeline scripts internally. For blocks written in `R`, the dependence can be automatically determined.
-
-Other parameters are available at [this `rmarkdown` book](https://bookdown.org/yihui/rmarkdown/)
-
-## An Example
-
-In the rest of the documentation, let's import the subject power data, baseline, and plot the collapsed mean as image.
-
-#### Step 1: Create `RAVE` subject's instances
-
-Noting that all the items in the `settings.yaml` are available as variables.
-
 ```{rave load_subject, language = "R", export = "subject"}
-library(raveio)
-subject <- RAVESubject$new(
+subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
 )
 print(subject)
-
-# List subject details
-subject$epoch_names
-subject$reference_names
-subject$blocks
-subject$electrodes
-
-# Check if notch & wavelet has been applied on all electrodes
-all(subject$notch_filtered)
-all(subject$has_wavelet)
 ```
 
-With `export="subject"`, the subject variable will be registered for the following chunks to use. Be aware that all other variables created in this block will not be exposed.
-
-#### Step 2: Load epoch and reference information
-
-```{rave load_epoch, language = "R", export = "epoch_instance"}
-epoch_instance <- raveio::RAVEEpoch$new(subject, epoch)
-head(epoch_instance$update_table())
+```{rave get_notch_filter_timestamp, language = "R", export = "notch_filtere_stamp", cue = "always"}
+notch_filtere_stamp <- subject$get_default(namespace = "notch_filter", "parameters", default_if_missing = Sys.time())
 ```
 
-```{rave load_reference, language = "R", export = "reference_table"}
-reference_table <- subject$meta_data(
-  meta_type = "reference", reference)
-head(reference_table)
-```
-
-#### Step 3: Initialize and load power data
-
-Initialize the electrode instances and register the epoch, reference information
-
-```{rave load_electrodes, language = "R", export = "electrode_instances"}
-requested_electrodes <- dipsaus::parse_svec(electrodes)
-requested_electrodes <- requested_electrodes[
-  requested_electrodes %in% subject$electrodes]
-electrode_instances <- lapply(requested_electrodes, function(ei){
-  e <- raveio::new_electrode(subject, number = ei, signal_type = "LFP")
-  
-  # set epoch
-  e$set_epoch(epoch_instance)
-
-  # set epoch range (-1 to 2 seconds relative to onset)
-  e$trial_intervals <- intervals
-
-  # set reference
-  ref_name <- subset(reference_table, Electrode == ei)[["Reference"]]
-  e$set_reference(ref_name)
-  e
-})
-names(electrode_instances) <- requested_electrodes
-```
-
-
-Start to load power. Here also create cache to the `RAVE` cache directory.
-
-```{rave load_and_cache_power, language = "R", export = "power"}
-power_list <- lapply(electrode_instances, function(e){
-  e$load_data("power")
-})
-target <- normalizePath(file.path("shared", "cache", "power"),
-                        mustWork = FALSE)
-  
-if(dir.exists(target)){
-  unlink(target, recursive = TRUE, force = TRUE)
-} else {
-  raveio::dir_create2(dirname(target))
-}
-power <- filearray::filearray_bind(
-  .list = power_list, symlink = TRUE, 
-  filebase = target)
-
-if(length(power_list)){
-  dnames <- dimnames(power_list[[1]])
-  dnames[[4]] <- as.integer(names(electrode_instances))
-  dimnames(power) <- dnames
-} else {
-  stop("No power data not loaded")
+```{rave check_prerequisite, language = "R", export = "notch_filtered_electrodes"}
+electrodes <- subject$electrodes
+etypes <- subject$electrode_types
+notch_filtered_electrodes <- electrodes[
+  subject$preprocess_settings$notch_filtered &&
+    etypes %in% c("LFP", "EKG", "Audio")
+]
+if(!length(notch_filtered_electrodes)) {
+  stop("There is no electrode available to the wavelet module")
 }
 ```
 
-#### Step 4: Baseline correction
+```{rave get_raw_sample_rates, language = "R", export = "sample_rates"}
+sample_rates <- subject$preprocess_settings$sample_rates
+electrodes <- subject$electrodes
 
-```{rave calculate_baseline, language = "R", export = "baseline_data"}
-dim <- dim(power)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-target <- file.path(electrode_instances[[1]]$cache_root, "..")
-raveio::dir_create2(target)
-target <- normalizePath(target, mustWork = TRUE)
-target <- file.path(target, "_baseline")
-if(dir.exists(target)){
-  output <- filearray::filearray_load(target, "readwrite")
-  if(!all(dim(output) == dim(power))){
-    output$delete()
+sample_rates <- sapply(notch_filtered_electrodes, function(e){
+  re <- sample_rates[electrodes == e]
+  if(!length(re)) {
+    stop("Electrode ", e, " does not have sample rate. The data might not be imported correctly and some configurations are missing.")
   }
-  if(!identical(dimnames(output), dimnames(power))){
-    dimnames(output) <- dimnames(power)
+  re[[1]]
+})
+
+```
+
+
+
+```{rave check_kernel, language = "R", export = "kernels"}
+
+freqs <- unlist(kernel_table$Frequency)
+cycles <- unlist(kernel_table$Cycles)
+
+if(any(is.na(freqs) | freqs <= 0)) {
+  stop("The wavelet kernel table contains negative `Frequency` value(s)")
+}
+
+if(length(cycles) != 2) {
+  if(length(freqs) != length(cycles)) {
+    stop("The wavelet kernel table lengths are inconsistent: the lenth of `Cycles` must be either 2 (a range on which wavelet cycles that will be interpolated log-linearly), or the same length as `Frequency`.")
   }
 }
-if(!dir.exists(target)){
-  output <- filearray::filearray_create(
-    filebase = target,
-    dimension = dim(power),
-    type = "float",
-    partition_size = 1L
-  )
+
+if(any(is.na(cycles) | cycles <= 1)) {
+  stop("The wavelet kernel table contains negative or 0 `Cycles` value(s): wavelet cycles must be greater equal than 1 (also integer numbers are strongly recommended)")
 }
 
-bl_range <- unlist(baseline)
-dnames <- dimnames(power)
-baseline_indexpoints <- which(
-  dnames$Time >= bl_range[[1]] & dnames$Time <= bl_range[[2]])
+if(length(freqs) != 2 && length(cycles) == 2) {
+  if(cycles[[1]] > cycles[[2]]) {
+    stop("The wavelet kernel table: when `Cycles` is a range, (length of 2), it must be in non-decreasing order.")
+  }
+}
 
-filearray::fmap(power, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  bl <- dipsaus::baseline_array(
-    x, along_dim = 2L,
-    baseline_indexpoints = baseline_indexpoints,
-    method = baseline_method
-  )
-  bl
-}, .y = output, .input_size = plen)
+if(length(precision) != 1 || !precision %in% c("float", "double")) {
+  precision <- "float"
+}
 
-baseline_data <- output
-```
-
-
-#### Step 5: Collapse baseline data
-
-```{rave collapse_by_trial_and_electrodes, language = "R", export = "collapsed"}
-
-dim <- dim(baseline_data)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-collase_by_trial <- filearray::fmap2(baseline_data, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  dipsaus::collapse(x, keep = c(2,1), average = TRUE)
-}, .input_size = plen, .simplify = TRUE)
-
-collapsed <- list(
-  collase_by_trial = collase_by_trial,
-  collase_by_trial_electrodes = dipsaus::collapse(
-    collase_by_trial, keep = c(1, 2), average = TRUE)
-)
-```
-
-```{r}
-brain <- threeBrain::freesurfer_brain2(
-  fs_subject_folder = subject$freesurfer_path, subject_name = subject$subject_code
-)
-brain$plot()
-```
-
-#### Step 6: Visualize
-
-```{rave plot_heatmap_collase_by_trial_electrodes, export = "collase_by_trial_timestamp", cue="always"}
-
-# Timestamp of when the plot is created
-collase_by_trial_timestamp <- Sys.time()
-
-# visualize
-dnames <- power$dimnames()
-
-image(
-  collapsed$collase_by_trial_electrodes,
-  y = dnames$Frequency,
-  ylab = "Frequency (Hz)",
-  x = dnames$Time, 
-  xlab = "Time (s)",
-  main = "Mean power across trial and electrodes"
+kernels <- list(
+  freqs = freqs,
+  cycles = cycles,
+  precision = precision
 )
 
 ```
+
+
+```{rave run_wavelet, language = "R", export = "wavelet_params"}
+# If notch filter results not changed, we can skip the wavelet
+force(notch_filtere_stamp)
+
+blocks <- subject$preprocess_settings$blocks
+electrodes <- notch_filtered_electrodes
+srates <- sample_rates
+compress_rates <- srates / target_sample_rate
+kernels_precision <- kernels$precision
+pre_decimate <- pre_downsample
+
+overall_progress <- dipsaus::progress2("Wavelet overall progress", max = 5, shiny_auto_close = TRUE)
+
+# Create dir
+overall_progress$inc("Creating directories")
+subject$initialize_paths(include_freesurfer = FALSE)
+raveio::dir_create2(file.path(subject$data_path, "power"))
+raveio::dir_create2(file.path(subject$data_path, "phase"))
+raveio::dir_create2(file.path(subject$data_path, "voltage"))
+
+# prepare kernels
+overall_progress$inc("Generating wavelet kernels")
+ravetools <- asNamespace("ravetools")
+generate_kernel <- ravetools[[sprintf("wavelet_kernels2_%s", kernels_precision)]]
+
+sample_file = file.path(subject$preprocess_path, 'voltage', 
+                     sprintf('electrode_%d.h5', electrodes[[1]]))
+
+
+if(!file.exists(sample_file) || !raveio::h5_valid(sample_file)){
+  stop("Electrode file is missing (preprocess, electrode ", electrodes[[1]], ")")
+}
+sample_names <- gsub("^/", "", raveio::h5_names(sample_file))
+
+lapply(unique(srates), function(srate) {
+  lapply(blocks, function(block){
+    sample_name <- sprintf("notch/%s", block)
+    if(!sample_name %in% sample_names) {
+      stop(sprintf("I can find the imported signal file for Electrode %s, but cannot find any notch-filtered signal for block %s. The data file might be corrupted.", electrodes[[1]], block))
+    }
+    sample_data <- raveio::load_h5(sample_file, name = sample_name, ram = FALSE, read_only = TRUE)
+    data_length <- length(sample_data)
+    if(!length(data_length)) {
+      stop(sprintf("Electrode %s has zero-length signal (/notch/%s). The data file might be corrupted.", electrodes[[1]], block))
+    }
+    generate_kernel(freqs = kernels$freqs, srate = srate, wave_num = kernels$cycles, data_length = data_length)
+  })
+})
+
+
+
+### Prepare for the wavelet file. Since users may specify different sample rate, we need to remove files if they exists
+# 1. reference file
+# ref_file = file.path(dirs$channel_dir, 'reference', sprintf('ref_%s.h5', dipsaus::deparse_svec(electrodes)))
+# unlink(ref_file)
+
+# 2. raw channel files and power/phase files
+overall_progress$inc("Removing previously generated wavelet coefficients")
+data_root <- subject$data_path
+lapply(electrodes, function(e){
+  unlink(file.path(data_root, 'power', sprintf('%d.h5', e)))
+  unlink(file.path(data_root, 'phase', sprintf('%d.h5', e)))
+  unlink(file.path(data_root, 'voltage', sprintf('%d.h5', e)))
+  for(block in blocks){
+    unlink(file.path(data_root, 'cache', 'power', 'raw', block, sprintf('%d.fst', e)))
+    unlink(file.path(data_root, 'cache', 'phase', 'raw', block, sprintf('%d.fst', e)))
+  }
+})
+
+
+
+# load signals
+overall_progress$inc("Applying wavelet (a.k.a. the long step)")
+preprocess_dir <- subject$preprocess_path
+dipsaus::lapply_async2(
+  seq_along(electrodes), function(ii){
+    
+    e <- electrodes[[ii]]
+    srate <- srates[[ii]]
+    compress_rate <- compress_rates[[ii]]
+    
+    for(block in blocks){
+      
+      sorig <- raveio::load_h5(
+        file = file.path(preprocess_dir, 'voltage', sprintf('electrode_%d.h5', e)),
+        name = sprintf('/notch/%s', block),
+        ram = TRUE
+      )
+      if(pre_decimate > 1) {
+        s <- ravetools::decimate(sorig, pre_decimate, 
+                                 ftype = "fir")
+      } else {
+        s <- sorig
+      }
+      data_length <- length(s)
+      
+      re <- ravetools::morlet_wavelet(
+        data = s,
+        freqs = kernels$freqs,
+        srate = srate,
+        wave_num = kernels$cycles,
+        precision = kernels_precision
+      )
+      
+      # Subset coefficients to save space
+      ind <- floor(seq(1, data_length, by = compress_rate))
+      
+      if(kernels_precision == "float"){
+        # Load all at once and subset is faster, but one signal is around 1-2GB, so...
+        coef <- re[ind,,drop = FALSE]
+        
+        phase <- Arg(coef)
+        power <- Mod(coef)^2
+        
+        re$.mode <- "readwrite"
+        re$delete()
+      } else {
+        coef <- t(re$real[ind, , drop = FALSE] + 1i * re$imag[ind, , drop = FALSE])
+        
+        phase <- Arg(coef)
+        power <- Mod(coef)^2
+        re$real$.mode <- "readwrite"
+        re$real$delete()
+        re$imag$.mode <- "readwrite"
+        re$imag$delete()
+      }
+      
+      # Save power, phase, voltage
+      fname <- sprintf('%d.h5', e)
+      wavelet_h5chunk <- c(length(kernels$freqs), 128)
+      
+      # power
+      raveio::save_h5(
+        x = power,
+        file = file.path(data_root, "power", fname),
+        name = sprintf('/raw/power/%s', block),
+        chunk = wavelet_h5chunk,
+        replace = TRUE
+      )
+      # save_h5(
+      #   x = 'noref',
+      #   file = file.path(data_root, "power", fname),
+      #   name = '/reference',
+      #   chunk = 1,
+      #   replace = TRUE, size = 1000
+      # )
+      
+      # phase
+      raveio::save_h5(
+        x = phase,
+        file = file.path(data_root, "phase", fname),
+        name = sprintf('/raw/phase/%s', block),
+        chunk = wavelet_h5chunk,
+        replace = TRUE
+      )
+      
+      # voltage
+      raveio::save_h5(
+        x = sorig,
+        file = file.path(data_root, "voltage", fname),
+        name = sprintf('/raw/voltage/%s', block),
+        chunk = 1024,
+        replace = TRUE
+      )
+    }
+  },
+  plan = FALSE,
+  callback = function(ii){
+    sprintf(sprintf("Applying wavelet|Electrode - %s", electrodes[[ii]]))
+  }
+)
+
+overall_progress$inc("Saving configurations and update log files")
+
+# reload preprocess settings in case some changes are not captured
+preproc <- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = FALSE)
+
+for(e in electrodes) {
+  preproc$data[[as.character(e)]]$has_wavelet <- TRUE
+}
+
+wavelet_params <- list(
+  channels = electrodes,
+  electrodes = electrodes,
+  downsample_to = target_sample_rate,
+  target_srate = target_sample_rate,
+  frequencies = kernels$freqs,
+  wave_num = kernels$cycles,
+  cycle = kernels$cycles,
+  precision = kernels_precision,
+  pre_downsample = pre_downsample
+)
+
+wavelet_logs <- as.list(preproc$data$wavelet_logs)
+wavelet_logs[[length(wavelet_logs) + 1]] <- wavelet_params
+preproc$data$wavelet_logs <- wavelet_logs
+
+wavelet_params <- wavelet_params[c(
+  "electrodes", "downsample_to", "frequencies",
+  "cycle", "precision", "pre_downsample"
+)]
+wavelet_params$timestamp <- strftime(Sys.time(), usetz = TRUE)
+preproc$data$wavelet_params <- wavelet_params
+preproc$save()
+
+subject$set_default(
+  namespace = "wavelet_module",
+  key = "parameters",
+  wavelet_params
+)
+
+```
+
 
 ## Build, Visualize, & Run
 
@@ -235,13 +323,6 @@ Once the pipeline script `make-wavelet_module.R` is built, you can visualize and
 ```{r visualize, echo=FALSE}
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
 raveio::pipeline_visualize()
-```
-
-
-```{r execute}
-Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
-raveio::pipeline_run(type = "vanilla")
-raveio::pipeline_progress(method = 'details')
 ```
 
 
