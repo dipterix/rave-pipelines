@@ -452,7 +452,7 @@ module_server <- function(input, output, session, ...){
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
-        async = TRUE,
+        async = FALSE,
         shortcut = TRUE,
         names = c(
           "settings",

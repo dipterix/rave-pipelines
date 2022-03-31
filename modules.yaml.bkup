@@ -18,6 +18,3 @@ modules:
   notch_filter:
     label: Notch Filter
     order: 2
-  wavelet_module:
-    label: Wavelet
-    order: 3

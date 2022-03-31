@@ -26,7 +26,8 @@ diagnose_notch_filters <- function(
   }
 
   progress <- dipsaus::progress2("Generating diagnostic plots", max = length(electrodes) * 2, quiet = quiet, shiny_auto_close = TRUE)
-  lapply(seq_along(electrodes), function(ii) {
+
+  FUN <- function(ii) {
 
     progress$inc(sprintf("Electrode %s (start)", electrodes[[ii]]))
 
@@ -107,7 +108,14 @@ diagnose_notch_filters <- function(
     }
 
 
-  })
+  }
+
+  if(length(electrodes) == 1){
+    return(FUN(1))
+  } else {
+    lapply(seq_along(electrodes), FUN)
+  }
+
 
 
 }

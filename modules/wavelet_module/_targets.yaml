@@ -1,0 +1,3 @@
+wavelet_module:
+  script: make-main.R
+  store: shared

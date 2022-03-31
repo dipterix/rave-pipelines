@@ -87,38 +87,41 @@ module_html <- function(){
                   )
                 )
               ),
-              ravedash::flex_group_box(
-                title = "Welch periodogram parameters",
-                shidashi::flex_item(
-                  shiny::sliderInput(
-                    inputId = ns("pwelch_winlen"),
-                    label = "Window length",
-                    min = 100,
-                    max = 4000,
-                    value = 4000,
-                    step = 1
-                  )
-                ),
-                shidashi::flex_break(),
-                shidashi::flex_item(
-                  shiny::sliderInput(
-                    inputId = ns("pwelch_freqlim"),
-                    label = "Frequency limit",
-                    min = 20,
-                    max = 1000,
-                    value = 300,
-                    step = 1
-                  )
-                ),
-                shidashi::flex_break(),
-                shidashi::flex_item(
-                  shiny::sliderInput(
-                    inputId = ns("pwelch_nbins"),
-                    label = "Number of histogram bins",
-                    min = 20,
-                    max = 200,
-                    value = 60,
-                    step = 5
+              shiny::div(
+                class = "rave-optional",
+                ravedash::flex_group_box(
+                  title = "Welch periodogram parameters",
+                  shidashi::flex_item(
+                    shiny::sliderInput(
+                      inputId = ns("pwelch_winlen"),
+                      label = "Window length",
+                      min = 100,
+                      max = 4000,
+                      value = 4000,
+                      step = 1
+                    )
+                  ),
+                  shidashi::flex_break(),
+                  shidashi::flex_item(
+                    shiny::sliderInput(
+                      inputId = ns("pwelch_freqlim"),
+                      label = "Frequency limit",
+                      min = 20,
+                      max = 1000,
+                      value = 300,
+                      step = 1
+                    )
+                  ),
+                  shidashi::flex_break(),
+                  shidashi::flex_item(
+                    shiny::sliderInput(
+                      inputId = ns("pwelch_nbins"),
+                      label = "Number of histogram bins",
+                      min = 20,
+                      max = 200,
+                      value = 60,
+                      step = 5
+                    )
                   )
                 )
               ),
