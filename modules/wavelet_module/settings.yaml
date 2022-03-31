@@ -201,7 +201,7 @@ kernel_table:
   - 19.0
   - 20.0
   - 20.0
-pre_downsample: 1.0
+pre_downsample: 2.0
 precision: float
 project_name: test2
 subject_code: YAB

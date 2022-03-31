@@ -136,8 +136,8 @@ lapply(unique(srates), function(srate) {
       stop(sprintf("I can find the imported signal file for Electrode %s, but cannot find any notch-filtered signal for block %s. The data file might be corrupted.", electrodes[[1]], block))
     }
     sample_data <- raveio::load_h5(sample_file, name = sample_name, ram = FALSE, read_only = TRUE)
-    data_length <- length(sample_data)
-    if(!length(data_length)) {
+    data_length <- ceiling(length(sample_data) / pre_downsample)
+    if(data_length <= 0) {
       stop(sprintf("Electrode %s has zero-length signal (/notch/%s). The data file might be corrupted.", electrodes[[1]], block))
     }
     generate_kernel(freqs = kernels$freqs, srate = srate, wave_num = kernels$cycles, data_length = data_length)
@@ -304,6 +304,18 @@ subject$set_default(
   namespace = "wavelet_module",
   key = "parameters",
   wavelet_params
+)
+
+# generate reference table
+raveio::safe_write_csv(
+  file = file.path(subject$meta_path, "reference_noref.csv"),
+  row.names = FALSE,
+  data.frame(
+    Electrode = subject$electrodes,
+    Group = "Default",
+    Reference = "noref",
+    Type = "No Reference"
+  )
 )
 
 ```

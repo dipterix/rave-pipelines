@@ -161,12 +161,13 @@ module_server <- function(input, output, session, ...){
             text = paste(c("The following error is found while applying wavelet:",
                            e$message), collapse = " \n"),
             icon = 'error',
-            danger_mode = TRUE
+            danger_mode = TRUE,
             auto_close = FALSE,
             buttons = list("OK" = TRUE)
           )
 
         }
+      )
     }),
     input$wavelet_confirm_btn,
     ignoreNULL = TRUE, ignoreInit = TRUE

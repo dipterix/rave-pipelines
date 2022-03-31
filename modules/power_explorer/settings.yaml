@@ -42,15 +42,15 @@ condition_groups:
     - AlastVknown
     - drive_a
 electrode_category_selector: Electrode
-epoch_choice: auditory_onset
+epoch_choice: ''
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 13-16,24
-project_name: demo
-reference_name: default
-subject_code: DemoSubject
+loaded_electrodes: 14-25
+project_name: test2
+reference_name: ''
+subject_code: YAB
 trial_ends: 2
 trial_starts: -1
 unit_of_analysis: z-score Power
