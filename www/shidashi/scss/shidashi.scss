@@ -255,7 +255,7 @@ input:checked + .slider::before {
 }
 
 @each $type in left, right, center, start, end, revert, justify, unset {
-  .text-align-#{$type} { 
+  .text-align-#{$type} {
     @include text-align($type);
   }
 }
@@ -333,6 +333,7 @@ input:checked + .slider::before {
 
 
 .shiny-output-error-validation {
+  width: 100%;
   text-align: center;
 }
 

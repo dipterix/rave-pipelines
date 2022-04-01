@@ -126,11 +126,18 @@ source("common.R", local = TRUE, chdir = TRUE)
                 if (force_import) {
                   preproc <- subject$preprocess_settings
                   preproc$data$checklevel <- 0L
-                  lapply(preproc$electrodes, function(e) {
-                    preproc$data[[as.character(e)]]$data_imported <- FALSE
-                  })
-                  preproc$set_blocks(blocks)
-                  preproc$set_electrodes(electrodes, type = "LFP")
+                  existing <- preproc$electrodes
+                  existing <- existing[!existing %in% electrodes]
+                  preproc$data$electrodes <- existing
+                  preproc$data$`@remove`(as.character(electrodes))
+                  if (!setequal(preproc$blocks, blocks)) {
+                    lapply(existing, function(e) {
+                      preproc$data[[as.character(e)]]$data_imported <- FALSE
+                    })
+                    preproc$set_blocks(blocks)
+                  }
+                  preproc$set_electrodes(electrodes, type = "LFP", 
+                    add = TRUE)
                   preproc$set_sample_rates(sample_rate, type = "LFP")
                   preproc$save()
                 }

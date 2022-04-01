@@ -17,7 +17,7 @@ if(FALSE){
 
 ```
 
-```{rave load_subject, language = "R", export = "subject"}
+```{rave load_subject, language = "R", export = "subject", cue = "always"}
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
@@ -29,7 +29,7 @@ print(subject)
 notch_filtere_stamp <- subject$get_default(namespace = "notch_filter", "parameters", default_if_missing = Sys.time())
 ```
 
-```{rave check_prerequisite, language = "R", export = "notch_filtered_electrodes"}
+```{rave check_prerequisite, language = "R", export = "notch_filtered_electrodes", cue = "always"}
 electrodes <- subject$electrodes
 etypes <- subject$electrode_types
 notch_filtered_electrodes <- electrodes[
@@ -41,7 +41,7 @@ if(!length(notch_filtered_electrodes)) {
 }
 ```
 
-```{rave get_raw_sample_rates, language = "R", export = "sample_rates"}
+```{rave get_raw_sample_rates, language = "R", export = "sample_rates", cue = "always"}
 sample_rates <- subject$preprocess_settings$sample_rates
 electrodes <- subject$electrodes
 
@@ -57,7 +57,7 @@ sample_rates <- sapply(notch_filtered_electrodes, function(e){
 
 
 
-```{rave check_kernel, language = "R", export = "kernels"}
+```{rave check_kernel, language = "R", export = "kernels", cue = "always"}
 
 freqs <- unlist(kernel_table$Frequency)
 cycles <- unlist(kernel_table$Cycles)
@@ -95,7 +95,7 @@ kernels <- list(
 ```
 
 
-```{rave run_wavelet, language = "R", export = "wavelet_params"}
+```{rave run_wavelet, language = "R", export = "wavelet_params", cue = "always"}
 # If notch filter results not changed, we can skip the wavelet
 force(notch_filtere_stamp)
 
@@ -270,7 +270,7 @@ dipsaus::lapply_async2(
 overall_progress$inc("Saving configurations and update log files")
 
 # reload preprocess settings in case some changes are not captured
-preproc <- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = FALSE)
+preproc <- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = TRUE)
 
 for(e in electrodes) {
   preproc$data[[as.character(e)]]$has_wavelet <- TRUE

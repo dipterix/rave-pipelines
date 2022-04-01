@@ -76,6 +76,38 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
+      load_epoch <- input$load_epoch
+      if(!length(load_epoch) || load_epoch == "New epoch...") {
+        return()
+      }
+      shiny::invalidateLater(300)
+      shiny::updateSelectInput(
+        session = session,
+        inputId = "load_epoch",
+        selected = "New epoch..."
+      )
+      subject <- local_data$subject
+      if(!length(subject)){ return() }
+
+      tryCatch({
+        epoch <- subject$meta_data(meta_type = "epoch", meta_name = load_epoch)
+        local_reactives$staged_table <- data.frame(
+          block = epoch$Block,
+          time = epoch$Time
+        )
+      }, error = function(e){
+        ravedash::logger_error_condition(e)
+        error_notification(e)
+      })
+
+    }),
+    input$load_epoch,
+    ignoreNULL = FALSE,
+    ignoreInit = FALSE
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
 
       subject <- local_data$subject
       if(is.null(subject)) {
@@ -552,6 +584,13 @@ module_server <- function(input, output, session, ...){
     )
     time <- sort(staged_table$time[staged_table$block %in% input$block])
 
+    shiny::validate(
+      shiny::need(
+        length(time) > 0,
+        message = "No trial staged for current block"
+      )
+    )
+
     table <- data.frame(
       Order = seq_along(time),
       Time = time,
@@ -772,4 +811,27 @@ module_server <- function(input, output, session, ...){
       }
     }
   )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      staged_table <- local_reactives$staged_table
+      if(!is.data.frame(staged_table)){ return() }
+      staged_table <- staged_table[!staged_table$block %in% input$block, ]
+      if(!nrow(staged_table)){ staged_table <- NULL }
+      local_reactives$staged_table <- staged_table
+      local_reactives$re_threshold <- Sys.time()
+    }),
+    input$undo_all,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      if(!length(local_reactives$staged_table)) { return() }
+      local_reactives$staged_table <- NULL
+      local_reactives$re_threshold <- Sys.time()
+    }),
+    input$discard_epoch,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
 }

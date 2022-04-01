@@ -113,11 +113,19 @@ if(length(physical_unit) != 1 || is.na(physical_unit) ||
 if(force_import) {
   preproc <- subject$preprocess_settings
   preproc$data$checklevel <- 0L
-  lapply(preproc$electrodes, function(e){
-    preproc$data[[as.character(e)]]$data_imported <- FALSE
-  })
-  preproc$set_blocks(blocks)
-  preproc$set_electrodes(electrodes, type = "LFP")
+  
+  existing <- preproc$electrodes
+  existing <- existing[!existing %in% electrodes]
+  preproc$data$electrodes <- existing
+  preproc$data$`@remove`(as.character(electrodes))
+  
+  if(!setequal(preproc$blocks, blocks)) {
+    lapply(existing, function(e){
+      preproc$data[[as.character(e)]]$data_imported <- FALSE
+    })
+    preproc$set_blocks(blocks)
+  }
+  preproc$set_electrodes(electrodes, type = "LFP", add = TRUE)
   preproc$set_sample_rates(sample_rate, type = "LFP")
   preproc$save()
 }
@@ -167,11 +175,6 @@ build_pipeline(make_file = "make-import_lfp_native.R")
 
 Once the pipeline script `make-import_lfp_native.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
 
-```{r execute}
-Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
-raveio::pipeline_run(type = "vanilla")
-raveio::pipeline_progress(method = 'details')
-```
 
 ```{r visualize, echo=FALSE}
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))

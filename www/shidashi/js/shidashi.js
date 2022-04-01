@@ -109,6 +109,7 @@ const default_scroll_opt = {
 class Shidashi {
 
   constructor (Shiny){
+    this._keep_alive = true;
     this._active_module = undefined;
     this._shiny_inactive = false;
     this._shiny_callstacks = [];
@@ -660,7 +661,6 @@ class Shidashi {
     if(!$el.length || !$els.length){ return; }
 
     const el_ = $el[0];
-    let resolved = false;
 
     const els = $els.toArray();
     let item;
@@ -917,7 +917,7 @@ class Shidashi {
         }
       });
 
-    $(".shidashi-button").click(function(evt){
+    $(".shidashi-button").click(function(_){
       let el = this;
       let action = el.getAttribute('shidashi-action');
       if(typeof action === "string"){
@@ -1117,6 +1117,16 @@ class Shidashi {
     this.shinyHandler("reset_output", (params) => {
       this.shinyResetOutput(params.outputId, params.message || "");
     });
+
+    // keep alive
+    const keep_alive = () => {
+      if( this._keep_alive ) {
+        this._shiny.setInputValue(".__shidashi_keep_alive_signal__.", Date());
+      }
+      // send signal to R session every other 25 seconds
+      setTimeout(keep_alive, 25000);
+    };
+    keep_alive();
 
   }
 }

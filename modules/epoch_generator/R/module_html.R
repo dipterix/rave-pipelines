@@ -62,7 +62,7 @@ module_html <- function(){
 
 
             ravedash::input_card(
-              title = "Transform & generate epochs",
+              title = "Transform & threshold",
               class_body = "padding-10",
               shiny::fluidRow(
                 shiny::column(
@@ -192,8 +192,14 @@ module_html <- function(){
                   shiny::div(class = "padding-top-5"),
                   shiny::actionButton(
                     inputId = ns("undo_changes"),
-                    "Unstage & refresh",
+                    "Unstage selected",
                     icon = ravedash::shiny_icons$arrow_left,
+                    width = "100%"
+                  ),
+                  shiny::div(class = "padding-top-5"),
+                  shiny::actionButton(
+                    inputId = ns("undo_all"),
+                    "Unstage all",
                     width = "100%"
                   ),
                   shiny::hr(),
