@@ -201,8 +201,8 @@ kernel_table:
   - 19.0
   - 20.0
   - 20.0
-pre_downsample: 2.0
-precision: float
+pre_downsample: 1.0
+precision: double
 project_name: test2
 subject_code: YAB
 target_sample_rate: 100.0

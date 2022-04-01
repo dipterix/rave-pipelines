@@ -1,0 +1,3 @@
+epoch_generator:
+  script: make-main.R
+  store: shared

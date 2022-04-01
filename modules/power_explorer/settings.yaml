@@ -1,4 +1,4 @@
-analysis_electrodes: '14'
+analysis_electrodes: '14 '
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
@@ -42,14 +42,14 @@ condition_groups:
     - AlastVknown
     - drive_a
 electrode_category_selector: Electrode
-epoch_choice: ''
+epoch_choice: default
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
 loaded_electrodes: 14-25
 project_name: test2
-reference_name: ''
+reference_name: noref
 subject_code: YAB
 trial_ends: 2
 trial_starts: -1

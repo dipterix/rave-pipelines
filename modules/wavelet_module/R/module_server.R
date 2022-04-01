@@ -95,6 +95,7 @@ module_server <- function(input, output, session, ...){
               ),
               footer = shiny::tagList(
                 shiny::modalButton("Cancel"),
+                shiny::actionButton(ns("wavelet_confirm_btn2"), "Confirm and run in background"),
                 dipsaus::actionButtonStyled(ns("wavelet_confirm_btn"), "Confirm")
               )
             ))
@@ -118,58 +119,68 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
+  run_wavelet <- function(async = FALSE) {
+    dipsaus::shiny_alert2(
+      title = "Running Wavelet in progress",
+      text = ravedash::be_patient_text(),
+      icon = 'info',
+      auto_close = FALSE,
+      buttons = FALSE
+    )
+
+    res <- raveio::pipeline_run(
+      pipe_dir = pipeline_path,
+      names = "wavelet_params",
+      scheduler = "none",
+      type = "smart",
+      callr_function = NULL,
+      async = async,
+      check_interval = 1,
+      progress_title = "Running wavelet in the background"
+    )
+
+    res$promise$then(
+      onFulfilled = function(...){
+
+        dipsaus::close_alert2()
+        shiny::removeModal()
+        dipsaus::shiny_alert2(
+          title = "Done!",
+          text = paste(ravedash::finished_text(), " \nPlease proceed to the next module"),
+          icon = 'success',
+          auto_close = TRUE,
+          buttons = list("OK" = TRUE)
+        )
+
+      },
+      onRejected = function(e){
+
+        dipsaus::close_alert2()
+        dipsaus::shiny_alert2(
+          title = "Errors",
+          text = paste(c("The following error is found while applying wavelet:",
+                         e$message), collapse = " \n"),
+          icon = 'error',
+          danger_mode = TRUE,
+          auto_close = FALSE,
+          buttons = list("OK" = TRUE)
+        )
+
+      }
+    )
+  }
   shiny::bindEvent(
     ravedash::safe_observe({
-
-      dipsaus::shiny_alert2(
-        title = "Running Wavelet in progress",
-        text = ravedash::be_patient_text(),
-        icon = 'info',
-        auto_close = FALSE,
-        buttons = FALSE
-      )
-
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
-        names = "wavelet_params",
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL,
-        async = FALSE,
-        check_interval = 1
-      )
-
-      res$promise$then(
-        onFulfilled = function(...){
-
-          dipsaus::close_alert2()
-          shiny::removeModal()
-          dipsaus::shiny_alert2(
-            title = "Done!",
-            text = paste(ravedash::finished_text(), " \nPlease proceed to the next module"),
-            icon = 'success',
-            auto_close = TRUE,
-            buttons = list("OK" = TRUE)
-          )
-
-        },
-        onRejected = function(e){
-
-          dipsaus::close_alert2()
-          dipsaus::shiny_alert2(
-            title = "Errors",
-            text = paste(c("The following error is found while applying wavelet:",
-                           e$message), collapse = " \n"),
-            icon = 'error',
-            danger_mode = TRUE,
-            auto_close = FALSE,
-            buttons = list("OK" = TRUE)
-          )
-
-        }
-      )
+      run_wavelet(async = FALSE)
     }),
     input$wavelet_confirm_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      run_wavelet(async = TRUE)
+    }),
+    input$wavelet_confirm_btn2,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 

@@ -20,6 +20,8 @@ Imports:
     filearray,
     dipsaus,
     targets,
+    DT,
+    ravetools,
     yaml,
     raveio,
     future,
@@ -31,9 +33,9 @@ Remotes:
     dipterix/raveutils
 InheritPipelines:
 SubPipelines:
-    _pipelines/import-LFP,
-    _pipelines/notch-filter,
-    _pipelines/morlet-wavelet
+    modules/import_lfp_native,
+    modules/notch_filter,
+    modules/wavelet_module,
     modules/power_explorer
 InteractiveModules:
     modules/import_raw

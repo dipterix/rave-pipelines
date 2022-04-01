@@ -21,3 +21,6 @@ modules:
   wavelet_module:
     label: Wavelet
     order: 3
+  epoch_generator:
+    label: Generate Epoch
+    order: 4

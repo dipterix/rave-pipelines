@@ -1,6 +1,6 @@
 ##' Let RAVE switch to this module pipeline
 ##'
-Sys.setenv("RAVE_PIPELINE" = normalizePath("/Users/dipterix/Dropbox (Personal)/projects/rave-pipelines/modules/power_explorer"))
+Sys.setenv("RAVE_PIPELINE" = normalizePath("/Users/dipterix/Dropbox (Personal)/projects/rave-pipelines/modules/epoch_generator"))
 
 ##' Debug pipeline: assign variables to global environment
 ##' so that you can print them directly
@@ -19,9 +19,8 @@ raveio::pipeline_visualize()
 
 ##' Test run the pipeline in production mode
 ##'
-# raveio::pipeline_run(type = "async")
-dipsaus::make_forked_clusters(3)
-res <- raveio::pipeline_run()
+# raveio::pipeline_run(async = TRUE)
+raveio::pipeline_run()
 
 ##' Check pipeline progress to see status (cached/skipped, built, errored...)
 ##' Must run `raveio::pipeline_run()` first, otherwise error will occur
@@ -36,8 +35,7 @@ raveio::pipeline_vartable()
 ##' Get intermediate variables
 ##'
 raveio::pipeline_hasname("project_name")
-power_list <- raveio::pipeline_read("power_list")
-raveio::pipeline_read("power_dimnames")
+raveio::pipeline_read("project_name")
 
 
 ##' Launch a shiny app to watch the pipeline. Please install extra

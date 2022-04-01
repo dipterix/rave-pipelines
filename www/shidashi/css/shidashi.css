@@ -191,6 +191,38 @@ input:checked + .slider::before {
   scrollbar-width: thin;
 }
 
+.text-align-left {
+  text-align: left;
+}
+
+.text-align-right {
+  text-align: right;
+}
+
+.text-align-center {
+  text-align: center;
+}
+
+.text-align-start {
+  text-align: start;
+}
+
+.text-align-end {
+  text-align: end;
+}
+
+.text-align-revert {
+  text-align: revert;
+}
+
+.text-align-justify {
+  text-align: justify;
+}
+
+.text-align-unset {
+  text-align: unset;
+}
+
 .os-theme-thin-light > .os-scrollbar-corner {
   height: 28px;
   width: 28px;

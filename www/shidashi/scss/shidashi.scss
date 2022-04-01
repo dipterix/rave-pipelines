@@ -79,6 +79,9 @@ $color-error: #dc3545;
 @mixin pointer-events($type, $force: false){
   pointer-events: $type add_force($force);
 }
+@mixin text-align($type, $force: false) {
+  text-align: $type add_force($force);
+}
 @mixin set-size($type, $direction: all, $force: false, $sizes...) {
   $style: as_pixel_size($sizes...) add_force($force);
   @if $direction == all {
@@ -250,6 +253,13 @@ input:checked + .slider::before {
     }
   }
 }
+
+@each $type in left, right, center, start, end, revert, justify, unset {
+  .text-align-#{$type} { 
+    @include text-align($type);
+  }
+}
+
 
 // larger scroll corner so when cards expand, we still have room to resize
 .os-theme-thin-light > .os-scrollbar-corner {
