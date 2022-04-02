@@ -249,6 +249,9 @@ source("common.R", local = TRUE, chdir = TRUE)
                   "reference_noref.csv"), row.names = FALSE, 
                   data.frame(Electrode = subject$electrodes, 
                     Group = "Default", Reference = "noref", Type = "No Reference"))
+                utils::write.csv(file = file.path(subject$meta_path, 
+                  "frequencies.csv"), row.names = FALSE, data.frame(Frequency = kernels$freqs, 
+                  Cycle = kernels$cycles, Method = "Wavelet"))
             }
             return(wavelet_params)
         }), deps = c("notch_filtere_stamp", "subject", "notch_filtered_electrodes", 

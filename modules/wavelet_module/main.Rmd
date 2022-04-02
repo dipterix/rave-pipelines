@@ -318,6 +318,17 @@ raveio::safe_write_csv(
   )
 )
 
+# generate frequencies.csv
+utils::write.csv(
+  file = file.path(subject$meta_path, "frequencies.csv"),
+  row.names = FALSE,
+  data.frame(
+    Frequency = kernels$freqs,
+    Cycle = kernels$cycles,
+    Method = "Wavelet"
+  )
+)
+
 ```
 
 
