@@ -300,6 +300,34 @@ raveio::rave_import(
   skip_validation = TRUE
 )
 
+tryCatch({
+  # Save to electrodes.csv
+  has_fs &lt;- !is.null(raveio::rave_brain(subject))
+  
+  # check if electrodes.csv exists
+  orig &lt;- subject$get_electrode_table(reference_name = &quot;.fake&quot;, simplify = FALSE)
+  
+  # Try to import
+  raveio::import_electrode_table(
+    path = file.path(subject$meta_path, &quot;electrodes.csv&quot;),
+    subject = subject, use_fs = has_fs)
+
+}, error = function(e){
+  ravedash::logger(&quot;Cannot import from existing electrodes.csv, creating a new one&quot;, level = &quot;warning&quot;)
+  tbl &lt;- data.frame(
+    Electrode = subject$electrodes,
+    Coord_x = 0, Coord_y = 0, Coord_z = 0,
+    Label = &quot;NoLabel&quot;, 
+    SignalType = subject$electrode_types
+  )
+  raveio::save_meta2(
+    data = tbl,
+    meta_type = &quot;electrodes&quot;,
+    project_name = subject$project_name,
+    subject_code = subject$subject_code
+  )
+})
+
 module_id &lt;- &quot;import_lfp_native&quot;
 subject$set_default(
   namespace = module_id,
@@ -324,50 +352,8 @@ preprocess_info &lt;- raveio::RAVEPreprocessSettings$new(subject$subject_id, rea
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a <code>make-import_lfp_native.R</code> script with your pipeline markdown file. <code>RAVE</code> will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.</p>
 <p>Once the pipeline script <code>make-import_lfp_native.R</code> is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use <code>r</code> block instead of <code>rave</code>. (This is because the code blocks are not part of pipeline targets.)</p>
-<pre class="r"><code>Sys.setenv(&quot;RAVE_PIPELINE&quot; = normalizePath(&quot;.&quot;))
-raveio::pipeline_run(type = &quot;vanilla&quot;)
-#&gt; ✓ skip target settings_path
-#&gt; • start target settings
-#&gt; • built target settings
-#&gt; ✓ skip target skip_validation
-#&gt; ✓ skip target import_blocks__session_block
-#&gt; ✓ skip target import_channels__electrodes
-#&gt; ✓ skip target import_channels__sample_rate
-#&gt; ✓ skip target import_blocks__format
-#&gt; ✓ skip target import_setup__project_name
-#&gt; ✓ skip target import_channels__electrode_file
-#&gt; ✓ skip target import_setup__subject_code
-#&gt; ✓ skip target force_import
-#&gt; ✓ skip target import_channels__unit
-#&gt; ✓ skip target subject
-#&gt; ✓ skip target validation_result
-#&gt; • start target preprocess_info
-#&gt; • built target preprocess_info
-#&gt; • end pipeline: 19.764 seconds
-#&gt; &lt;Pipeline result container&gt; 
-#&gt; process: native
-#&gt; status: running (0 of 15)
-raveio::pipeline_progress(method = &#39;details&#39;)
-#&gt; # A tibble: 15 × 2
-#&gt;    name                            progress
-#&gt;    &lt;chr&gt;                           &lt;chr&gt;   
-#&gt;  1 settings_path                   skipped 
-#&gt;  2 settings                        built   
-#&gt;  3 skip_validation                 skipped 
-#&gt;  4 import_blocks__session_block    skipped 
-#&gt;  5 import_channels__electrodes     skipped 
-#&gt;  6 import_channels__sample_rate    skipped 
-#&gt;  7 import_blocks__format           skipped 
-#&gt;  8 import_setup__project_name      skipped 
-#&gt;  9 import_channels__electrode_file skipped 
-#&gt; 10 import_setup__subject_code      skipped 
-#&gt; 11 force_import                    skipped 
-#&gt; 12 import_channels__unit           skipped 
-#&gt; 13 subject                         skipped 
-#&gt; 14 validation_result               skipped 
-#&gt; 15 preprocess_info                 built</code></pre>
-<div id="htmlwidget-49db41ddc8c8eb838fac" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-49db41ddc8c8eb838fac">{"x":{"nodes":{"name":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated"],"seconds":[0.001,0.001,0.001,0.001,0,0,0,0,0,19.589,0.001,0,0.001,0.005,2.416],"bytes":[48,86,63,57,58,51,55,58,56,274067,8054,359,48,248489,9748],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5"],"id":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"level":[3,3,3,3,3,3,3,3,3,6,2,1,3,4,5],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","import_blocks__session_block","subject","import_channels__electrodes","import_channels__sample_rate","import_blocks__format","skip_validation","settings","settings","settings","settings","settings","settings","settings","settings","validation_result","subject","import_blocks__session_block","import_channels__electrodes","import_channels__sample_rate","import_blocks__format","import_channels__unit","force_import","import_setup__project_name","import_setup__subject_code","settings","settings_path"],"to":["skip_validation","validation_result","validation_result","validation_result","validation_result","validation_result","validation_result","import_setup__project_name","import_channels__electrode_file","import_setup__subject_code","import_blocks__format","import_channels__electrodes","force_import","import_blocks__session_block","import_channels__sample_rate","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","subject","subject","import_channels__unit","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-f07bdac41d65fbb325c5" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f07bdac41d65fbb325c5">{"x":{"nodes":{"name":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated"],"seconds":[0.001,0,0,0,0,0.007,0,0,0,13.126,0,0,0.001,0.005,3.117],"bytes":[48,86,63,57,58,51,55,58,56,243884,8054,359,48,248489,9748],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5"],"id":["force_import","import_blocks__format","import_blocks__session_block","import_channels__electrode_file","import_channels__electrodes","import_channels__sample_rate","import_channels__unit","import_setup__project_name","import_setup__subject_code","preprocess_info","settings","settings_path","skip_validation","subject","validation_result"],"level":[3,3,3,3,3,3,3,3,3,6,2,1,3,4,5],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","import_blocks__session_block","subject","import_channels__electrodes","import_channels__sample_rate","import_blocks__format","skip_validation","settings","settings","settings","settings","settings","settings","settings","settings","validation_result","subject","import_blocks__session_block","import_channels__electrodes","import_channels__sample_rate","import_blocks__format","import_channels__unit","force_import","import_setup__project_name","import_setup__subject_code","settings","settings_path"],"to":["skip_validation","validation_result","validation_result","validation_result","validation_result","validation_result","validation_result","import_setup__project_name","import_channels__electrode_file","import_setup__subject_code","import_blocks__format","import_channels__electrodes","force_import","import_blocks__session_block","import_channels__sample_rate","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","preprocess_info","subject","subject","import_channels__unit","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

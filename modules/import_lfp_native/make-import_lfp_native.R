@@ -146,6 +146,21 @@ source("common.R", local = TRUE, chdir = TRUE)
                   electrodes = electrodes, sample_rate = sample_rate, 
                   format = format, conversion = physical_unit, 
                   data_type = "LFP", add = FALSE, skip_validation = TRUE)
+                tryCatch({
+                  has_fs <- !is.null(raveio::rave_brain(subject))
+                  orig <- subject$get_electrode_table(reference_name = ".fake", 
+                    simplify = FALSE)
+                  raveio::import_electrode_table(path = file.path(subject$meta_path, 
+                    "electrodes.csv"), subject = subject, use_fs = has_fs)
+                }, error = function(e) {
+                  ravedash::logger("Cannot import from existing electrodes.csv, creating a new one", 
+                    level = "warning")
+                  tbl <- data.frame(Electrode = subject$electrodes, 
+                    Coord_x = 0, Coord_y = 0, Coord_z = 0, Label = "NoLabel", 
+                    SignalType = subject$electrode_types)
+                  raveio::save_meta2(data = tbl, meta_type = "electrodes", 
+                    project_name = subject$project_name, subject_code = subject$subject_code)
+                })
                 module_id <- "import_lfp_native"
                 subject$set_default(namespace = module_id, key = "import_parameters", 
                   value = list(project_name = subject$project_name, 
