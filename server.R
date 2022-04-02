@@ -79,6 +79,7 @@ server <- function(input, output, session){
   }) |>
     shiny::bindEvent(session$clientData$url_search, ignoreNULL = TRUE)
 
+  session$allowReconnect("force")
 
 
 }
