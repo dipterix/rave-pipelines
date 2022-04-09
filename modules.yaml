@@ -24,3 +24,6 @@ modules:
   epoch_generator:
     label: Generate Epoch
     order: 4
+  reference_module:
+    label: Reference Channels
+    order: 5
