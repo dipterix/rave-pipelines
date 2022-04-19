@@ -62,7 +62,8 @@ loader_server <- function(input, output, session, ...){
       settings <- component_container$collect_settings(
         ids = c(
           "loader_project_name",
-          "loader_subject_code"
+          "loader_subject_code",
+          "loader_reference_name"
         )
       )
       # TODO: add your own input values to the settings file
@@ -72,7 +73,7 @@ loader_server <- function(input, output, session, ...){
 
       res <- raveio::pipeline_run(
         pipe_dir = pipeline_path,
-        names = "imported_electrodes",
+        names = c("reference_table_initial", "voltage_data"),
       )
 
       res$promise$then(

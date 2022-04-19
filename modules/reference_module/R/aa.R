@@ -7,6 +7,11 @@ pipeline_settings_file <- "settings.yaml"
 module_id <- "reference_module"
 debug <- TRUE
 
+reference_choices <- c(
+  "No Reference", "Common Average Reference",
+  "White-matter Reference", "Bipolar Reference"
+)
+
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is

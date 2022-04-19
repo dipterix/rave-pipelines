@@ -1,14 +1,15 @@
-baseline:
-- - -1
-  - -0.2
-baseline_method: decibel
-electrodes: '14'
-epoch: default
-intervals:
-- - -1.0
-  - 2.0
-project_name: demo
-reference: default
-save_pipeline: yes
-subject_code: DemoSubject
-type: power
+changes:
+- group_name: G1
+  electrodes: 15-16
+  reference_type: Common Average Reference
+  reference_signal: ref_15-24
+electrode_group:
+  '1':
+    name: G1
+    electrodes: 15-16
+  '2':
+    name: G2
+    electrodes: 17-24
+project_name: test3
+reference_name: _unsaved
+subject_code: YAB

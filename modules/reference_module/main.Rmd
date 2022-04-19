@@ -1,5 +1,5 @@
 ---
-title: "RAVE Pipeline Markdown Template"
+title: "RAVE Pipeline - Reference"
 output:
   html_document: default
   pdf_document: default
@@ -10,214 +10,245 @@ output:
 # Please do not remove me
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
+
+# Used to develop modules
+if(FALSE){
+  list2env(as.list(raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", "reference_module", "settings.yaml"))), envir = environment())
+}
 ```
 
-## Introduction
 
-A RAVE pipeline markdown is an interactive notebook that can keep your notes, code blocks, and corresponding results together, generating reports in various formats such as `PDF`, `html`, `Word`, `PowerPoint`. 
 
-The note parts are simply `markdown`s - the same as `jupyter notebook`, or github documentations. The code blocks support `R`, `python`, `c++`. When you hit the `Knit` button in this code editor panel, the r-markdown file will be compiled, generating reproducible documentation.
-
-With carefully designed structures, this r-markdown file will automatically generate `RAVE` pipeline scripts during the compilation. The pipeline script can be used by `RAVE` to convert your pipeline into interactive dashboard application. (This feature is currently under development)
-
-## "RAVE" Pipeline Code Block
-
-A `RAVE` pipeline markdown code block starts with ` ```{rave ... `. The block label following `rave` informative description of the target. After the target, the following RAVE-specific parameters configures how the block should be treated:
-
-* `language`: specifies the programming language used; choices are: `R`, `python`
-* `export`: variable name to be exported that will be available to the rest chunks
-* `depends`: indicates current block depends on variables generated from other blocks; this helps `RAVE` to build non-interactive pipeline scripts internally. For blocks written in `R`, the dependence can be automatically determined.
-
-Other parameters are available at [this `rmarkdown` book](https://bookdown.org/yihui/rmarkdown/)
-
-## An Example
-
-In the rest of the documentation, let's import the subject power data, baseline, and plot the collapsed mean as image.
-
-#### Step 1: Create `RAVE` subject's instances
-
-Noting that all the items in the `settings.yaml` are available as variables.
-
-```{rave load_subject, language = "R", export = "subject"}
+```{rave load_subject, language = "R", export = "subject", cue = "always"}
 library(raveio)
 subject <- RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
 )
 print(subject)
-
-# List subject details
-subject$epoch_names
-subject$reference_names
-subject$blocks
-subject$electrodes
-
-# Check if notch & wavelet has been applied on all electrodes
-all(subject$notch_filtered)
-all(subject$has_wavelet)
 ```
 
-With `export="subject"`, the subject variable will be registered for the following chunks to use. Be aware that all other variables created in this block will not be exposed.
+Loads preset reference table, and generate a reference file called `_unsaved`. The reference table will be saved to this file before exported.
 
-#### Step 2: Load epoch and reference information
-
-```{rave load_epoch, language = "R", export = "epoch_instance"}
-epoch_instance <- raveio::RAVEEpoch$new(subject, epoch)
-head(epoch_instance$update_table())
-```
-
-```{rave load_reference, language = "R", export = "reference_table"}
-reference_table <- subject$meta_data(
-  meta_type = "reference", reference)
-head(reference_table)
-```
-
-#### Step 3: Initialize and load power data
-
-Initialize the electrode instances and register the epoch, reference information
-
-```{rave load_electrodes, language = "R", export = "electrode_instances"}
-requested_electrodes <- dipsaus::parse_svec(electrodes)
-requested_electrodes <- requested_electrodes[
-  requested_electrodes %in% subject$electrodes]
-electrode_instances <- lapply(requested_electrodes, function(ei){
-  e <- raveio::new_electrode(subject, number = ei, signal_type = "LFP")
+```{rave load_presets, language = "R", export = "reference_table_initial", cue = "always"}
+if(isTRUE(reference_name %in% subject$reference_names)) {
+  tryCatch({
+    reference_table_initial <- subject$get_reference(reference_name, simplify = FALSE)
+    
+    reference_table_initial <- reference_table_initial[,c(
+      "Electrode", "Group", "Reference", "Type"
+    )]
+    
+  }, error = function(e){
+    
+    # log
+    ravedash::logger("Unable to load reference [", reference_name, "]", level = "error")
+    ravedash::logger_error_condition(e)
+    stop("Unable to load reference [", reference_name, "]. Please check your reference file or simply start with a blank reference profile.")
+  })
   
-  # set epoch
-  e$set_epoch(epoch_instance)
-
-  # set epoch range (-1 to 2 seconds relative to onset)
-  e$trial_intervals <- intervals
-
-  # set reference
-  ref_name <- subset(reference_table, Electrode == ei)[["Reference"]]
-  e$set_reference(ref_name)
-  e
-})
-names(electrode_instances) <- requested_electrodes
-```
-
-
-Start to load power. Here also create cache to the `RAVE` cache directory.
-
-```{rave load_and_cache_power, language = "R", export = "power"}
-power_list <- lapply(electrode_instances, function(e){
-  e$load_data("power")
-})
-target <- normalizePath(file.path("shared", "cache", "power"),
-                        mustWork = FALSE)
-  
-if(dir.exists(target)){
-  unlink(target, recursive = TRUE, force = TRUE)
 } else {
-  raveio::dir_create2(dirname(target))
-}
-power <- filearray::filearray_bind(
-  .list = power_list, symlink = TRUE, 
-  filebase = target)
-
-if(length(power_list)){
-  dnames <- dimnames(power_list[[1]])
-  dnames[[4]] <- as.integer(names(electrode_instances))
-  dimnames(power) <- dnames
-} else {
-  stop("No power data not loaded")
-}
-```
-
-#### Step 4: Baseline correction
-
-```{rave calculate_baseline, language = "R", export = "baseline_data"}
-dim <- dim(power)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-target <- file.path(electrode_instances[[1]]$cache_root, "..")
-raveio::dir_create2(target)
-target <- normalizePath(target, mustWork = TRUE)
-target <- file.path(target, "_baseline")
-if(dir.exists(target)){
-  output <- filearray::filearray_load(target, "readwrite")
-  if(!all(dim(output) == dim(power))){
-    output$delete()
-  }
-  if(!identical(dimnames(output), dimnames(power))){
-    dimnames(output) <- dimnames(power)
-  }
-}
-if(!dir.exists(target)){
-  output <- filearray::filearray_create(
-    filebase = target,
-    dimension = dim(power),
-    type = "float",
-    partition_size = 1L
+  reference_table_initial <- data.frame(
+    Electrode = subject$electrodes,
+    Group = "Default",
+    Reference = "noref",
+    Type = "No Reference"
   )
 }
+# save to subject's meta folder with reference name "_unsaved"
+unsaved_meta <- file.path(subject$meta_path, "reference__unsaved.csv")
+if(!file.exists(unsaved_meta)) {
+  utils::write.csv(reference_table_initial, unsaved_meta)
+}
 
-bl_range <- unlist(baseline)
-dnames <- dimnames(power)
-baseline_indexpoints <- which(
-  dnames$Time >= bl_range[[1]] & dnames$Time <= bl_range[[2]])
+```
 
-filearray::fmap(power, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  bl <- dipsaus::baseline_array(
-    x, along_dim = 2L,
-    baseline_indexpoints = baseline_indexpoints,
-    method = baseline_method
+```{rave load_voltage_data, language = "R", export = "voltage_data", cue = "always"}
+
+electrodes <- subject$electrodes
+blocks <- subject$blocks
+
+cache_root <- file.path(subject$cache_path, "rave2", "voltage")
+raveio::dir_create2(cache_root)
+
+notch_params <- subject$preprocess_settings$notch_params
+
+first_e <- electrodes[[1]]
+first_inst <- raveio::new_electrode(subject = subject, 
+                                number = first_e)
+
+voltage_signals <- lapply(blocks, function(block) {
+  
+  sample_signal <- raveio::load_h5(first_inst$voltage_file, name = sprintf("/raw/voltage/%s", block), ram = FALSE)
+  signal_length <- length(sample_signal)
+  
+  block_path <- file.path(cache_root, block)
+  exists <- TRUE
+  
+  arr <- tryCatch({
+    filearray::filearray_checkload(
+      filebase = block_path,
+      mode = "readwrite", 
+      symlink_ok = FALSE, 
+      subject_id = subject$subject_id,
+      blocks = blocks,
+      electrodes = electrodes,
+      notch_params = notch_params,
+      sample_rates = subject$raw_sample_rates,
+      signal_length = as.integer(signal_length),
+      staged = TRUE
+    )
+  }, error = function(e){
+    unlink(block_path, recursive = TRUE)
+    arr <- filearray::filearray_create(
+      filebase = block_path, 
+      dimension = c(signal_length, length(electrodes)), 
+      type = "double", partition_size = 1L
+    )
+    arr$.header$subject_id <- subject$subject_id
+    arr$.header$blocks <- blocks
+    arr$.header$electrodes <- electrodes
+    arr$.header$notch_params <- notch_params
+    arr$.header$sample_rates <- subject$raw_sample_rates
+    arr$.header$signal_length <- as.integer(signal_length)
+    arr$.save_header()
+    exists <<- FALSE
+    arr
+  })
+  
+  list(
+    exists = exists,
+    array = arr
   )
-  bl
-}, .y = output, .input_size = plen)
+  
+})
 
-baseline_data <- output
+names(voltage_signals) <- blocks
+
+exists <- vapply(voltage_signals, '[[', FALSE, "exists")
+missing_blocks <- blocks[!exists]
+
+subject_id <- subject$subject_id
+
+if(length(missing_blocks)) {
+  
+  dipsaus::lapply_async2(seq_along(electrodes), function(ii){
+    e <- electrodes[[ii]]
+    inst <- raveio::new_electrode(subject = subject_id, number = e)
+    voltage_file <- inst$voltage_file
+    for(block in missing_blocks) {
+      s <- raveio::load_h5(voltage_file, sprintf("/raw/voltage/%s", block), ram = TRUE)
+      voltage_signals[[block]]$array[, ii] <- s
+    }
+  }, plan = FALSE, callback = function(ii){
+    sprintf("Creating cache|Electrode %s", electrodes[[ii]])
+  })
+  
+}
+
+voltage_data <- list(
+  data = structure(lapply(voltage_signals, function(item){
+    if(!item$exists) {
+      item$array$set_header("staged", TRUE)
+    }
+    item$array$.mode <- "readonly"
+    item$array
+  }), names = blocks),
+  electrodes = electrodes
+)
+
 ```
 
 
-#### Step 5: Collapse baseline data
+```{rave validate_electrode_groups, language = "R", export = "reference_group"}
 
-```{rave collapse_by_trial_and_electrodes, language = "R", export = "collapsed"}
+ngroups <- length(electrode_group)
 
-dim <- dim(baseline_data)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-collase_by_trial <- filearray::fmap2(baseline_data, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  dipsaus::collapse(x, keep = c(2,1), average = TRUE)
-}, .input_size = plen, .simplify = TRUE)
+group_names <- NULL
+electrodes <- NULL
 
-collapsed <- list(
-  collase_by_trial = collase_by_trial,
-  collase_by_trial_electrodes = dipsaus::collapse(
-    collase_by_trial, keep = c(1, 2), average = TRUE)
-)
+reference_group <- reference_table_initial
+reference_group$GroupID <- 0
+
+id <- 1
+for(x in electrode_group) {
+  e <- dipsaus::parse_svec(x$electrodes)
+  if(length(e)){
+    if(length(x$name) != 1 || !is.character(x$name)) {
+      stop("Each electrode group must have a unique name")
+    }
+    
+    x$name <- trimws(x$name)
+    
+    if(x$name %in% group_names) {
+      stop("Electrode groups must have unique names (violation: ", x$name, ")")
+    }
+    group_names <- c(group_names, x$name)
+    
+    emissing <- e[!e %in% subject$electrodes]
+    if(length(emissing)) {
+      stop("Electrodes ", dipsaus::deparse_svec(emissing), " are not declared/imported. Please remove from group [", x$name, "]")
+    }
+    
+    edup <- e[e %in% electrodes]
+    if(length(edup)) {
+      stop("Electrodes ", dipsaus::deparse_svec(edup), " have been included in multiple groups. Please fix this issue by ensuring each of these electrodes only belongs to one group at a time.")
+    }
+    electrodes <- c(electrodes, e)
+    
+    sel <- reference_group$Electrode %in% e
+    reference_group$Group[sel] <- x$name
+    reference_group$GroupID[sel] <- id
+    
+  }
+  id <- id + 1
+}
+
+head(reference_group)
+
+
 ```
 
-```{r}
-brain <- threeBrain::freesurfer_brain2(
-  fs_subject_folder = subject$freesurfer_path, subject_name = subject$subject_code
+```{rave validate_and_apply_changes, language = "R", export = "reference_updated", cue = "always"}
+reference_choices <- c(
+  "No Reference", "Common Average Reference",
+  "White-matter Reference", "Bipolar Reference"
 )
-brain$plot()
-```
 
-#### Step 6: Visualize
+for(item in changes) {
+  
+  evec <- dipsaus::parse_svec(item$electrodes)
+  sel <- reference_group$Electrode %in% evec
+    
+  
+  if(!any(sel)) { next }
+  if(length(item$reference_type) != 1) {
+    stop("Reference type is missing for electrode ", dipsaus::deparse_svec(evec))
+  }
+  
+  reference_group$Type[sel] <- item$reference_type
+  if(item$reference_type == reference_choices[[1]]) {
+    reference_group$Reference[sel] <- "noref"
+  } else if(
+    item$reference_type %in% reference_choices[c(2,3)]
+  ) {
+    if(length(item$reference_signal) != 1) {
+      stop("Reference signal must be the same within the group if the group reference type is common average or white-matter reference")
+    }
+    reference_group$Reference[sel] <- item$reference_signal
+  } else if(item$reference_type == reference_choices[[4]]) {
+    
+    if(length(item$reference_signal) != sum(sel)) {
+      stop("For Bipolar reference, `reference_signal` must have the same size as the number of electrodes")
+    }
+    reference_group$Reference[sel] <- item$reference_signal
+  }
+  
+}
 
-```{rave plot_heatmap_collase_by_trial_electrodes, export = "collase_by_trial_timestamp", cue="always"}
-
-# Timestamp of when the plot is created
-collase_by_trial_timestamp <- Sys.time()
-
-# visualize
-dnames <- power$dimnames()
-
-image(
-  collapsed$collase_by_trial_electrodes,
-  y = dnames$Frequency,
-  ylab = "Frequency (Hz)",
-  x = dnames$Time, 
-  xlab = "Time (s)",
-  main = "Mean power across trial and electrodes"
-)
+reference_updated <- reference_group
+unsaved_meta <- file.path(subject$meta_path, "reference__unsaved.csv")
+utils::write.csv(reference_updated, unsaved_meta)
 
 ```
 
@@ -236,16 +267,4 @@ Once the pipeline script `make-reference_module.R` is built, you can visualize a
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
 raveio::pipeline_visualize()
 ```
-
-
-```{r execute}
-Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
-raveio::pipeline_run(type = "vanilla")
-raveio::pipeline_progress(method = 'details')
-```
-
-
-
-
-
 

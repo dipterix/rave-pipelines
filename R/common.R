@@ -39,11 +39,12 @@ body_class <- function(){
     #--- Default behavior when collapsing sidebar
     # "sidebar-mini", "sidebar-mini-md", "sidebar-mini-xs",
 
-    #--- Hide the navbar-nav-iframe
-    "navbar-iframe-hidden",
-
     #--- Start as dark-mode ---
-    "dark-mode"
+    # "dark-mode",
+
+    #--- Hide the navbar-nav-iframe
+    "navbar-iframe-hidden"
+
 
     #--- Make scrollbar thinner ---
     # "fancy-scroll-y"
@@ -55,7 +56,7 @@ nav_class <- function(){
     "main-header",
     "navbar",
     "navbar-expand",
-    "navbar-dark",
+    # "navbar-dark",
     "navbar-primary",
     "no-padding"
   )

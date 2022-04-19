@@ -839,6 +839,18 @@ class Shidashi {
       this.triggerResize(50);
     });
 
+    this.$body.on("show.bs.tab", (evt) => {
+      if(evt.type !== "show") { return; }
+      const el = evt.target;
+      const pa = el.parentNode.closest('.card-tabs [role="tablist"]');
+
+      if(!pa || !pa.id) { return; }
+      const tabname = el.innerText;
+
+      this.ensureShiny(() => {
+        this._shiny.setInputValue(pa.id, tabname);
+      });
+    })
     // --------------- Notification system -----------
     this.$body.on('show.bs.toast', (evt)=>{
       this.ensureShiny(() => {
