@@ -1,8 +1,16 @@
 changes:
-- group_name: G1
-  electrodes: 15-16
-  reference_type: Common Average Reference
-  reference_signal: ref_15-24
+- group_name: G2
+  electrodes: 17-24
+  reference_type: Bipolar Reference
+  reference_signal:
+  - ref_18
+  - ref_19
+  - ref_20
+  - ref_21
+  - ref_22
+  - ref_23
+  - ref_24
+  - ''
 electrode_group:
   '1':
     name: G1

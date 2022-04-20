@@ -59,6 +59,13 @@ source("common.R", local = TRUE, chdir = TRUE)
             }
             return(reference_table_initial)
         }), deps = c("reference_name", "subject"), cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), load_3D_brain = targets::tar_target_raw(name = "brain", 
+        command = quote({
+            {
+                brain <- raveio::rave_brain(subject = subject)
+            }
+            return(brain)
+        }), deps = "subject", cue = targets::tar_cue("always"), 
         pattern = NULL, iteration = "list"), load_voltage_data = targets::tar_target_raw(name = "voltage_data", 
         command = quote({
             {
@@ -71,7 +78,10 @@ source("common.R", local = TRUE, chdir = TRUE)
                 first_e <- electrodes[[1]]
                 first_inst <- raveio::new_electrode(subject = subject, 
                   number = first_e)
+                progress <- dipsaus::progress2("Check cache data", 
+                  max = length(blocks), shiny_auto_close = TRUE)
                 voltage_signals <- lapply(blocks, function(block) {
+                  progress$inc(sprintf("%s", block))
                   sample_signal <- raveio::load_h5(first_inst$voltage_file, 
                     name = sprintf("/raw/voltage/%s", block), 
                     ram = FALSE)

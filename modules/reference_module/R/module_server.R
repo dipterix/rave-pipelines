@@ -433,8 +433,58 @@ module_server <- function(input, output, session, ...){
             )
           )
         )
+      },
+      `Preview & Export` = {
+
+        preview_save_name <- shiny::isolate(input$preview_save_name)
+        if(!length(preview_save_name) || !nchar(trimws(preview_save_name))) {
+          preview_save_name <- "default"
+        }
+
+        shiny::fluidRow(
+          shiny::column(
+            width = 4L,
+            shiny::textInput(ns("preview_save_name"), "Reference name",
+                             value = preview_save_name)
+          ),
+          shiny::column(
+            width = 8L,
+            shiny::textOutput(ns("preview_save_path"),
+                              container = function(...){
+                                shiny::div(style = "margin-bottom: 0.5rem;", ...)
+                              }),
+            dipsaus::actionButtonStyled(ns("preview_save_btn"), "Generate & save")
+          )
+        )
       }
     )
+  })
+
+  output$preview_save_path <- shiny::renderText({
+    data_loaded <- ravedash::watch_data_loaded()
+    if(!data_loaded) { return() }
+    name <- input$preview_save_name
+    name <- trimws(name)
+    if(!length(name) || !nchar(name)) {
+      dipsaus::updateActionButtonStyled(
+        session = session, inputId = "preview_save_btn", disabled = TRUE
+      )
+      return("Please enter a valid reference name")
+    }
+    if(!grepl("^[a-zA-Z0-9_]+$", name)) {
+      dipsaus::updateActionButtonStyled(
+        session = session, inputId = "preview_save_btn", disabled = TRUE
+      )
+      return("A valid reference name can only contain letters (a-zA-Z), digits (0-9), or underscore (_)")
+    }
+    dipsaus::updateActionButtonStyled(
+      session = session, inputId = "preview_save_btn", disabled = FALSE
+    )
+    repo <- component_container$data$repository
+    subject <- repo$subject
+    exists <- name %in% subject$reference_names
+    return(sprintf("Will be saved to [subject path]/meta/reference_%s.csv (mode: %s)",
+                   name, ifelse(exists, "overwrite", "create")))
   })
 
   shiny::bindEvent(
@@ -515,6 +565,7 @@ module_server <- function(input, output, session, ...){
     ginfo <- current_group()
     theme <- ravedash::current_shiny_theme()
     block <- input$plot_block
+    existing_refs <- get_reference_options()
 
     if(!length(ginsp_gap) || is.na(ginsp_gap)){ ginsp_gap <- 0.999 }
 
@@ -527,15 +578,6 @@ module_server <- function(input, output, session, ...){
       ), message = "Waiting for initialization"),
       shiny::need(is.list(ginfo), message = "Please choose a valid group")
     )
-
-    ref_signal <- unique(ginfo$data$Reference)
-    ref_signal <- ref_signal[ref_signal %in% get_reference_options()]
-
-    # list(
-    #   name = gname,
-    #   data = sub,
-    #   electrode_text = dipsaus::deparse_svec(sub$Electrode)
-    # )
 
     electrodes <- ginfo$data$Electrode
     electrodes <- electrodes[!electrodes %in% ginsp_hide]
@@ -558,44 +600,62 @@ module_server <- function(input, output, session, ...){
 
     signals <- vdata$data[,vdata$electrodes %in% electrodes, drop = FALSE]
 
-    if(length(ref_signal)) {
-      ref_signal <- ref_signal[[1]]
-      ref_data <- get_reference_data(ref_signal)
-      if(is.null(ref_data)) {
-        ref_signal <- "noref"
-        signals <- cbind(NA, signals)
-      } else {
-        ref_data <- ref_data$voltage[[block]]
-      }
-      signals <- cbind(ref_data, signals)
-    } else {
-      ref_signal <- "noref"
-      signals <- cbind(NA, signals)
-    }
+    is_bipolar <- isTRUE(ginfo$data$Type[[1]] %in% reference_choices[4])
 
-    if(ginsp_type == "Show original signals only") {
-      rave::plot_signals(
-        signals = t(signals),
-        sample_rate = vdata$sample_rate,
-        space = ginsp_gap,
-        start_time = ginsp_start,
-        duration = ginsp_duration,
-        compress = TRUE,
-        channel_names = c("REF", electrodes),
-        ylab = "Electrode Channels",
-        new_plot = TRUE,
-        space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-        main = sprintf("Reference: %s", ref_signal),
-        col = c("red", rep('gray60', length(electrodes)))
-      )
-    } else {
+    if( is_bipolar ) {
 
-      refed_signals <- signals
-      sel <- (ginfo$data$Reference == ref_signal)[ginfo$data$Electrode %in% electrodes]
-      if(ref_signal != "noref" && any(sel)) {
-        sel <- c(FALSE, sel)
-        refed_signals[, sel] <- refed_signals[, sel] - refed_signals[,1]
+      ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
+      invalids <- ref_names == ""
+
+      get_cols <- function(col, invalid = "red"){
+        re <- rep(col, length(electrodes))
+        re[invalids] <- invalid
+        re
       }
+
+      if(ginsp_type == "Show original signals only") {
+        rave::plot_signals(
+          signals = t(signals),
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          start_time = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = electrodes,
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+          main = "Reference: Bi-polar",
+          col = get_cols('gray60')
+        )
+        return()
+      }
+
+
+      refed_signals <- sapply(seq_along(ref_names), function(ii){
+        name <- ref_names[[ii]]
+        name2 <- dipsaus::parse_svec(gsub("^ref_", "", name))
+        if(name %in% c("", "noref") || !length(name2)) {
+          return(signals[,ii])
+        }
+
+        if(length(name2) == 1 && isTRUE(name2 %in% vdata$electrodes)) {
+          ref_data <- vdata$data[, vdata$electrodes %in% name2, drop = FALSE]
+          return(signals[,ii] - ref_data)
+        }
+
+        if(name %in% existing_refs) {
+          ref_data <- get_reference_data(name)
+          if(is.null(ref_data)) {
+            ref_data <- 0
+          } else {
+            ref_data <- ref_data$voltage[[block]]
+          }
+          return(signals[,ii] - ref_data)
+        }
+        return(signals[,ii])
+      })
+
 
       params <- rave::plot_signals(
         signals = t(refed_signals),
@@ -604,12 +664,12 @@ module_server <- function(input, output, session, ...){
         start_time = ginsp_start,
         duration = ginsp_duration,
         compress = TRUE,
-        channel_names = c("REF", electrodes),
+        channel_names = electrodes,
         ylab = "Electrode Channels",
         new_plot = TRUE,
         space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-        main = sprintf("Reference: %s", ref_signal),
-        col = c("red", rep('dodgerblue3', length(electrodes)))
+        main = "Reference: Bi-polar",
+        col = get_cols('dodgerblue3')
       )
 
 
@@ -621,15 +681,100 @@ module_server <- function(input, output, session, ...){
           start_time = ginsp_start,
           duration = ginsp_duration,
           compress = params$compress,
-          channel_names = c("REF", electrodes),
+          channel_names = electrodes,
           new_plot = FALSE,
           space_mode = "absolute",
-          col = c("red", rep('gray60', length(electrodes)))
+          col = get_cols('gray60', invalid = NA)
         )
+      }
+      return()
+
+    } else {
+
+      ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
+      invalids <- ref_names == ""
+      get_cols <- function(col, invalid = "red"){
+        re <- rep(col, length(electrodes))
+        re[invalids] <- invalid
+        c("orange", re)
+      }
+
+      ref_signal <- unique(ginfo$data$Reference)
+      ref_signal <- ref_signal[ref_signal %in% existing_refs]
+      if(length(ref_signal)) {
+        ref_signal <- ref_signal[[1]]
+        ref_data <- get_reference_data(ref_signal)
+        if(is.null(ref_data)) {
+          ref_signal <- "noref"
+          signals <- cbind(NA, signals)
+        } else {
+          ref_data <- ref_data$voltage[[block]]
+        }
+        signals <- cbind(ref_data, signals)
+      } else {
+        ref_signal <- "noref"
+        signals <- cbind(NA, signals)
+      }
+      refed_signals <- signals
+      sel <- (ginfo$data$Reference == ref_signal)[ginfo$data$Electrode %in% electrodes]
+      if(ref_signal != "noref" && any(sel)) {
+        sel <- c(FALSE, sel)
+        refed_signals[, sel] <- refed_signals[, sel] - refed_signals[,1]
+      }
+
+      if(ginsp_type == "Show original signals only") {
+        rave::plot_signals(
+          signals = t(signals),
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          start_time = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = c("REF", electrodes),
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+          main = sprintf("Reference: %s", ref_signal),
+          col = get_cols('gray60')
+        )
+        return()
+      } else {
+        params <- rave::plot_signals(
+          signals = t(refed_signals),
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          start_time = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = c("REF", electrodes),
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+          main = sprintf("Reference: %s", ref_signal),
+          col = get_cols('dodgerblue3')
+        )
+
+
+        if(ginsp_type == "Show all") {
+          rave::plot_signals(
+            signals = t(signals),
+            sample_rate = vdata$sample_rate,
+            space = params$space,
+            start_time = ginsp_start,
+            duration = ginsp_duration,
+            compress = params$compress,
+            channel_names = c("REF", electrodes),
+            new_plot = FALSE,
+            space_mode = "absolute",
+            col = get_cols('gray60', invalid = NA)
+          )
+        }
       }
 
 
+      return()
     }
+
 
   })
 
@@ -678,8 +823,23 @@ module_server <- function(input, output, session, ...){
     ref_name <- ginfo$data$Reference[ginfo$data$Electrode == einsp_electrode]
     if(length(ref_name) == 1 && startsWith(ref_name, "ref_")) {
 
-      ref_data <- get_reference_data(ref_name)
-      ref_data <- ref_data$voltage[[block]]
+      elecs <- dipsaus::parse_svec(gsub("^ref_", "", ref_name))
+
+      if(length(elecs) == 0) {
+        ref_data <- 0
+      } else if(length(elecs) == 1 && elecs %in% vdata$electrodes) {
+        ref_data <- vdata$data[,vdata$electrodes == elecs, drop = TRUE]
+
+      } else {
+        ref_data <- get_reference_data(ref_name)
+        if(is.null(ref_data)) {
+          ref_data <- 0
+        } else {
+          ref_data <- ref_data$voltage[[block]]
+        }
+      }
+
+
 
     } else {
       ref_data <- 0
@@ -1036,6 +1196,8 @@ module_server <- function(input, output, session, ...){
       component_container$data$repository <- new_repository
       component_container$initialize_with_new_data()
       local_reactives$reference_table <- ref_tbl
+
+      local_data$bipolar_table <- NULL
       local_data$voltage_data <- list()
       local_data$reference_data <- list()
 
@@ -1254,12 +1416,213 @@ module_server <- function(input, output, session, ...){
           choices = ref_choices,
           selected = ref_selection
         ),
-        shiny::uiOutput(ns("ref_generator"))
+        shiny::uiOutput(ns("ref_generator")),
+        dipsaus::actionButtonStyled(
+          inputId = ns("reference_btn"),
+          label = "Confirm changes & visualize",
+          width = "100%"
+        )
       ))
 
+    } else if(isTRUE(reference_type %in% reference_choices[4])) {
+      # Bipolar
+      return(dipsaus::actionButtonStyled(
+        inputId = ns("bipolar_btn"),
+        label = "Open Bipolar reference editor",
+        width = "100%"
+      ))
+    } else {
+      return(dipsaus::actionButtonStyled(
+        inputId = ns("reference_btn"),
+        label = "Confirm changes & visualize",
+        width = "100%"
+      ))
     }
 
   })
+
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shiny::showModal(shiny::modalDialog(
+        title = "Bipolar reference editor",
+        size = "l", easyClose = FALSE,
+        footer = shiny::tagList(
+          shiny::modalButton("Cancel"),
+          dipsaus::actionButtonStyled(
+            inputId = ns("reference_btn"),
+            label = "Confirm changes & visualize"
+          )
+        ),
+        DT::dataTableOutput(ns("bipolar_table")),
+        shiny::p(
+          shiny::tags$small("* Double-click on the `Reference` column to edit the reference.")
+        )
+      ))
+    }),
+    input$bipolar_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  get_bipolar_table <- shiny::reactive({
+    local_reactives$refresh_bipolar_table
+    ginfo <- current_group()
+    if(!is.list(ginfo) || !is.data.frame(ginfo$data)) {
+      return("Initializing...")
+    }
+
+    table <- ginfo$data[, c("Electrode", "Group", "Reference", "Type")]
+    if(!nrow(table)) {
+      return("Current group has no electrode")
+    }
+    re <- local_data$bipolar_table
+
+    if(is.data.frame(re) && setequal(re$Electrode, table$Electrode)) {
+      return(re)
+    }
+    if(!all(table$Type == reference_choices[4])) {
+      table$Type <- reference_choices[4]
+      table <- table[order(table$Electrode),]
+      table$Reference <- c(sprintf("ref_%s", table$Electrode[-1]), "")
+    }
+    local_data$bipolar_table <- table
+
+    return(table)
+  })
+
+  output$bipolar_table <- DT::renderDataTable({
+    table <- get_bipolar_table()
+
+    shiny::validate(shiny::need(
+      is.data.frame(table),
+      message = ifelse(length(table) == 1, table, "Initializing")
+    ))
+
+
+    re <- DT::datatable(
+      table,
+      selection = "none",
+      rownames = FALSE,
+      class = "compact",
+      filter = "none",
+      editable = list(target = "cell",
+                      disable = list(columns = c(0,1,3))),
+      extensions = "KeyTable",
+      options = list(
+        ordering = FALSE,
+        bFilter = 0,
+        paging = FALSE,
+        keys = TRUE,
+        initComplete = DT::JS(
+          "function(setting, json) {
+
+            const KEY_CODES = ['Tab','ArrowDown','ArrowRight','ArrowLeft','ArrowUp'];
+            const KEY_ENTER = 'Enter';
+
+            this.on('key', function(e, datatable, key, cell, originalEvent){
+              const targetName = originalEvent.target.localName;
+              const keycode = originalEvent.code;
+
+              if( keycode == KEY_ENTER && (
+                targetName == 'div' ||
+                targetName == 'body'
+              )) {
+                $(cell.node()).trigger('dblclick.dt');
+              }
+            });
+
+            this.on('keydown', function(e){
+
+              if(e.target.localName == 'input' && (
+                KEY_CODES.indexOf(e.code) > -1 ||
+                e.code === KEY_ENTER
+              )){
+
+                $(e.target).trigger('blur');
+              }
+            });
+
+            this.on('key-focus', function(e, datatable, cell, originalEvent){
+              const targetName = originalEvent.target.localName;
+              const type = originalEvent.type;
+              const keycode = originalEvent.code;
+
+              if(type == 'keydown' && targetName == 'input' &&
+                KEY_CODES.includes(keycode) ){
+
+                $(cell.node()).trigger('dblclick.dt');
+              }
+            });
+          }"
+
+        )
+      )
+    )
+    # re <- DT::formatRound(re, columns=c('Time', 'Diff'), digits = 2)
+    re
+  }, server = FALSE)
+
+  proxy = DT::dataTableProxy(
+    outputId = ns('bipolar_table'),
+    deferUntilFlush = TRUE,
+    session = session$rootScope()
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      info = input$bipolar_table_cell_edit
+
+      val <- trimws(info$value)
+      val <- gsub("[^0-9,-]", "", val)
+      elecs <- dipsaus::parse_svec(val)
+
+      if( length(elecs) ) {
+        val <- dipsaus::deparse_svec(elecs)
+        val <- sprintf("ref_%s", val)
+        if(length(elecs) > 1) {
+          if(!isTRUE(val %in% get_reference_options())) {
+            error_notification(list(
+              message = sprintf(
+                "Cannot find reference signal called `%s`. Please correct this input.",
+                val
+              )
+            ))
+            return()
+          }
+        } else {
+          repo <- component_container$data$repository
+          if(!length(repo)) { return() }
+          subject <- repo$subject
+          if(!length(subject)) { return() }
+          if(!elecs %in% subject$electrodes){
+            error_notification(list(
+              message = sprintf(
+                "Channel %s is not valid. Please fix this reference.",
+                elecs
+              )
+            ))
+            return()
+          }
+        }
+
+        info$value <- val
+      } else {
+        info$value <- ""
+      }
+      info$col <- 3L
+      local_data$bipolar_table <- DT::editData(local_data$bipolar_table, info)
+
+      # DT::replaceData(proxy,
+      #                 local_data$bipolar_table,
+      #                 resetPaging = FALSE,
+      #                 rownames = FALSE)
+
+      local_reactives$refresh_bipolar_table <- Sys.time()
+
+    }),
+    input$bipolar_table_cell_edit,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
   output$ref_generator <- shiny::renderUI({
     if(!isTRUE(input$reference_channels == "[new reference]")) {
       return()
@@ -1326,6 +1689,79 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = FALSE, ignoreInit = TRUE
   )
 
+  output$reference_table_preview <- shiny::renderTable({
+    loaded_flag <- ravedash::watch_data_loaded()
+    tbl <- local_reactives$reference_table
+    shiny::validate(
+      shiny::need(
+        loaded_flag && is.data.frame(tbl),
+        message = "Reference table not loaded..."
+      )
+    )
+    tbl[, c("Electrode", "Group", "Reference", "Type")]
+  }, striped = TRUE, bordered = TRUE, spacing = "xs", width = "100%",
+  rownames = TRUE, colnames = TRUE)
+
+  # shiny::outputOptions(output, "group_3dviewer", suspendWhenHidden = FALSE)
+  output$group_3dviewer <- threeBrain::renderBrain({
+    ginfo <- current_group()
+
+    theme <- ravedash::current_shiny_theme()
+
+    shiny::validate(
+      shiny::need(
+        is.list(ginfo),
+        message = "No refernce group selected"
+      )
+    )
+    subject <- ginfo$subject
+    brain <- raveio::rave_brain(subject = subject)
+
+    shiny::validate(
+      shiny::need(
+        !is.null(brain),
+        message = ""
+      )
+    )
+
+    value <- rep("Others", length(subject$electrodes))
+
+    electrodes <- ginfo$data$Electrode
+    invalid_electrodes <- electrodes[ginfo$data$Reference == ""]
+
+    value[subject$electrodes %in% electrodes] <- "Valid"
+    value[subject$electrodes %in% invalid_electrodes] <- "Invalid"
+
+    value <- factor(value, levels = c("Valid", "Invalid", "Others"))
+
+    tbl <- data.frame(
+      Subject = subject$subject_code,
+      Electrode = subject$electrodes,
+      Value = value,
+      stringsAsFactors = FALSE
+    )
+    brain$set_electrode_values(tbl)
+
+
+    brain$plot(
+      volumes = FALSE,
+      atlases = FALSE,
+      background = theme$background,
+      side_canvas = FALSE,
+      side_display = FALSE,
+      palettes = list("Value" = c("navy", "red", "gray80")),
+      control_panel = FALSE,
+      control_display = FALSE,
+      controllers = list(
+        "Show Time" = FALSE
+      ),
+      cex = 0.5,
+      start_zoom = 1.5
+    )
+
+
+  })
+
   shiny::bindEvent(
     ravedash::safe_observe({
       ginfo <- current_group()
@@ -1371,16 +1807,47 @@ module_server <- function(input, output, session, ...){
       ravedash::logger("Applying changes to reference group [{ginfo$name}]",
                        level = "trace", use_glue = TRUE)
 
-      pipeline_set(
-        changes = list(
-          list(
-            group_name = ginfo$name,
-            electrodes = ginfo$electrode_text,
-            reference_type = input$reference_type,
-            reference_signal = input$reference_channels
+      ref_type <- input$reference_type
+      if(length(ref_type)) {
+        if(ref_type %in% reference_choices[c(2,3)]) {
+          # CAR
+          pipeline_set(
+            changes = list(
+              list(
+                group_name = ginfo$name,
+                electrodes = ginfo$electrode_text,
+                reference_type = ref_type,
+                reference_signal = input$reference_channels
+              )
+            )
           )
-        )
-      )
+        } else if (ref_type %in% reference_choices[4]) {
+          bipolar_table <- get_bipolar_table()
+
+          pipeline_set(
+            changes = list(
+              list(
+                group_name = ginfo$name,
+                electrodes = ginfo$electrode_text,
+                reference_type = ref_type,
+                reference_signal = bipolar_table$Reference
+              )
+            )
+          )
+        } else {
+          pipeline_set(
+            changes = list(
+              list(
+                group_name = ginfo$name,
+                electrodes = ginfo$electrode_text,
+                reference_type = ref_type,
+                reference_signal = "noref"
+              )
+            )
+          )
+        }
+      }
+
 
       res <- raveio::pipeline_run(pipe_dir = pipeline_path,
                                  scheduler = "none",
@@ -1393,6 +1860,8 @@ module_server <- function(input, output, session, ...){
                                                     pipe_dir = pipeline_path)
 
           local_reactives$reference_table <- updated_reftable
+
+          shiny::removeModal()
 
           info_notification("Reference table updated. Updating the visualizations...")
 

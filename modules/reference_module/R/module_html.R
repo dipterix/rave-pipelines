@@ -43,6 +43,7 @@ module_html <- function(){
             ravedash::input_card(
               title = "Reference settings",
               start_collapsed = TRUE,
+              class_foot = "no-padding",
 
               shiny::selectInput(
                 inputId = ns("group_name"),
@@ -61,14 +62,15 @@ module_html <- function(){
 
               shiny::uiOutput(outputId = ns("reference_details")),
 
-              dipsaus::actionButtonStyled(
-                inputId = ns("reference_btn"),
-                label = "Confirm changes & visualize",
-                width = "100%"
-              ),
 
-              footer = shiny::uiOutput(
-                outputId = ns("group_description")
+              footer = shiny::tagList(
+                shiny::uiOutput(
+                  outputId = ns("group_description")
+                ),
+                threeBrain::threejsBrainOutput(
+                  outputId = ns("group_3dviewer"),
+                  height = "300px"
+                )
               )
 
 
@@ -93,7 +95,7 @@ module_html <- function(){
             shidashi::card_tabset(
 
               inputId = ns("reference_output_tabset"),
-              title = "Reference visualization",
+              title = "Reference table & visualization",
 
               tools = list(
                 shidashi::card_tool(widget = "maximize")
@@ -130,6 +132,10 @@ module_html <- function(){
               `Reference signal` = shiny::div(
                 class = "fill height-600 resize-vertical",
                 shiny::plotOutput(ns("reference_plot_heatmap"), width = "100%", height = '100%')
+              ),
+              `Preview & Export` = shiny::div(
+                class = "fill height-600 resize-vertical padding-5",
+                shiny::tableOutput(ns("reference_table_preview"))
               )
 
             )

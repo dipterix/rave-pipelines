@@ -73,7 +73,7 @@ loader_server <- function(input, output, session, ...){
 
       res <- raveio::pipeline_run(
         pipe_dir = pipeline_path,
-        names = c("reference_table_initial", "voltage_data"),
+        names = c("reference_table_initial", "voltage_data", "brain"),
       )
 
       res$promise$then(
