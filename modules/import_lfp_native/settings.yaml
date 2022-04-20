@@ -3,8 +3,10 @@ import_blocks__format: .mat/.h5 file per electrode per block
 import_blocks__session_block:
 - 008
 - '010'
+- '011'
+- '012'
 import_channels__electrode_file: auto
-import_channels__electrodes: 15-24
+import_channels__electrodes: 1-84
 import_channels__sample_rate: 2000
 import_channels__unit: NA
 import_setup__project_name: test3

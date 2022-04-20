@@ -57,9 +57,7 @@ if(isTRUE(reference_name %in% subject$reference_names)) {
 }
 # save to subject's meta folder with reference name "_unsaved"
 unsaved_meta <- file.path(subject$meta_path, "reference__unsaved.csv")
-if(!file.exists(unsaved_meta)) {
-  utils::write.csv(reference_table_initial, unsaved_meta)
-}
+utils::write.csv(reference_table_initial, unsaved_meta)
 
 ```
 
@@ -182,6 +180,7 @@ id <- 1
 for(x in electrode_group) {
   e <- dipsaus::parse_svec(x$electrodes)
   if(length(e)){
+    e <- unique(e)
     if(length(x$name) != 1 || !is.character(x$name)) {
       stop("Each electrode group must have a unique name")
     }

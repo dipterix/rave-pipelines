@@ -1,23 +1,17 @@
-changes:
-- group_name: G2
-  electrodes: 17-24
-  reference_type: Bipolar Reference
-  reference_signal:
-  - ref_18
-  - ref_19
-  - ref_20
-  - ref_21
-  - ref_22
-  - ref_23
-  - ref_24
-  - ''
+changes: []
 electrode_group:
   '1':
-    name: G1
-    electrodes: 15-16
+    name: OOB
+    electrodes: 1-12
   '2':
-    name: G2
-    electrodes: 17-24
+    name: Grid
+    electrodes: 13-63
+  '3':
+    name: Bad
+    electrodes: '64'
+  '4':
+    name: B1
+    electrodes: 65-84
 project_name: test3
 reference_name: _unsaved
 subject_code: YAB

@@ -53,9 +53,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                 }
                 unsaved_meta <- file.path(subject$meta_path, 
                   "reference__unsaved.csv")
-                if (!file.exists(unsaved_meta)) {
-                  utils::write.csv(reference_table_initial, unsaved_meta)
-                }
+                utils::write.csv(reference_table_initial, unsaved_meta)
             }
             return(reference_table_initial)
         }), deps = c("reference_name", "subject"), cue = targets::tar_cue("always"), 
@@ -158,6 +156,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                 for (x in electrode_group) {
                   e <- dipsaus::parse_svec(x$electrodes)
                   if (length(e)) {
+                    e <- unique(e)
                     if (length(x$name) != 1 || !is.character(x$name)) {
                       stop("Each electrode group must have a unique name")
                     }

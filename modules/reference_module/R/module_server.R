@@ -373,7 +373,7 @@ module_server <- function(input, output, session, ...){
                 .class = "full-width padding-right-2",
                 shiny::numericInput(
                   inputId = ns("refinsp_pre"),
-                  label = "Pre onset",
+                  label = "Before",
                   value = refinsp_pre,
                   step = 1L,
                   min = 0L,
@@ -384,7 +384,7 @@ module_server <- function(input, output, session, ...){
                 .class = "full-width",
                 shiny::numericInput(
                   inputId = ns("refinsp_post"),
-                  label = "Post onset",
+                  label = "After",
                   value = refinsp_post,
                   step = 1L,
                   min = 0L,
@@ -428,7 +428,7 @@ module_server <- function(input, output, session, ...){
             width = 1L,
             shiny::numericInput(
               inputId = ns("refinsp_range"),
-              label = "Plot range",
+              label = "Range",
               value = refinsp_range
             )
           )
@@ -459,6 +459,52 @@ module_server <- function(input, output, session, ...){
       }
     )
   })
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      data_loaded <- ravedash::watch_data_loaded()
+      repo <- component_container$data$repository
+      subject <- repo$subject
+      if(!data_loaded || is.null(subject)) { return() }
+
+      table <- local_reactives$reference_table
+      if(!is.data.frame(table)) {
+        error_notification(list(
+          "Fatal error: reference table is missing..."
+        ))
+        return()
+      }
+
+      name <- trimws(input$preview_save_name)
+      if(!length(name) || !nchar(name)) {
+        error_notification(list(
+          "Reference name cannot be blank"
+        ))
+        return()
+      }
+      if(!grepl("^[a-zA-Z0-9_]+$", name)) {
+        error_notification(list(
+          sprintf("A valid reference name can only contain letters (a-zA-Z), digits (0-9), or underscore (_). Please revise your current input: [%s]", name)
+        ))
+        return()
+      }
+
+      save_path <- file.path(subject$meta_path, sprintf("reference_%s.csv", name))
+
+      raveio::safe_write_csv(table, save_path)
+
+      dipsaus::shiny_alert2(
+        title = "Succeed!",
+        text = sprintf("Reference [%s] has been generated!", name),
+        icon = "success", danger_mode = FALSE, auto_close = TRUE,
+        buttons = list("OK" = TRUE)
+      )
+
+    }),
+    input$preview_save_btn,
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
 
   output$preview_save_path <- shiny::renderText({
     data_loaded <- ravedash::watch_data_loaded()
@@ -1222,7 +1268,9 @@ module_server <- function(input, output, session, ...){
 
       electrode_group <- input$electrode_group
       pipeline_set(
-        electrode_group = electrode_group
+        reference_name = "_unsaved",
+        electrode_group = electrode_group,
+        changes = list()
       )
 
       res <- raveio::pipeline_run(
@@ -1809,49 +1857,40 @@ module_server <- function(input, output, session, ...){
 
       ref_type <- input$reference_type
       if(length(ref_type)) {
-        if(ref_type %in% reference_choices[c(2,3)]) {
-          # CAR
-          pipeline_set(
-            changes = list(
-              list(
-                group_name = ginfo$name,
-                electrodes = ginfo$electrode_text,
-                reference_type = ref_type,
-                reference_signal = input$reference_channels
-              )
-            )
-          )
-        } else if (ref_type %in% reference_choices[4]) {
-          bipolar_table <- get_bipolar_table()
 
-          pipeline_set(
-            changes = list(
-              list(
-                group_name = ginfo$name,
-                electrodes = ginfo$electrode_text,
-                reference_type = ref_type,
-                reference_signal = bipolar_table$Reference
-              )
-            )
-          )
-        } else {
-          pipeline_set(
-            changes = list(
-              list(
-                group_name = ginfo$name,
-                electrodes = ginfo$electrode_text,
-                reference_type = ref_type,
-                reference_signal = "noref"
-              )
-            )
-          )
+        ref_signals <- input$reference_channels
+        if(ref_type == reference_choices[[1]]) {
+          ref_signals <- "noref"
+        } else if(ref_type %in% reference_choices[4]) {
+          bipolar_table <- get_bipolar_table()
+          ref_signals <- bipolar_table$Reference
         }
+
+        current_change <- list(
+          group_name = ginfo$name,
+          electrodes = ginfo$electrode_text,
+          reference_type = ref_type,
+          reference_signal = ref_signals
+        )
+
+        changes <- as.list(pipeline_get("changes"))
+
+        # Make changes
+        dup <- vapply(changes, function(item){
+          ginfo$name %in% item$group_name
+        }, FUN.VALUE = FALSE)
+        changes <- changes[!dup]
+        changes[[length(changes) + 1]] <- current_change
+
+
+        pipeline_set(changes = changes)
       }
 
-
-      res <- raveio::pipeline_run(pipe_dir = pipeline_path,
-                                 scheduler = "none",
-                                 type = "vanilla")
+      res <- raveio::pipeline_run(
+        names = "reference_updated",
+        pipe_dir = pipeline_path,
+        scheduler = "none",
+        type = "vanilla")
 
       res$promise$then(
         onFulfilled = function(...){
