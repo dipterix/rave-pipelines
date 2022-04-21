@@ -238,7 +238,7 @@ kernels &lt;- list(
 <pre class="r"><code># If notch filter results not changed, we can skip the wavelet
 force(notch_filtere_stamp)
 #&gt; $electrodes
-#&gt;  [1] 15 16 17 18 19 20 21 22 23 24
+#&gt;  [1] 13 14 15 16 17 18 19 20 21 22 23 24 25
 #&gt; 
 #&gt; $notch_filter_lowerbound
 #&gt; [1]  59 118 178
@@ -247,7 +247,7 @@ force(notch_filtere_stamp)
 #&gt; [1]  61 122 182
 #&gt; 
 #&gt; $timestamp
-#&gt; [1] &quot;2022-04-02 07:44:01 EDT&quot;
+#&gt; [1] &quot;2022-04-21 08:53:41 EDT&quot;
 
 blocks &lt;- subject$preprocess_settings$blocks
 electrodes &lt;- notch_filtered_electrodes
@@ -301,40 +301,40 @@ lapply(unique(srates), function(srate) {
 #&gt; [[1]][[1]]$real
 #&gt; Reference class object of class &quot;FileArray&quot;
 #&gt; Mode: readonly 
-#&gt; Dimension: 646130x100 
-#&gt; # of partitions: 100 
+#&gt; Dimension: 646130x20 
+#&gt; # of partitions: 20 
 #&gt; Partition size: 1 
 #&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-9f4f150220a471e342445d806748993e 
+#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-9d50351f879b8c3016c7ed577da3f842 
 #&gt; 
 #&gt; [[1]][[1]]$imag
 #&gt; Reference class object of class &quot;FileArray&quot;
 #&gt; Mode: readonly 
-#&gt; Dimension: 646130x100 
-#&gt; # of partitions: 100 
+#&gt; Dimension: 646130x20 
+#&gt; # of partitions: 20 
 #&gt; Partition size: 1 
 #&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-9f4f150220a471e342445d806748993e 
+#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-9d50351f879b8c3016c7ed577da3f842 
 #&gt; 
 #&gt; 
 #&gt; [[1]][[2]]
 #&gt; [[1]][[2]]$real
 #&gt; Reference class object of class &quot;FileArray&quot;
 #&gt; Mode: readonly 
-#&gt; Dimension: 615090x100 
-#&gt; # of partitions: 100 
+#&gt; Dimension: 615090x20 
+#&gt; # of partitions: 20 
 #&gt; Partition size: 1 
 #&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-e486707f32fcd125363d4a2383723694 
+#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-e91534203f1313d2cf19fa3de60bb904 
 #&gt; 
 #&gt; [[1]][[2]]$imag
 #&gt; Reference class object of class &quot;FileArray&quot;
 #&gt; Mode: readonly 
-#&gt; Dimension: 615090x100 
-#&gt; # of partitions: 100 
+#&gt; Dimension: 615090x20 
+#&gt; # of partitions: 20 
 #&gt; Partition size: 1 
 #&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-e486707f32fcd125363d4a2383723694
+#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-e91534203f1313d2cf19fa3de60bb904
 
 
 
@@ -346,6 +346,13 @@ lapply(unique(srates), function(srate) {
 # 2. raw channel files and power/phase files
 overall_progress$inc(&quot;Removing previously generated wavelet coefficients&quot;)
 #&gt; [Wavelet overall progress]: Removing previously generated wavelet coefficients (3 out of 5) 
+preproc &lt;- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = TRUE)
+
+for(e in electrodes) {
+  preproc$data[[as.character(e)]]$has_wavelet &lt;- FALSE
+}
+preproc$save()
+
 data_root &lt;- subject$data_path
 lapply(electrodes, function(e){
   unlink(file.path(data_root, &#39;power&#39;, sprintf(&#39;%d.h5&#39;, e)))
@@ -384,6 +391,15 @@ lapply(electrodes, function(e){
 #&gt; NULL
 #&gt; 
 #&gt; [[10]]
+#&gt; NULL
+#&gt; 
+#&gt; [[11]]
+#&gt; NULL
+#&gt; 
+#&gt; [[12]]
+#&gt; NULL
+#&gt; 
+#&gt; [[13]]
 #&gt; NULL
 
 
@@ -518,6 +534,15 @@ dipsaus::lapply_async2(
 #&gt; 
 #&gt; [[10]]
 #&gt; NULL
+#&gt; 
+#&gt; [[11]]
+#&gt; NULL
+#&gt; 
+#&gt; [[12]]
+#&gt; NULL
+#&gt; 
+#&gt; [[13]]
+#&gt; NULL
 
 overall_progress$inc(&quot;Saving configurations and update log files&quot;)
 #&gt; [Wavelet overall progress]: Saving configurations and update log files (5 out of 5) 
@@ -586,8 +611,8 @@ utils::write.csv(
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a <code>make-wavelet_module.R</code> script with your pipeline markdown file. <code>RAVE</code> will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.</p>
 <p>Once the pipeline script <code>make-wavelet_module.R</code> is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use <code>r</code> block instead of <code>rave</code>. (This is because the code blocks are not part of pipeline targets.)</p>
-<div id="htmlwidget-741d0256b049d686b7d8" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-741d0256b049d686b7d8">{"x":{"nodes":{"name":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated"],"seconds":[0,0,0,0,0,0,0,0,0.001,0,0.002,0,0,262.998],"bytes":[345,360,209,71,51,59,58,52,8278,1725,256641,56,51,479],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"level":[3,4,5,5,3,3,3,6,2,1,4,3,3,7],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","notch_filtered_electrodes","kernel_table","precision","subject","settings","settings","settings","settings","subject","settings","project_name","subject_code","notch_filtere_stamp","subject","notch_filtered_electrodes","sample_rates","target_sample_rate","kernels","pre_downsample","settings_path"],"to":["precision","sample_rates","sample_rates","kernels","kernels","notch_filtered_electrodes","subject_code","target_sample_rate","pre_downsample","kernel_table","notch_filtere_stamp","project_name","subject","subject","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-6f56bf98dd7eae62bc5b" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-6f56bf98dd7eae62bc5b">{"x":{"nodes":{"name":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated"],"seconds":[0,0,0.001,0.001,0,0,0,0.001,0,0,0.011,0,0,68.952],"bytes":[191,207,211,74,51,59,58,50,8064,455,173228,56,51,314],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"level":[3,4,5,5,3,3,3,6,2,1,4,3,3,7],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","notch_filtered_electrodes","kernel_table","precision","subject","settings","settings","settings","settings","subject","settings","project_name","subject_code","notch_filtere_stamp","subject","notch_filtered_electrodes","sample_rates","target_sample_rate","kernels","pre_downsample","settings_path"],"to":["precision","sample_rates","sample_rates","kernels","kernels","notch_filtered_electrodes","subject_code","target_sample_rate","pre_downsample","kernel_table","notch_filtere_stamp","project_name","subject","subject","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

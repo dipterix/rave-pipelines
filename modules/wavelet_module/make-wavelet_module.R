@@ -151,6 +151,12 @@ source("common.R", local = TRUE, chdir = TRUE)
                   })
                 })
                 overall_progress$inc("Removing previously generated wavelet coefficients")
+                preproc <- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, 
+                  read_only = TRUE)
+                for (e in electrodes) {
+                  preproc$data[[as.character(e)]]$has_wavelet <- FALSE
+                }
+                preproc$save()
                 data_root <- subject$data_path
                 lapply(electrodes, function(e) {
                   unlink(file.path(data_root, "power", sprintf("%d.h5", 

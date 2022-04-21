@@ -1,22 +1,22 @@
-analysis_electrodes: '15-16 '
+analysis_electrodes: 15-16
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
     - 2
-    - 200
+    - 152
     time:
     - -1
     - 2
 analysis_ranges__lock: Unlocked
-baseline__global_baseline_choice: Across trial
+baseline__global_baseline_choice: Per frequency, trial, and electrode
 baseline__unit_of_analysis: '% Change Power'
 baseline__windows:
   '1':
     window_interval:
     - -1
-    - -0.5
+    - -0.12
 baseline_windows:
 - - -1.0
   - -0.38
@@ -24,17 +24,33 @@ condition_groups:
   '1':
     group_name: All Conditions
     group_conditions:
-    - NoCondition
+    - AdriveVlast
+    - AknownVmeant
+    - AlastVknown
+    - AmeantVdrive
+    - drive_a
+    - drive_av
+    - drive_v
+    - known_a
+    - known_av
+    - known_v
+    - last_a
+    - last_av
+    - last_v
+    - meant_a
+    - meant_av
+    - meant_v
+    - press_AV
 electrode_category_selector: Electrode
-epoch_choice: default
+epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 14-25
-project_name: test3
+loaded_electrodes: 13-16,24
+project_name: demo
 reference_name: noref
-subject_code: YAB
+subject_code: DemoSubject
 trial_ends: 2
 trial_starts: -1
 unit_of_analysis: z-score Power

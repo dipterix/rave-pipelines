@@ -136,7 +136,8 @@ module_server <- function(input, output, session, ...){
       callr_function = NULL,
       async = async,
       check_interval = 1,
-      progress_title = "Running wavelet in the background"
+      progress_title = "Running wavelet in the background",
+      progress_max = 3
     )
 
     res$promise$then(
