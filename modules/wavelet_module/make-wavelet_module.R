@@ -197,7 +197,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                         wave_num = kernels$cycles, precision = kernels_precision)
                       ind <- floor(seq(1, data_length, by = compress_rate))
                       if (kernels_precision == "float") {
-                        coef <- re[ind, , drop = FALSE]
+                        coef <- t(re[ind, , drop = FALSE])
                         phase <- Arg(coef)
                         power <- Mod(coef)^2
                         re$.mode <- "readwrite"

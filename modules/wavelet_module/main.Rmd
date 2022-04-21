@@ -213,7 +213,7 @@ dipsaus::lapply_async2(
       
       if(kernels_precision == "float"){
         # Load all at once and subset is faster, but one signal is around 1-2GB, so...
-        coef <- re[ind,,drop = FALSE]
+        coef <- t(re[ind,,drop = FALSE])
         
         phase <- Arg(coef)
         power <- Mod(coef)^2
