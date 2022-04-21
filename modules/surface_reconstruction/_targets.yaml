@@ -1,0 +1,3 @@
+surface_reconstruction:
+  script: make-main.R
+  store: shared

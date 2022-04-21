@@ -27,3 +27,6 @@ modules:
   reference_module:
     label: Reference Channels
     order: 5
+  surface_reconstruction:
+    label: Surface & Registration
+    order: 6
