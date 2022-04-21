@@ -181,7 +181,6 @@ dipsaus::lapply_async2(
     
     e <- electrodes[[ii]]
     srate <- srates[[ii]]
-    compress_rate <- compress_rates[[ii]]
     
     for(block in blocks){
       
@@ -190,11 +189,14 @@ dipsaus::lapply_async2(
         name = sprintf('/notch/%s', block),
         ram = TRUE
       )
+      
       if(pre_decimate > 1) {
         s <- ravetools::decimate(sorig, pre_decimate, 
                                  ftype = "fir")
+        compress_rate <- compress_rates[[ii]] / pre_decimate
       } else {
         s <- sorig
+        compress_rate <- compress_rates[[ii]]
       }
       data_length <- length(s)
       

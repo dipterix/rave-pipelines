@@ -89,7 +89,7 @@ normalize_freesurfer_path <- function(path) {
       )),
       wait = TRUE, stdout = TRUE, stderr = TRUE
     )
-    if(grepl("freesurder", res, ignore.case = TRUE)) {
+    if(grepl("freesurfer", res, ignore.case = TRUE)) {
       return(path)
     }
   }

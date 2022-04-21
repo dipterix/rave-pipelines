@@ -178,7 +178,6 @@ source("common.R", local = TRUE, chdir = TRUE)
                   function(ii) {
                     e <- electrodes[[ii]]
                     srate <- srates[[ii]]
-                    compress_rate <- compress_rates[[ii]]
                     for (block in blocks) {
                       sorig <- raveio::load_h5(file = file.path(preprocess_dir, 
                         "voltage", sprintf("electrode_%d.h5", 
@@ -187,8 +186,10 @@ source("common.R", local = TRUE, chdir = TRUE)
                       if (pre_decimate > 1) {
                         s <- ravetools::decimate(sorig, pre_decimate, 
                           ftype = "fir")
+                        compress_rate <- compress_rates[[ii]]/pre_decimate
                       } else {
                         s <- sorig
+                        compress_rate <- compress_rates[[ii]]
                       }
                       data_length <- length(s)
                       re <- ravetools::morlet_wavelet(data = s, 
