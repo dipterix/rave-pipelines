@@ -20,8 +20,8 @@ if(FALSE){
 ```{rave load_subject, language = "R", export = "subject", cue = "always"}
 
 # check if project and subject are valid
-stopifnot(grepl("^[a-zA-Z0-9_]+$", project_name))
-stopifnot(grepl("^[a-zA-Z0-9_]+$", subject_code))
+stopifnot(grepl("^[a-zA-Z0-9_]{1,}$", project_name))
+stopifnot(grepl("^[a-zA-Z0-9_]{1,}$", subject_code))
 
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 

@@ -27,8 +27,8 @@ source("common.R", local = TRUE, chdir = TRUE)
         }), deps = "settings"), load_subject = targets::tar_target_raw(name = "subject", 
         command = quote({
             {
-                stopifnot(grepl("^[a-zA-Z0-9_]+$", project_name))
-                stopifnot(grepl("^[a-zA-Z0-9_]+$", subject_code))
+                stopifnot(grepl("^[a-zA-Z0-9_]{1,}$", project_name))
+                stopifnot(grepl("^[a-zA-Z0-9_]{1,}$", subject_code))
                 subject <- raveio::RAVESubject$new(project_name = project_name, 
                   subject_code = subject_code)
                 print(subject)
