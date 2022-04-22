@@ -153,6 +153,16 @@ module_server <- function(input, output, session, ...){
           buttons = list("OK" = TRUE)
         )
 
+        raveio::pipeline_run(
+          pipe_dir = pipeline_path,
+          names = c("subject", "clear_cache"),
+          scheduler = "none",
+          callr_function = NULL,
+          type = "vanilla",
+          async = FALSE,
+          shortcut = TRUE
+        )
+
       },
       onRejected = function(e){
 

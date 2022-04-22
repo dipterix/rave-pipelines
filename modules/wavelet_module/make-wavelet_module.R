@@ -27,6 +27,8 @@ source("common.R", local = TRUE, chdir = TRUE)
         }), deps = "settings"), load_subject = targets::tar_target_raw(name = "subject", 
         command = quote({
             {
+                stopifnot(grepl("^[a-zA-Z0-9_]+$", project_name))
+                stopifnot(grepl("^[a-zA-Z0-9_]+$", subject_code))
                 subject <- raveio::RAVESubject$new(project_name = project_name, 
                   subject_code = subject_code)
                 print(subject)
@@ -110,7 +112,10 @@ source("common.R", local = TRUE, chdir = TRUE)
                 srates <- sample_rates
                 compress_rates <- srates/target_sample_rate
                 kernels_precision <- kernels$precision
-                pre_decimate <- pre_downsample
+                pre_decimate <- as.integer(pre_downsample)
+                if (pre_decimate < 1) {
+                  pre_decimate <- 1
+                }
                 overall_progress <- dipsaus::progress2("Wavelet overall progress", 
                   max = 5, shiny_auto_close = TRUE)
                 overall_progress$inc("Creating directories")
@@ -141,12 +146,17 @@ source("common.R", local = TRUE, chdir = TRUE)
                     }
                     sample_data <- raveio::load_h5(sample_file, 
                       name = sample_name, ram = FALSE, read_only = TRUE)
-                    data_length <- ceiling(length(sample_data)/pre_downsample)
+                    data_length <- length(sample_data)
                     if (data_length <= 0) {
                       stop(sprintf("Electrode %s has zero-length signal (/notch/%s). The data file might be corrupted.", 
                         electrodes[[1]], block))
                     }
-                    generate_kernel(freqs = kernels$freqs, srate = srate, 
+                    if (pre_downsample > 1) {
+                      sample_data <- ravetools::decimate(sample_data[], 
+                        pre_downsample, ftype = "fir")
+                      data_length <- length(sample_data)
+                    }
+                    generate_kernel(freqs = kernels$freqs, srate = srate/pre_decimate, 
                       wave_num = kernels$cycles, data_length = data_length)
                   })
                 })
@@ -178,6 +188,11 @@ source("common.R", local = TRUE, chdir = TRUE)
                   function(ii) {
                     e <- electrodes[[ii]]
                     srate <- srates[[ii]]
+                    compress_rate <- compress_rates[[ii]]
+                    if (pre_decimate > 1) {
+                      compress_rate <- compress_rates[[ii]]/pre_decimate
+                      srate <- srate/pre_decimate
+                    }
                     for (block in blocks) {
                       sorig <- raveio::load_h5(file = file.path(preprocess_dir, 
                         "voltage", sprintf("electrode_%d.h5", 
@@ -186,10 +201,8 @@ source("common.R", local = TRUE, chdir = TRUE)
                       if (pre_decimate > 1) {
                         s <- ravetools::decimate(sorig, pre_decimate, 
                           ftype = "fir")
-                        compress_rate <- compress_rates[[ii]]/pre_decimate
                       } else {
                         s <- sorig
-                        compress_rate <- compress_rates[[ii]]
                       }
                       data_length <- length(s)
                       re <- ravetools::morlet_wavelet(data = s, 
@@ -264,4 +277,11 @@ source("common.R", local = TRUE, chdir = TRUE)
         }), deps = c("notch_filtere_stamp", "subject", "notch_filtered_electrodes", 
         "sample_rates", "target_sample_rate", "kernels", "pre_downsample"
         ), cue = targets::tar_cue("always"), pattern = NULL, 
-        iteration = "list"))
+        iteration = "list"), clear_cache = targets::tar_target_raw(name = "clear_cache", 
+        command = quote({
+            {
+                clear_cache <- raveio::clear_cached_files(subject_code = subject$subject_code)
+            }
+            return(clear_cache)
+        }), deps = "subject", cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"))

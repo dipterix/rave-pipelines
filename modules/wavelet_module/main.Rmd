@@ -18,6 +18,11 @@ if(FALSE){
 ```
 
 ```{rave load_subject, language = "R", export = "subject", cue = "always"}
+
+# check if project and subject are valid
+stopifnot(grepl("^[a-zA-Z0-9_]+$", project_name))
+stopifnot(grepl("^[a-zA-Z0-9_]+$", subject_code))
+
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
@@ -104,7 +109,10 @@ electrodes <- notch_filtered_electrodes
 srates <- sample_rates
 compress_rates <- srates / target_sample_rate
 kernels_precision <- kernels$precision
-pre_decimate <- pre_downsample
+pre_decimate <- as.integer(pre_downsample)
+if(pre_decimate < 1) {
+  pre_decimate <- 1
+} 
 
 overall_progress <- dipsaus::progress2("Wavelet overall progress", max = 5, shiny_auto_close = TRUE)
 
@@ -136,11 +144,19 @@ lapply(unique(srates), function(srate) {
       stop(sprintf("I can find the imported signal file for Electrode %s, but cannot find any notch-filtered signal for block %s. The data file might be corrupted.", electrodes[[1]], block))
     }
     sample_data <- raveio::load_h5(sample_file, name = sample_name, ram = FALSE, read_only = TRUE)
-    data_length <- ceiling(length(sample_data) / pre_downsample)
+    data_length <- length(sample_data)
+    
     if(data_length <= 0) {
       stop(sprintf("Electrode %s has zero-length signal (/notch/%s). The data file might be corrupted.", electrodes[[1]], block))
     }
-    generate_kernel(freqs = kernels$freqs, srate = srate, wave_num = kernels$cycles, data_length = data_length)
+    
+    if(pre_downsample > 1) {
+      sample_data <- ravetools::decimate(
+        sample_data[], pre_downsample, ftype = "fir")
+      data_length <- length(sample_data)
+    }
+    
+    generate_kernel(freqs = kernels$freqs, srate = srate / pre_decimate, wave_num = kernels$cycles, data_length = data_length)
   })
 })
 
@@ -181,6 +197,12 @@ dipsaus::lapply_async2(
     
     e <- electrodes[[ii]]
     srate <- srates[[ii]]
+    compress_rate <- compress_rates[[ii]]
+    
+    if(pre_decimate > 1) {
+      compress_rate <- compress_rates[[ii]] / pre_decimate
+      srate <- srate / pre_decimate
+    }
     
     for(block in blocks){
       
@@ -193,10 +215,8 @@ dipsaus::lapply_async2(
       if(pre_decimate > 1) {
         s <- ravetools::decimate(sorig, pre_decimate, 
                                  ftype = "fir")
-        compress_rate <- compress_rates[[ii]] / pre_decimate
       } else {
         s <- sorig
-        compress_rate <- compress_rates[[ii]]
       }
       data_length <- length(s)
       
@@ -340,6 +360,15 @@ utils::write.csv(
 
 ```
 
+
+```{rave clear_cache, language = "R", export = "clear_cache", cue = "always"}
+# clear all existing cache data in cache_dir
+
+clear_cache <- raveio::clear_cached_files(
+  subject_code = subject$subject_code
+)
+
+```
 
 ## Build, Visualize, & Run
 

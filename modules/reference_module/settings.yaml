@@ -1,4 +1,8 @@
-changes: []
+changes:
+- group_name: G1
+  electrodes: 13-15
+  reference_type: Common Average Reference
+  reference_signal: ref_15-24
 electrode_group:
   '1':
     name: G1
