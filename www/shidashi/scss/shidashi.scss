@@ -108,9 +108,12 @@ $color-error: #dc3545;
   @include set-size($type : padding, $sizes...,
     $direction: $direction, $force: $force);
 }
-@mixin min-height($size){ min-height: as_pixel_size($size: $size); }
-@mixin max-height($size){ max-height: as_pixel_size($size: $size); }
-@mixin height($size){ height: as_pixel_size($size: $size); }
+@mixin min-height($size...){ min-height: as_pixel_size($size...); }
+@mixin max-height($size...){ max-height: as_pixel_size($size...); }
+@mixin height($size...){ height: as_pixel_size($size...); }
+@mixin min-width($size...){ min-width: as_pixel_size($size...); }
+@mixin max-width($size...){ max-width: as_pixel_size($size...); }
+@mixin width($size...){ width: as_pixel_size($size...); }
 @mixin fill-width { width: 100%; }
 @mixin fill-height { height: 100%; }
 @mixin fill-max-width { max-width: 100%; }
@@ -200,16 +203,18 @@ input:checked + .slider::before {
   overflow: hidden!important;
 }
 
-.display-block-force {
-  @include display(block, true);
+@each $type in block, inline, inline-block, flex, inline-flex, none {
+
+  .display-#{$type} {
+    @include display($type, false);
+  }
+  .display-#{$type}-force {
+    @include display($type, true);
+  }
 }
 
 .display-block {
   @include display(block, true);
-}
-
-.display-flex {
-  @include display(flex, false);
 }
 
 .inline-all {
@@ -307,10 +312,22 @@ input:checked + .slider::before {
 .fill-min-width { min-width: 100%; }
 
 @for $factor from 0 through 20 {
-  $size: $factor * 50;
-  .min-height-#{$size} { @include min-height($size: $size); }
-  .max-height-#{$size} { @include max-height($size: $size); }
-  .height-#{$size} { @include height($size: $size); }
+  .min-height-#{$factor * 50} { @include min-height($size: $factor, $unit: 50px); }
+  .max-height-#{$factor * 50} { @include max-height($size: $factor, $unit: 50px); }
+  .height-#{$factor * 50} { @include height($size: $factor, $unit: 50px); }
+
+  .min-height-vh#{$factor * 5} { @include min-height($size: $factor, $unit: 5vh); }
+  .max-height-vh#{$factor * 5} { @include max-height($size: $factor, $unit: 5vh); }
+  .height-vh#{$factor * 5} { @include height($size: $factor, $unit: 5vh); }
+
+  .min-width-vw#{$factor * 5} { @include min-width($size: $factor, $unit: 5vh); }
+  .max-width-vw#{$factor * 5} { @include min-width($size: $factor, $unit: 5vh); }
+  .width-vw#{$factor * 5} { @include width($size: $factor, $unit: 5vh); }
+
+  .min-width-perc#{$factor * 5} { @include min-width($size: $factor, $unit: 5%); }
+  .max-width-perc#{$factor * 5} { @include min-width($size: $factor, $unit: 5%); }
+  .width-perc#{$factor * 5} { @include width($size: $factor, $unit: 5%); }
+
 }
 
 
@@ -325,6 +342,14 @@ input:checked + .slider::before {
     .#{$type}-left-#{$size} { #{$type}-left: as_pixel_size($size: $size); }
     .#{$type}-right-#{$size} { #{$type}-right: as_pixel_size($size: $size); }
     .#{$type}-horizontal-#{$size} { #{$type}-right: as_pixel_size($size: $size); #{$type}-left: as_pixel_size($size: $size); }
+
+    .#{$type}-m#{$size} { #{$type}: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-top-m#{$size} { #{$type}-top: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-bottom-m#{$size} { #{$type}-bottom: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-vertical-m#{$size} { #{$type}-top: as_pixel_size($size: $size, $unit: -1px); #{$type}-bottom: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-left-m#{$size} { #{$type}-left: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-right-m#{$size} { #{$type}-right: as_pixel_size($size: $size, $unit: -1px); }
+    .#{$type}-horizontal-m#{$size} { #{$type}-right: as_pixel_size($size: $size, $unit: -1px); #{$type}-left: as_pixel_size($size: $size, $unit: -1px); }
   }
 }
 
