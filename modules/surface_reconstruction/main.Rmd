@@ -1,8 +1,10 @@
 ---
-title: "RAVE Pipeline Markdown Template"
+title: "RAVE Pipeline - Surface Reconstruction & CT Co-Registration"
 output:
   html_document: default
   pdf_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -10,215 +12,165 @@ output:
 # Please do not remove me
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
+if(FALSE) {
+  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", 
+                                     "surface_reconstruction", "settings.yaml"))
+  invisible(list2env(as.list(local({
+    print(names(settings))
+    settings
+  })), envir = environment()))
+}
 ```
 
-## Introduction
+```{rave check_commandline_tools, language = "R", export = "cmd_tools", cue = "always"}
 
-A RAVE pipeline markdown is an interactive notebook that can keep your notes, code blocks, and corresponding results together, generating reports in various formats such as `PDF`, `html`, `Word`, `PowerPoint`. 
+dry_run <- raveio::is_dry_run()
 
-The note parts are simply `markdown`s - the same as `jupyter notebook`, or github documentations. The code blocks support `R`, `python`, `c++`. When you hit the `Knit` button in this code editor panel, the r-markdown file will be compiled, generating reproducible documentation.
+dcm2niix <- tryCatch({
+  dcm2niix <- raveio::normalize_commandline_path(
+    path = dcm2niix_path, 
+    unset = raveio:::cmd_dcm2niix(error_on_missing = FALSE)
+  )
+  if(!isTRUE(file.exists(dcm2niix))) { dcm2niix <- NULL }
+  dcm2niix
+}, error = function(e){ NULL })
 
-With carefully designed structures, this r-markdown file will automatically generate `RAVE` pipeline scripts during the compilation. The pipeline script can be used by `RAVE` to convert your pipeline into interactive dashboard application. (This feature is currently under development)
+freesurfer <- tryCatch({
+  freesurfer <- raveio::normalize_commandline_path(
+    path = freesurfer_path, 
+    unset = raveio:::cmd_freesurfer_home(error_on_missing = FALSE)
+  )
+  if(!isTRUE(dir.exists(freesurfer))) { freesurfer <- NULL }
+  freesurfer
+}, error = function(e){ NULL })
 
-## "RAVE" Pipeline Code Block
 
-A `RAVE` pipeline markdown code block starts with ` ```{rave ... `. The block label following `rave` informative description of the target. After the target, the following RAVE-specific parameters configures how the block should be treated:
+flirt <- tryCatch({
+  flirt <- raveio::normalize_commandline_path(
+    path = flirt_path, 
+    unset = raveio:::cmd_fsl_flirt(error_on_missing = FALSE)
+  )
+  if(!isTRUE(dir.exists(flirt))) { flirt <- NULL }
+  flirt
+}, error = function(e){ NULL })
 
-* `language`: specifies the programming language used; choices are: `R`, `python`
-* `export`: variable name to be exported that will be available to the rest chunks
-* `depends`: indicates current block depends on variables generated from other blocks; this helps `RAVE` to build non-interactive pipeline scripts internally. For blocks written in `R`, the dependence can be automatically determined.
-
-Other parameters are available at [this `rmarkdown` book](https://bookdown.org/yihui/rmarkdown/)
-
-## An Example
-
-In the rest of the documentation, let's import the subject power data, baseline, and plot the collapsed mean as image.
-
-#### Step 1: Create `RAVE` subject's instances
-
-Noting that all the items in the `settings.yaml` are available as variables.
+cmd_tools <- list(
+  dry_run = dry_run,
+  dcm2niix = dcm2niix,
+  freesurfer = freesurfer,
+  flirt = flirt
+)
+```
 
 ```{rave load_subject, language = "R", export = "subject"}
-library(raveio)
-subject <- RAVESubject$new(
+
+subject <- raveio::RAVESubject$new(
   project_name = project_name, 
-  subject_code = subject_code
+  subject_code = subject_code,
+  strict = FALSE
 )
 print(subject)
-
-# List subject details
-subject$epoch_names
-subject$reference_names
-subject$blocks
-subject$electrodes
-
-# Check if notch & wavelet has been applied on all electrodes
-all(subject$notch_filtered)
-all(subject$has_wavelet)
 ```
 
-With `export="subject"`, the subject variable will be registered for the following chunks to use. Be aware that all other variables created in this block will not be exposed.
+```{rave check_subject_data, export = "check_result", cue = "always"}
 
-#### Step 2: Load epoch and reference information
+msgs <- character(0L)
+warns <- character(0L)
 
-```{rave load_epoch, language = "R", export = "epoch_instance"}
-epoch_instance <- raveio::RAVEEpoch$new(subject, epoch)
-head(epoch_instance$update_table())
-```
-
-```{rave load_reference, language = "R", export = "reference_table"}
-reference_table <- subject$meta_data(
-  meta_type = "reference", reference)
-head(reference_table)
-```
-
-#### Step 3: Initialize and load power data
-
-Initialize the electrode instances and register the epoch, reference information
-
-```{rave load_electrodes, language = "R", export = "electrode_instances"}
-requested_electrodes <- dipsaus::parse_svec(electrodes)
-requested_electrodes <- requested_electrodes[
-  requested_electrodes %in% subject$electrodes]
-electrode_instances <- lapply(requested_electrodes, function(ei){
-  e <- raveio::new_electrode(subject, number = ei, signal_type = "LFP")
-  
-  # set epoch
-  e$set_epoch(epoch_instance)
-
-  # set epoch range (-1 to 2 seconds relative to onset)
-  e$trial_intervals <- intervals
-
-  # set reference
-  ref_name <- subset(reference_table, Electrode == ei)[["Reference"]]
-  e$set_reference(ref_name)
-  e
-})
-names(electrode_instances) <- requested_electrodes
-```
-
-
-Start to load power. Here also create cache to the `RAVE` cache directory.
-
-```{rave load_and_cache_power, language = "R", export = "power"}
-power_list <- lapply(electrode_instances, function(e){
-  e$load_data("power")
-})
-target <- normalizePath(file.path("shared", "cache", "power"),
-                        mustWork = FALSE)
-  
-if(dir.exists(target)){
-  unlink(target, recursive = TRUE, force = TRUE)
+fs_path <- subject$freesurfer_path
+if(!length(fs_path) || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
+  fs_path <- file.path(subject$path, "fs")
+  fs_reconstructed <- FALSE
 } else {
-  raveio::dir_create2(dirname(target))
-}
-power <- filearray::filearray_bind(
-  .list = power_list, symlink = TRUE, 
-  filebase = target)
-
-if(length(power_list)){
-  dnames <- dimnames(power_list[[1]])
-  dnames[[4]] <- as.integer(names(electrode_instances))
-  dimnames(power) <- dnames
-} else {
-  stop("No power data not loaded")
-}
-```
-
-#### Step 4: Baseline correction
-
-```{rave calculate_baseline, language = "R", export = "baseline_data"}
-dim <- dim(power)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-target <- file.path(electrode_instances[[1]]$cache_root, "..")
-raveio::dir_create2(target)
-target <- normalizePath(target, mustWork = TRUE)
-target <- file.path(target, "_baseline")
-if(dir.exists(target)){
-  output <- filearray::filearray_load(target, "readwrite")
-  if(!all(dim(output) == dim(power))){
-    output$delete()
-  }
-  if(!identical(dimnames(output), dimnames(power))){
-    dimnames(output) <- dimnames(power)
-  }
-}
-if(!dir.exists(target)){
-  output <- filearray::filearray_create(
-    filebase = target,
-    dimension = dim(power),
-    type = "float",
-    partition_size = 1L
+  fs_reconstructed <- threeBrain::check_freesurfer_path(
+    fs_path,
+    autoinstall_template = FALSE,
+    check_volume = TRUE,
+    check_surface = FALSE
   )
 }
 
-bl_range <- unlist(baseline)
-dnames <- dimnames(power)
-baseline_indexpoints <- which(
-  dnames$Time >= bl_range[[1]] & dnames$Time <= bl_range[[2]])
 
-filearray::fmap(power, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  bl <- dipsaus::baseline_array(
-    x, along_dim = 2L,
-    baseline_indexpoints = baseline_indexpoints,
-    method = baseline_method
-  )
-  bl
-}, .y = output, .input_size = plen)
+mri <- NULL
+if(!skip_recon) {
+  if(is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer)) {
+    warns <- append(warns, "Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will be skipped")
+    skip_recon <- TRUE
+  } else {
+    mri <- file.path(subject$preprocess_settings$raw_path, path_mri)
+    if(!isTRUE(dir.exists(mri))) {
+      warns <- append(warns, "No MRI folder found, the reconstruction will be skipped")
+      skip_recon <- TRUE
+    }
+  }
+  if(!skip_recon && fs_reconstructed) {
+    warns <- append(warns, sprintf("Found existing FreeSurfer reconstructed directory; this directory will be renamed: %s", fs_path))
+  }
+}
 
-baseline_data <- output
-```
+ct <- NULL
+if(!skip_coregistration) {
+  if(is.null(cmd_tools$flirt)) {
+    warns <- append(warns, "Cannot find FSL-flirt; the co-registration will be skipped")
+    skip_coregistration <- TRUE
+  } else if( (!fs_reconstructed && (is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer))) ) {
+    warns <- append(warns, "Cannot find FreeSurfer reconstruction, nor at least one of the following commands exists: `dcm2niix`, `FreeSurfer`. The co-registration will be skipped anyway")
+    skip_coregistration <- TRUE
+  } else {
+    ct <- file.path(subject$preprocess_settings$raw_path, path_ct)
+    if(!isTRUE(dir.exists(ct))) {
+      warns <- append(warns, "No CT folder found, the co-registration will be skipped")
+      skip_coregistration <- TRUE
+    }
+  }
+}
 
+if(!skip_recon) {
+  msgs <- append(msgs, sprintf("New FreeSurfer reconstruction will be created from %s", mri))
+  msgs <- append(msgs, sprintf("MRI default folder will be set: %s", path_mri))
+}
+if(!skip_coregistration) {
+  msgs <- append(msgs, sprintf("CT will be co-registered to MRI for electrode localization; CT path: %s", ct))
+  msgs <- append(msgs, sprintf("CT default folder will be set: %s", path_ct))
+}
 
-#### Step 5: Collapse baseline data
-
-```{rave collapse_by_trial_and_electrodes, language = "R", export = "collapsed"}
-
-dim <- dim(baseline_data)
-dim[length(dim)] <- 1
-plen <- prod(dim)
-collase_by_trial <- filearray::fmap2(baseline_data, function(input){
-  x <- input[[1]]
-  dim(x) <- dim
-  dipsaus::collapse(x, keep = c(2,1), average = TRUE)
-}, .input_size = plen, .simplify = TRUE)
-
-collapsed <- list(
-  collase_by_trial = collase_by_trial,
-  collase_by_trial_electrodes = dipsaus::collapse(
-    collase_by_trial, keep = c(1, 2), average = TRUE)
-)
-```
-
-```{r}
-brain <- threeBrain::freesurfer_brain2(
-  fs_subject_folder = subject$freesurfer_path, subject_name = subject$subject_code
-)
-brain$plot()
-```
-
-#### Step 6: Visualize
-
-```{rave plot_heatmap_collase_by_trial_electrodes, export = "collase_by_trial_timestamp", cue="always"}
-
-# Timestamp of when the plot is created
-collase_by_trial_timestamp <- Sys.time()
-
-# visualize
-dnames <- power$dimnames()
-
-image(
-  collapsed$collase_by_trial_electrodes,
-  y = dnames$Frequency,
-  ylab = "Frequency (Hz)",
-  x = dnames$Time, 
-  xlab = "Time (s)",
-  main = "Mean power across trial and electrodes"
+check_result <- list(
+  project_name = subject$project_name,
+  subject_code = subject$subject_code,
+  fs_path = fs_path,
+  
+  fs_reconstructed = fs_reconstructed,
+  skip_recon = skip_recon,
+  skip_coregistration = skip_coregistration,
+  
+  has_dcm2niix = !is.null(cmd_tools$dcm2niix),
+  has_freesurfer = !is.null(cmd_tools$freesurfer),
+  has_flirt = !is.null(cmd_tools$flirt),
+  
+  path_mri = mri,
+  path_ct = ct,
+  
+  messages = msgs,
+  warnings = warns
 )
 
+
+```
+
+```{rave set_default_paths, export = "default_paths", cue = "always"}
+
+if(!check_result$skip_recon && isTRUE(dir.exists(check_result$path_mri))) {
+  ravedash::logger("Setting default MRI folder: ", path_mri, level = "info")
+  subject$set_default("raw_mri_path", path_mri, namespace = "surface_reconstruction")
+}
+
+if(!check_result$skip_coregistration && isTRUE(dir.exists(check_result$path_ct))) {
+  ravedash::logger("Setting default CT folder: ", path_ct, level = "info")
+  subject$set_default("raw_ct_path", path_ct, namespace = "surface_reconstruction")
+}
+
+default_paths <- subject$get_default(c("raw_mri_path", "raw_ct_path"), namespace = "surface_reconstruction")
+default_paths
 ```
 
 ## Build, Visualize, & Run
@@ -235,13 +187,6 @@ Once the pipeline script `make-surface_reconstruction.R` is built, you can visua
 ```{r visualize, echo=FALSE}
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
 raveio::pipeline_visualize()
-```
-
-
-```{r execute}
-Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
-raveio::pipeline_run(type = "vanilla")
-raveio::pipeline_progress(method = 'details')
 ```
 
 

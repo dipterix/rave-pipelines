@@ -1,14 +1,9 @@
-project_name: demo
-subject_code: DemoSubject
-save_pipeline: yes
-epoch: default
-electrodes: '14'
-reference: default
-intervals:
-- - -1.0
-  - 2.0
-type: power
-baseline:
-- - -1
-  - -0.2
-baseline_method: decibel
+dcm2niix_path: /usr/local/bin/dcm2niix
+flirt_path: ''
+freesurfer_path: /data/R/cache_dir/freesurfer
+path_ct: iEEG/IMG/CT_Files
+path_mri: iEEG/IMG/MRI_Files
+project_name: devel
+skip_coregistration: no
+skip_recon: no
+subject_code: YAB

@@ -11,7 +11,7 @@ intervals:
 - - -1.0
   - 2.0
 loaded_electrodes: 13-16,24
-project_name: test3
+project_name: devel
 reference: default
 reference_name: default
 save_pipeline: yes

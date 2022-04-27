@@ -13,126 +13,31 @@ module_server <- function(input, output, session, ...){
   # get server tools to tweek
   server_tools <- get_default_handlers(session = session)
 
-  # Run analysis once the following input IDs are changed
-  # This is used by auto-recalculation feature
-  server_tools$run_analysis_onchange(
-    component_container$get_input_ids(c(
-      "electrode_text", "baseline_choices",
-      "analysis_ranges", "condition_groups"
-    ))
-  )
 
-  # Register event: main pipeline need to run
-  shiny::bindEvent(
-    ravedash::safe_observe({
-
-      # Invalidate previous results (stop them because they are no longer needed)
-      if(!is.null(local_data$results)) {
-        local_data$results$invalidate()
-        ravedash::logger("Invalidating previous run", level = "trace")
-      }
-
-
-      # Collect input data
-      settings <- component_container$collect_settings(ids = c(
-        "electrode_text", "baseline_choices", "condition_groups", "analysis_ranges"
-      ))
-
-      pipeline_set(.list = settings)
-
-      #' Run pipeline without blocking the main session
-      #' The trick to speed up is to set
-      #' `async=TRUE` will run the pipeline in the background
-      #' `shortcut=TRUE` will ignore the dependencies and directly run `names`
-      #' `names` are the target nodes to run
-      #' `scheduler="none"` will try to avoid starting any schedulers and
-      #' run targets sequentially. Combined with `callr_function=NULL`,
-      #' scheduler's overhead can be removed.
-      #' `type="smart"` will start `future` plan in the background, allowing
-      #' multicore calculation
-      results <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL,
-        progress_title = "Calculating in progress",
-        async = TRUE,
-        check_interval = 0.1,
-        shortcut = TRUE,
-        names = c(
-          "settings",
-          names(settings),
-          "requested_electrodes", "analysis_ranges_index", "cond_groups",
-          "bl_power", "collapsed_data"
-        )
-      )
-
-
-      local_data$results <- results
-      ravedash::logger("Scheduled: ", pipeline_name, level = 'debug', reset_timer = TRUE)
-
-      results$promise$then(
-        onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline_name, level = 'debug')
-          shidashi::clear_notifications(class = "pipeline-error")
-          local_reactives$update_outputs <- Sys.time()
-          return(TRUE)
-        },
-        onRejected = function(e, ...){
-          msg <- paste(e$message, collapse = "\n")
-          if(inherits(e, "error")){
-            ravedash::logger(msg, level = 'error')
-            ravedash::logger(traceback(e), level = 'error', .sep = "\n")
-            shidashi::show_notification(
-              message = msg,
-              title = "Error while running pipeline", type = "danger",
-              autohide = FALSE, close = TRUE, class = "pipeline-error"
-            )
-          }
-          return(msg)
-        }
-      )
-
-      return()
-
-    }),
-    server_tools$run_analysis_flag(),
-    ignoreNULL = TRUE, ignoreInit = TRUE
-  )
-
-
-  # (Optional) check whether the loaded data is valid
+  # check whether the loaded data is valid
   shiny::bindEvent(
     ravedash::safe_observe({
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
-      new_repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
-      if(!inherits(new_repository, "rave_prepare_power")){
-        ravedash::logger("Repository read from the pipeline, but it is not an instance of `rave_prepare_power`. Abort initialization", level = "warning")
-        return()
-      }
-      ravedash::logger("Repository read from the pipeline; initializing the module UI", level = "debug")
 
-      # check if the repository has the same subject as current one
-      old_repository <- component_container$data$repository
-      if(inherits(old_repository, "rave_prepare_power")){
+      # There is not too many interaction, so update everytime
+      check_result <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "check_result")
+      cmd_tools <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "cmd_tools")
+      local_reactives$project_name <- check_result$project_name
+      local_reactives$subject_code <- check_result$subject_code
+      local_reactives$path_mri <- check_result$path_mri
+      local_reactives$path_ct <- check_result$path_ct
+      local_reactives$subject_fspath <- check_result$fs_path
+      local_reactives$actions <- list(
+        fs_reconstructed = check_result$fs_reconstructed,
+        skip_recon = check_result$skip_recon,
+        skip_coregistration = check_result$skip_coregistration
+      )
+      local_reactives$tools <- cmd_tools
 
-        if( !attr(loaded_flag, "force") &&
-            identical(old_repository$signature, new_repository$signature) ){
-          ravedash::logger("The repository data remain unchanged ({new_repository$subject$subject_id}), skip initialization", level = "debug", use_glue = TRUE)
-          return()
-        }
-      }
-
-      # TODO: reset UIs to default
-
-      # Reset preset UI & data
-      component_container$reset_data()
-      component_container$data$repository <- new_repository
-      component_container$initialize_with_new_data()
-
-      # Reset outputs
-      shidashi::reset_output("collapse_over_trial")
+      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
+      shidashi::card_operate(title = "Co-registration", method = "collapse")
 
     }, priority = 1001),
     ravedash::watch_data_loaded(),
@@ -140,37 +45,155 @@ module_server <- function(input, output, session, ...){
     ignoreInit = FALSE
   )
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Import DICOM Images", method = "expand")
+      shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
+      shidashi::card_operate(title = "Co-registration", method = "collapse")
+    }),
+    input$jump_import_dicom,
+    ignoreInit = TRUE, ignoreNULL = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Surface Reconstruction", method = "expand")
+      shidashi::card_operate(title = "Co-registration", method = "collapse")
+    }),
+    input$jump_recon,
+    ignoreInit = TRUE, ignoreNULL = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
+      shidashi::card_operate(title = "Co-registration", method = "expand")
+    }),
+    input$jump_coregistration,
+    ignoreInit = TRUE, ignoreNULL = TRUE
+  )
 
+  output$basic_info <- shiny::renderUI({
+    loaded_flag <- ravedash::watch_data_loaded()
+    if(!loaded_flag){ return() }
 
+    project_name <- local_reactives$project_name
+    subject_code <- local_reactives$subject_code
+    actions <- local_reactives$actions
+    tools <- local_reactives$tools
+    if(!length(project_name)) { return() }
 
-
-  # Register outputs
-  output$collapse_over_trial <- shiny::renderPlot({
-    shiny::validate(
-      shiny::need(
-        length(local_reactives$update_outputs) &&
-          !isFALSE(local_reactives$update_outputs),
-        message = "Please run the module first"
+    shiny::div(
+      "Project: ", shiny::strong(project_name),
+      shiny::br(),
+      "Subject: ", shiny::strong(subject_code),
+      shiny::br(),
+      "Actions:",
+      shiny::tags$ul(
+        shiny::tags$li(
+          shiny::actionLink(
+            inputId = ns("jump_import_dicom"),
+            label = shiny::tagList(
+              "Convert .dcm images to .nii ", local({
+                if(isTRUE(file.exists(tools$dcm2niix))) {
+                  shiny::span(type = "primary", ravedash::shiny_icons$arrow_right)
+                } else {
+                  shiny::icon("times")
+                }
+              })
+            )
+          )
+        ),
+        shiny::tags$li(
+          shiny::actionLink(
+            inputId = ns("jump_recon"),
+            label = shiny::tagList(
+              "Surface reconstruction ", local({
+                if(actions$skip_recon) {
+                  shiny::icon("times")
+                } else {
+                  ravedash::shiny_icons$arrow_right
+                }
+              })
+            )
+          )
+        ),
+        shiny::tags$li(
+          shiny::actionLink(
+            inputId = ns("jump_coregistration"),
+            label = shiny::tagList(
+              "CT co-registration ", local({
+                if(actions$skip_coregistration) {
+                  shiny::icon("times")
+                } else {
+                  ravedash::shiny_icons$arrow_right
+                }
+              })
+            )
+          )
+        )
       )
     )
-    shiny::validate(
-      shiny::need(
-          isTRUE(local_data$results$valid),
-        message = "One or more errors while executing pipeline. Please check the notification."
-      )
-    )
 
-    collapsed_data <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "collapsed_data")
-    repository <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "repository")
-
-    time_points <- repository$time_points
-    frequencies <- repository$frequency
-
-    data <- collapsed_data[[1]]$collasped$range_1
-    image(t(data$freq_time), x = time_points[data$cube_index$Time], y = frequencies[data$cube_index$Frequency])
 
   })
 
+  get_dcm2niix_cmd <- function(type = c("MRI", "CT")){
+
+    type <- match.arg(type)
+
+    subject_fspath <- local_reactives$subject_fspath
+    dcm2niix <- local_reactives$tools$dcm2niix
+    if(!file.exists(dcm2niix)) {
+      dcm2niix <- "dcm2niix"
+    }
+
+    if(type == "MRI") {
+      indir <- local_reactives$path_mri
+    }
+
+
+    outdir <- normalizePath(file.path(subject_fspath, "RAVE_raw", type), mustWork = FALSE)
+
+    cmd <- c(
+      sprintf("mkdir -p %s", shQuote(outdir)),
+      sprintf("%s -o %s %s", dcm2niix, shQuote(outdir, type = "cmd"), shQuote(indir, type = "cmd"))
+    )
+
+    cmd
+  }
+
+
+
+  output$panel_import_dicom <- shiny::renderUI({
+
+    cmd <- get_dcm2niix_cmd()
+
+    dry_run <- raveio::is_dry_run()
+
+    shiny::div(
+      shiny::p(
+        "The following script uses ", shiny::pre(class="pre-compact no-padding display-inline", "dcm2niix"),
+        " external library to convert DICOM images to Nifti format for later purposes. ",
+        "To run the script, please open your console terminal and copy-paste the following commands into ",
+        "the terminal, and then hit ", shiny::pre(class="pre-compact no-padding", "Return/Enter"),
+        " button. ", ifelse(dry_run, "", "Alternatively, you could let RAVE run these system command for you.")
+      ),
+      shiny::div(
+        class = "clipboard-btn shidashi-clipboard-output",
+        shiny::pre(
+          class='pre-compact no-padding bg-gray-90',
+          paste(c("/bin/bash", cmd), collapse = "\n")
+        ),
+        `data-clipboard-text` = paste(c("/bin/bash", cmd), collapse = "\n"),
+        title='Click to copy!',
+        role = "button"
+      )
+
+
+    )
+
+  })
 
 
 

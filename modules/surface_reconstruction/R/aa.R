@@ -7,9 +7,6 @@ pipeline_settings_file <- "settings.yaml"
 module_id <- "surface_reconstruction"
 debug <- TRUE
 
-# Variables that could be accessed within shiny module (not include pipeline)
-global_data <- dipsaus::fastmap2()
-
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is
@@ -20,7 +17,25 @@ global_data <- dipsaus::fastmap2()
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  FALSE
+  if( !debug && first_time ) {
+    ravedash::fire_rave_event('loader_message', NULL)
+    return(FALSE)
+  }
+  tryCatch({
+    check_result <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "check_result")
+    if(is.list(check_result) && all(
+      c("project_name", "subject_code", "fs_path", "fs_reconstructed",
+        "skip_recon", "skip_coregistration", "has_dcm2niix", "has_freesurfer",
+        "has_flirt", "path_mri", "path_ct", "messages", "warnings") %in% names(check_result)
+    )) {
+      ravedash::fire_rave_event('loader_message', sprintf("Subject: %s", paste(check_result$subject_code, collapse = "")))
+      return(TRUE)
+    }
+  }, error = function(e){
+
+  })
+  ravedash::fire_rave_event('loader_message', NULL)
+  return(FALSE)
 }
 
 
@@ -42,71 +57,3 @@ if(exists('debug', inherits = FALSE) && isTRUE(get('debug'))){
 register_pipeline(pipeline_name = pipeline_name,
                   settings_file = pipeline_settings_file,
                   env = environment())
-
-
-# Check if dcm2niix is missing
-global_data$flirt_path <- raveio::raveio_getopt("flirt_path", default = Sys.which("flirt"))
-
-normalize_dcm2niix_path <- function(path) {
-  if(length(path) != 1 || trimws(path) == ""){
-    return("")
-  }
-  if(!file.exists(path)) {
-    return("")
-  }
-  path <- normalizePath(path)
-  try({
-    suppressWarnings({
-      res <- system2(path, args = "--version", wait = TRUE, stdout = TRUE, stderr = TRUE)
-    })
-    if(any(grepl("dcm2niix", res, ignore.case = TRUE))) {
-      return(path)
-    }
-  }, silent = TRUE)
-  return("")
-
-}
-
-global_data$dcm2niix_path <- normalize_dcm2niix_path(
-  raveio::raveio_getopt("dcm2niix_path", default = Sys.which("dcm2niix")))
-
-normalize_freesurfer_path <- function(path) {
-  if(length(path) != 1 || trimws(path) == ""){
-    return("")
-  }
-  if(!dir.exists(path)) {
-    return("")
-  }
-  path <- normalizePath(path)
-  recon_all <- file.path(path, "bin", "recon-all")
-
-  if(file.exists(recon_all)){
-    res <- system2(
-      command = recon_all,
-      args = "--version",
-      env = c(sprintf(
-        "FREESURFER_HOME=%s", shQuote(path, type = "cmd")
-      )),
-      wait = TRUE, stdout = TRUE, stderr = TRUE
-    )
-    if(grepl("freesurfer", res, ignore.case = TRUE)) {
-      return(path)
-    }
-  }
-
-  return("")
-}
-
-global_data$freesurfer_path <- normalize_freesurfer_path(
-  raveio::raveio_getopt("freesurfer_path", default = {
-    Sys.getenv("FREESURFER_HOME", unset = local({
-      fs <- c(
-        "/Applications/freesurfer",
-        "/usr/local/freesurfer"
-      )
-      fs <- fs[dir.exists(fs)]
-      if(length(fs)) { fs[[1]] } else { "" }
-    }))
-  })
-)
-

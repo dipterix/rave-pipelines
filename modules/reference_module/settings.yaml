@@ -1,15 +1,12 @@
 changes:
-- group_name: G1
-  electrodes: 13-15
+- group_name: Default
+  electrodes: 1-84
   reference_type: Common Average Reference
-  reference_signal: ref_15-24
+  reference_signal: ref_13-63,65-84
 electrode_group:
   '1':
-    name: G1
-    electrodes: 13-15
-  '2':
-    name: G2
-    electrodes: 16-25
-project_name: test3
+    name: Default
+    electrodes: 1-84
+project_name: devel
 reference_name: _unsaved
 subject_code: YAB
