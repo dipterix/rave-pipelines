@@ -1,9 +1,21 @@
-dcm2niix_path: /usr/local/bin/dcm2niix
-flirt_path: ''
-freesurfer_path: /data/R/cache_dir/freesurfer
-path_ct: iEEG/IMG/CT_Files
-path_mri: iEEG/IMG/MRI_Files
-project_name: devel
+dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
+dryrun: no
+freesurfer_path: ''
+fsl_path: ''
+params:
+  nii_t1: ''
+  nii_ct: ''
+  dcm2niix:
+    merge: Auto
+    float: 'Yes'
+    crop: 'No'
+  freesurfer:
+    steps: -all
+    fresh_start: no
+params_dcm2niix: ~
+path_ct: Harris_Ralph_Emanuel_CT
+path_mri: Harris_Ralph_Emanuel_MR
+project_name: congruency
 skip_coregistration: no
 skip_recon: no
 subject_code: YAB

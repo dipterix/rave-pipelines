@@ -42,13 +42,10 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               ravedash::flex_group_box(
                 title = "MRI",
                 shidashi::flex_item(
-                  shiny::conditionalPanel(
-                    condition = sprintf("input['%s'] !== true", ns("skip_recon")),
-                    shiny::selectInput(
-                      inputId = ns("mri_path"),
-                      label = "Raw MRI DICOM folder",
-                      choices = character(0L)
-                    )
+                  shiny::selectInput(
+                    inputId = ns("mri_path"),
+                    label = "Raw MRI (DICOM folder or Nifti file)",
+                    choices = character(0L)
                   )
                 ),
                 shidashi::flex_break(),
@@ -66,13 +63,10 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               ravedash::flex_group_box(
                 title = "CT",
                 shidashi::flex_item(
-                  shiny::conditionalPanel(
-                    condition = sprintf("input['%s'] !== true", ns("skip_coregistration")),
-                    shiny::selectInput(
-                      inputId = ns("ct_path"),
-                      label = "Raw CT DICOM folder",
-                      choices = character(0L)
-                    )
+                  shiny::selectInput(
+                    inputId = ns("ct_path"),
+                    label = "Raw CT DICOM folder",
+                    choices = character(0L)
                   )
                 ),
                 shidashi::flex_break(),
@@ -118,16 +112,16 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
             shidashi::flex_item(
               shiny::textInput(
                 inputId = ns("cmd_fs_path"),
-                label = "FreeSurfer home (needed for surface reconstruction)",
+                label = "FreeSurfer home (`FREESURFER_HOME`, needed for surface reconstruction)",
                 value = raveio::cmd_freesurfer_home(error_on_missing = FALSE, unset = "")
               )
             ),
             shidashi::flex_break(),
             shidashi::flex_item(
               shiny::textInput(
-                inputId = ns("cmd_flirt_path"),
-                label = "FLIRT path (needed for co-registration)",
-                value = raveio::cmd_fsl_flirt(error_on_missing = FALSE, unset = "")
+                inputId = ns("cmd_fsl_path"),
+                label = "FSL home (`FSLDIR`, needed for co-registration)",
+                value = raveio::cmd_fsl_home(error_on_missing = FALSE, unset = "")
               )
             )
           ),
@@ -173,7 +167,8 @@ loader_server <- function(input, output, session, ...){
         skip_coregistration = input$skip_coregistration,
         dcm2niix_path = input$cmd_dcm2niix_path,
         freesurfer_path = input$cmd_fs_path,
-        flirt_path = input$cmd_flirt_path,
+        fsl_path = input$cmd_fsl_path,
+        dryrun = FALSE,
         .list = settings
       )
 
@@ -346,7 +341,9 @@ loader_server <- function(input, output, session, ...){
 
       if(!length(subject)) { return() }
 
-      paths <- list.dirs(subject$preprocess_settings$raw_path, full.names = FALSE, recursive = TRUE)
+      # paths <- list.dirs(subject$preprocess_settings$raw_path, full.names = FALSE, recursive = TRUE)
+      paths <- list.files(subject$preprocess_settings$raw_path, all.files = TRUE, full.names = FALSE, include.dirs = TRUE, no.. = TRUE, recursive = TRUE)
+      paths <- paths[dir.exists(file.path(subject$preprocess_settings$raw_path, paths)) | grepl("nii(^|\\.gz$)", x = paths, ignore.case = TRUE)]
       paths <- paths[!paths %in% c("", ".", "..", "/")]
 
       selected <- NULL

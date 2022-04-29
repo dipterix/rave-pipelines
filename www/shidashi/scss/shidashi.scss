@@ -786,6 +786,11 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
 }
 
 // shiny-notification
+.toasts-top-right {
+  // needed to stay above modal
+  z-index: 1060;
+}
+
 #shiny-notification-panel {
   width: 350px;
   background-clip: padding-box;

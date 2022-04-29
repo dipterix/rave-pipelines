@@ -599,6 +599,21 @@ class Shidashi {
     $(selector).removeClass(cls);
   }
 
+  setInnerHtml(selector, content) {
+    const $el = $(selector);
+    if(!$el.length) { return; }
+
+    if( this._shiny ) {
+      this._shiny.unbindAll($el);
+    }
+
+    $el.html(content);
+
+    if( this._shiny ) {
+      this._shiny.bindAll($el);
+    }
+  }
+
   // notification
   createNotification(options) {
     // see https://adminlte.io/docs/3.1//javascript/toasts.html
@@ -1095,6 +1110,9 @@ class Shidashi {
     });
     this.shinyHandler("remove_class", (params) => {
       this.removeClass(params.selector, params.class);
+    });
+    this.shinyHandler("set_html", (params) => {
+      this.setInnerHtml(params.selector, params.content);
     });
 
     this.shinyHandler("show_notification", (params) => {

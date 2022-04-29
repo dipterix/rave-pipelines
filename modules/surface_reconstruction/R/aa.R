@@ -7,6 +7,11 @@ pipeline_settings_file <- "settings.yaml"
 module_id <- "surface_reconstruction"
 debug <- TRUE
 
+autorecon_flags <- c(
+  "-all", "-autorecon1", "-autorecon2", "-autorecon3",
+  "-autorecon2-cp", "-autorecon2-wm", "-autorecon2-pial"
+)
+
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is
