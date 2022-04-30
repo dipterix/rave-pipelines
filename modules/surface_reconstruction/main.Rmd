@@ -136,7 +136,7 @@ if(!skip_coregistration) {
   msgs <- append(msgs, sprintf("CT default folder will be set: %s", path_ct))
 }
 
-path_temp <- file.path(subject$path, "temp", "imaging")
+path_temp <- file.path(subject$preprocess_settings$raw_path, "rave-imaging")
 
 path_log <- file.path(path_temp, "log")
 

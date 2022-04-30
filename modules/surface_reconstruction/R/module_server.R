@@ -372,18 +372,20 @@ module_server <- function(input, output, session, ...){
         } else {
           dipsaus::updateActionButtonStyled(session = session, inputId = 'dismiss_modal', disabled = FALSE, label = "Finished")
           shidashi::show_notification(
-            message = c(
+            message = shiny::div(
               "Done executing conmmand. ",
               "The shell command has been saved to: [", conv$script_path,
-              "], and log file has been saved to: [", script_details$log_file,
-              "]. RAVE does know if any error occurs in the command script. ",
+              "], and log file has been saved to: [",
+              shiny::a(script_details$log_file, target="_blank",
+                       href=sprintf("file://%s", script_details$log_file)),
+              "(this link only works when you run RAVE locally)]. ",
+              "RAVE does know if any error occurs in the command script. ",
               "Please read the log file by yourself."
             ),
-            title = "Success!",
-            autohide = FALSE, close = TRUE, type = "success",
+            title = "Finished!",
+            autohide = FALSE, close = TRUE, type = "dark",
             icon = ravedash::shiny_icons$terminal,
-            class = "dismissible",
-            collapse = ""
+            class = "dismissible"
           )
         }
       },

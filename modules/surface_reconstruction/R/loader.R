@@ -21,7 +21,9 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               shiny::br(),
               "Although this module can invoke system command, it is Highly Recommended that you run ",
               "these command by yourself. The module will provide dry-run code. ",
-              "Please use bash terminal to run the code."
+              "Please use bash terminal to run the code on Linux or MacOS. ",
+              "It has not been tested on Windows. If you do want to use Window, ",
+              "please install its Linux sub-system first."
             )
           ),
 

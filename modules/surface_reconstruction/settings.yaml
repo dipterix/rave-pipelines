@@ -1,7 +1,7 @@
-dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
+dcm2niix_path: /usr/local/bin/dcm2niix
 dryrun: no
-freesurfer_path: ''
-fsl_path: ''
+freesurfer_path: /data/R/cache_dir/freesurfer
+fsl_path: /data/R/cache_dir/fsl
 params:
   nii_t1: ''
   nii_ct: ''
@@ -13,9 +13,9 @@ params:
     steps: -all
     fresh_start: no
 params_dcm2niix: ~
-path_ct: Harris_Ralph_Emanuel_CT
-path_mri: Harris_Ralph_Emanuel_MR
-project_name: congruency
+path_ct: Guerrero_Evangelina_Cortez/CTBRAINWITHOUTCONTRAST
+path_mri: Guerrero_Evangelina_Cortez/mri
+project_name: devel
 skip_coregistration: no
 skip_recon: no
 subject_code: YAB

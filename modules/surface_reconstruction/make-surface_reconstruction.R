@@ -151,8 +151,8 @@ source("common.R", local = TRUE, chdir = TRUE)
                   msgs <- append(msgs, sprintf("CT default folder will be set: %s", 
                     path_ct))
                 }
-                path_temp <- file.path(subject$path, "temp", 
-                  "imaging")
+                path_temp <- file.path(subject$preprocess_settings$raw_path, 
+                  "rave-imaging")
                 path_log <- file.path(path_temp, "log")
                 check_result <- list(project_name = subject$project_name, 
                   subject_code = subject$subject_code, fs_path = fs_path, 

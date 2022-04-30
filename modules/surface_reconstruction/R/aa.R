@@ -22,7 +22,7 @@ autorecon_flags <- c(
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  if( !debug && first_time ) {
+  if( first_time ) {
     ravedash::fire_rave_event('loader_message', NULL)
     return(FALSE)
   }

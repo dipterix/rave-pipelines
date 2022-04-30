@@ -3,6 +3,10 @@ divider:
     order: 0
   Built-ins:
     order: 10
+groups:
+  Surface & Electrodes:
+    order: 6
+    open: no
 modules:
   import_lfp_native:
     label: Import LFP (Native)
@@ -29,4 +33,9 @@ modules:
     order: 5
   surface_reconstruction:
     label: Surface & Registration
-    order: 6
+    group: Surface & Electrodes
+    order: 7
+  electrode_localization:
+    label: Electrode Localization
+    group: Surface & Electrodes
+    order: 8
