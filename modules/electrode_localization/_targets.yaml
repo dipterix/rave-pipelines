@@ -1,0 +1,3 @@
+electrode_localization:
+  script: make-main.R
+  store: shared
