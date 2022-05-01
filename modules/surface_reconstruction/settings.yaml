@@ -3,8 +3,8 @@ dryrun: no
 freesurfer_path: /data/R/cache_dir/freesurfer
 fsl_path: /data/R/cache_dir/fsl
 params:
-  nii_t1: ''
-  nii_ct: ''
+  nii_t1: mri_t1_mprage_cc_20120418131207_2.nii
+  nii_ct: CTBRAINWITHOUTCONTRAST_01_Stealth_Brain_Head_20120424163053_3.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
@@ -17,5 +17,5 @@ path_ct: Guerrero_Evangelina_Cortez/CTBRAINWITHOUTCONTRAST
 path_mri: Guerrero_Evangelina_Cortez/mri
 project_name: devel
 skip_coregistration: no
-skip_recon: no
+skip_recon: yes
 subject_code: YAB

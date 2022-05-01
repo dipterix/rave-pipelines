@@ -7,6 +7,8 @@ pipeline_settings_file <- "settings.yaml"
 module_id <- "electrode_localization"
 debug <- TRUE
 
+options(shiny.maxRequestSize = 300 * 1024 ^ 2)
+
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is
@@ -17,7 +19,20 @@ debug <- TRUE
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  FALSE
+  brain <- raveio::pipeline_read('brain', pipe_dir = pipeline_path)
+  if(first_time || is.null(brain)) {
+    ravedash::fire_rave_event('loader_message', NULL)
+    return(FALSE)
+  } else {
+    ct_exists <- raveio::pipeline_read('ct_exists', pipe_dir = pipeline_path)
+    subject <- raveio::pipeline_read('subject', pipe_dir = pipeline_path)
+    if(isTRUE(ct_exists)) {
+      ravedash::fire_rave_event('loader_message', sprintf("Localizing [%s] with CT", subject$subject_id))
+    } else {
+      ravedash::fire_rave_event('loader_message', sprintf("Localizing [%s] without CT", subject$subject_id))
+    }
+    return(TRUE)
+  }
 }
 
 
