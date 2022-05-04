@@ -897,7 +897,7 @@ class Shidashi {
           }
         }
       });
-    this.makeFancyScroll(".fancy-scroll-x, .overflow-x-auto", {
+    this.makeFancyScroll(".fancy-scroll-x", {
         overflowBehavior : {
           x : "scroll",
           y : "hidden"
