@@ -177,6 +177,10 @@ $color-error: #dc3545;
   width: 16px;
 }
 
+.threejs-brain-container .slider::before {
+  background-color: transparent !important;
+}
+
 input:checked + .slider {
   background-color: #66bb6a;
 }
@@ -866,7 +870,51 @@ body.dark-mode #shiny-notification-panel .shiny-notification {
   min-height: calc(2.25rem + 2px);
 }
 
+/* Table, datatable, especially in dark-mode */
+.dark-mode table.dataTable {
 
+  color: $white;
+
+  & thead {
+    background-color: $light-dark;
+  }
+
+  & tbody tr {
+    background-color: $light-dark;
+  }
+
+  &.stripe tbody tr.odd {
+    background-color: $dark;
+  }
+
+  &.cell-border tbody,
+  &.cell-border tbody {
+    & tr th:first-child,
+    & tr td:first-child {
+      border-left: 1px solid $gray-dark;
+    }
+    & th,
+    & td {
+      border-top: 1px solid $gray-dark;
+      border-right: 1px solid $gray-dark;
+    }
+  }
+
+  &.no-footer {
+    border-bottom: 1px solid $gray-dark;
+  }
+
+  & .dataTables_wrapper {
+    & .dataTables_length,
+    & .dataTables_filter,
+    & .dataTables_info,
+    & .dataTables_processing,
+    & .dataTables_paginate {
+      color: $white;
+    }
+  }
+
+}
 
 /* Shiny input & output fixes */
 .checkbox,
