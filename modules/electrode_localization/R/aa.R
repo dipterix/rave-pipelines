@@ -8,6 +8,7 @@ module_id <- "electrode_localization"
 debug <- TRUE
 
 options(shiny.maxRequestSize = 300 * 1024 ^ 2)
+dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_function = NULL)
 
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time

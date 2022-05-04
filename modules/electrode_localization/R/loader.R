@@ -1,10 +1,11 @@
 # UI components for loader
 loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
+  # electrode_plan <- pipeline_get("electrode_plan")
+
   shiny::div(
     class = "container",
     shiny::fluidRow(
-      shiny::column(width = 3L),
       shiny::column(
         width = 6L,
         ravedash::input_card(
@@ -19,6 +20,13 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
             ),
             shidashi::flex_item(
               loader_subject$ui_func()
+            ),
+            shidashi::flex_break(),
+            shidashi::flex_item(
+              shiny::actionLink(
+                inputId = ns("loader_sync_btn"),
+                label = "Sync from [Import LFP] module"
+              )
             )
           ),
           ravedash::flex_group_box(
@@ -64,14 +72,37 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               )
             )
 
-          ),
+          )
 
+
+
+        )
+      ),
+      shiny::column(
+        width = 6L,
+        ravedash::input_card(
+          title = "Electrode Plan",
+          class_header = "",
+          dipsaus::compoundInput2(
+            max_height = "80vh",
+            inputId = ns("loader_plan"),
+            label = "Electrode group",
+            initial_ncomp = 1L,
+            min_ncomp = 1L,
+            max_ncomp = 100L,
+            label_color = "#c8c9ca",
+            components = shidashi::flex_container(
+              class = "margin-m10",
+              shidashi::flex_item(shiny::textInput("label", "Group label")),
+              shidashi::flex_item(shiny::textInput("dimension", "Dimension")),
+              shidashi::flex_item(shiny::selectInput("type", "Type", choices = raveio::LOCATION_TYPES)),
+              shidashi::flex_break(),
+              shidashi::flex_item(shiny::tags$small(
+                shiny::textOutput("info", inline = TRUE)
+              ))
+            )
+          ),
           footer = shiny::tagList(
-            shiny::actionLink(
-              inputId = ns("loader_sync_btn"),
-              label = "Sync from [Import LFP] module"
-            ),
-            shiny::hr(),
             dipsaus::actionButtonStyled(
               inputId = ns("loader_ready_btn"),
               label = "Load subject",
@@ -79,7 +110,6 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               width = "100%"
             )
           )
-
         )
       )
     )
@@ -90,6 +120,59 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
 # Server functions for loader
 loader_server <- function(input, output, session, ...){
+
+  get_plan <- shiny::debounce(shiny::reactive({
+    input$loader_plan
+  }), millis = 300)
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      plan <- get_plan()
+      n <- 0
+      labels <- list()
+      for(ii in seq_along(plan)) {
+        item <- plan[[ii]]
+        dimension <- dipsaus::parse_svec(item$dimension, unique = FALSE, sep = "[,x]")
+        dimension <- dimension[!is.na(dimension)]
+        if(!length(dimension) || any(dimension <= 0)) {
+          ne <- 0
+        } else {
+          ne <- prod(dimension)
+        }
+
+        label <- item$label
+        if(!nchar(label)) {
+          label <- "NoLabel"
+        }
+        if(!label %in% names(labels)) {
+          labels[[label]] <- 0
+        }
+        type <- item$type
+
+        if(ne == 0) {
+          msg <- "No electrode in this group; please enter a valid electrode dimension."
+        } else if(ne == 1){
+          msg <- sprintf("Electrode %d (%s%d): total 1 %s electrode",
+                         n + 1, label, labels[[label]] + 1, type)
+        } else {
+          msg <- sprintf("Electrode %d (%s%d) - %d (%s%d): total %d %s electrodes",
+                         n + 1, label, labels[[label]] + 1, n + ne, label, labels[[label]] + ne, ne, type)
+        }
+        n <- n + ne
+        labels[[label]] <- labels[[label]] + ne
+
+        session$sendCustomMessage(
+          "shidashi.set_html",
+          list(
+            selector = sprintf("#%s", ns(sprintf("loader_plan_info_%d", ii))),
+            content = msg
+          )
+        )
+      }
+    }),
+    get_plan(),
+    ignoreNULL = TRUE, ignoreInit = FALSE
+  )
 
   refresh_ct_chocies <- function(value = NULL){
     project_name <- loader_project$get_sub_element_input()
@@ -125,7 +208,13 @@ loader_server <- function(input, output, session, ...){
 
     files <- c(files, "[Upload]")
 
-    selected <- c(value, shiny::isolate(input$loader_ct_fname)) %OF% files
+    selected <- subject$get_default(
+      "ct_path", default_if_missing = shiny::isolate(input$loader_ct_fname),
+      namespace = "electrode_localization")
+    if(length(selected) == 1) {
+      selected <- basename(selected)
+    }
+    selected <- c(value, selected) %OF% files
     if(selected == "[Upload]") {
       selected <- files[[1]]
     }
@@ -133,6 +222,103 @@ loader_server <- function(input, output, session, ...){
     shiny::updateSelectInput(
       session = session, inputId = "loader_ct_fname", choices = files,
       selected = selected
+    )
+
+    electrode_file <- file.path(subject$meta_path, c("electrodes_unsaved.csv", "electrodes.csv"))
+    electrode_file <- electrode_file[file.exists(electrode_file)]
+
+    plan <- list()
+    if(length(electrode_file)) {
+      electrode_file <- electrode_file[[1]]
+      table <- raveio::safe_read_csv(electrode_file)
+      if(all(c('Electrode', "Label") %in% names(table))) {
+        if(!"LocationType" %in% names(table)) {
+          table$LocationType <- raveio::LOCATION_TYPES[[1]]
+        } else {
+          table$LocationType[!table$LocationType %in% raveio::LOCATION_TYPES] <- raveio::LOCATION_TYPES[[1]]
+        }
+        if(!"Dimension" %in% names(table)) {
+          table$Dimension <- ""
+        }
+
+        table$LabelPrefix <- gsub("[0-9]+$", "", table$Label)
+        table <- table[order(table$Electrode),]
+
+        current_dim <- ""
+        current_prefix <- ""
+        current_type <- "LFP"
+        current_e <- NULL
+
+        for(ii in seq_len(nrow(table))) {
+          sub <- table[ii,]
+          if(!length(current_e)) {
+            current_e <- c(current_e, sub$Electrode)
+            current_dim <- sub$Dimension
+            current_prefix <- sub$LabelPrefix
+            current_type <- sub$LocationType
+          } else {
+            if(!identical(current_dim, sub$Dimension) ||
+               !identical(current_prefix, sub$LabelPrefix) ||
+               !identical(current_type, sub$LocationType) ||
+               sub$Electrode != current_e[[length(current_e)]] + 1) {
+
+              # check dimension
+              dimension <- length(current_e)
+              if(current_dim != "") {
+                dm <- dipsaus::parse_svec(current_dim, unique = TRUE, sep = "[,x]")
+                dm <- dm[!is.na(dm)]
+                if(length(dm) && prod(dm) == dimension) {
+                  dimension <- current_dim
+                }
+              }
+              plan[[length(plan) + 1]] <- list(
+                label = current_prefix,
+                dimension = as.character(dimension),
+                type = current_type
+              )
+              current_e <- sub$Electrode
+              current_dim <- sub$Dimension
+              current_prefix <- sub$LabelPrefix
+              current_type <- sub$LocationType
+
+            } else {
+              current_e <- c(current_e, sub$Electrode)
+            }
+          }
+        }
+
+        if(length(current_e)) {
+          # check dimension
+          dimension <- length(current_e)
+          if(current_dim != "") {
+            dm <- dipsaus::parse_svec(current_dim, unique = TRUE, sep = "[,x]")
+            dm <- dm[!is.na(dm)]
+            if(length(dm) && prod(dm) == dimension) {
+              dimension <- current_dim
+            }
+          }
+          plan[[length(plan) + 1]] <- list(
+            label = current_prefix,
+            dimension = as.character(dimension),
+            type = current_type
+          )
+        }
+
+      }
+    }
+
+    if(!length(plan)) {
+      plan <- list(list(
+        label = "NoLabel",
+        dimension = as.character(length(subject$preprocess_settings$electrodes)),
+        type = "LFP"
+      ))
+    }
+    dipsaus::updateCompoundInput2(
+      session = session,
+      inputId = "loader_plan",
+      value = plan,
+      ncomp = length(plan)
     )
   }
 
@@ -272,10 +458,10 @@ loader_server <- function(input, output, session, ...){
         rpath <- rpath[[1]]
       }
 
-
       # Save the variables into pipeline settings file
       pipeline_set(
         path_ct_in_t1 = rpath,
+        localization_plan = input$loader_plan,
         .list = settings
       )
 
@@ -288,7 +474,7 @@ loader_server <- function(input, output, session, ...){
 
       res <- raveio::pipeline_run(
         pipe_dir = pipeline_path,
-        names = c("brain", "ct_in_t1", "ct_exists"),
+        names = c("plan_list", "brain", "ct_in_t1", "ct_exists", "fslut"),
         type = "vanilla",
         scheduler = "none",
         check_interval = 1,

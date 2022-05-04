@@ -5664,10 +5664,17 @@ pre code {
 </div>
 
 
-<pre class="r"><code>library(raveio)
-subject &lt;- RAVESubject$new(
+<pre class="r"><code>fslut_path &lt;- system.file(&quot;palettes&quot;, &quot;datacube2&quot;, &quot;FreeSurferColorLUT.json&quot;, package = &quot;threeBrain&quot;)
+cmap &lt;- threeBrain::load_colormap(fslut_path)
+
+fslut &lt;- list(
+  cmap = cmap,
+  labels = sapply(cmap$map, &#39;[[&#39;, &quot;Label&quot;)
+)</code></pre>
+<pre class="r"><code>subject &lt;- raveio::RAVESubject$new(
   project_name = project_name, 
-  subject_code = subject_code
+  subject_code = subject_code,
+  strict = FALSE
 )
 print(subject)
 #&gt; RAVE subject &lt;devel/YAB&gt;
@@ -5692,7 +5699,100 @@ files[duplicated(files)] &lt;- sprintf(&quot;%s (2)&quot;, files[duplicated(file
 ct_candidates &lt;- structure(files, paths = list(
   f1 = f1, f2 = f2
 ))</code></pre>
-<pre class="r"><code>brain &lt;- raveio::rave_brain(subject)
+<p>The following code block only run once only when starting a new
+localization</p>
+<pre class="r"><code>require(dipsaus)
+#&gt; Loading required package: dipsaus
+# check if number of electrodes is consistent with the plan
+count &lt;- dipsaus::fastmap2()
+count$n &lt;- 0
+count$labels &lt;- list()
+
+plan_table &lt;- lapply(localization_plan, function(item) {
+  dim &lt;- as.integer(dipsaus::parse_svec(item$dimension, unique = FALSE, sep = &quot;[,x]&quot;))
+  dim &lt;- dim[!is.na(dim)]
+  if(!length(dim) || any(dim &lt;= 0)) { return(NULL) }
+  ne &lt;- prod(dim)
+  if(ne &lt;= 0) { return(NULL) }
+  label &lt;- as.character(item$label)
+  if(length(label) != 1 || is.na(label) || trimws(label) == &#39;&#39;) {
+    label &lt;- &quot;NoLabel&quot;
+  }
+  if(!label %in% names(count$labels)) {
+    count$labels[[label]] &lt;- 0
+  }
+  type &lt;- item$type
+  if(!isTRUE(type %in% raveio::LOCATION_TYPES)) {
+    type &lt;- raveio::LOCATION_TYPES[[1]]
+  }
+  re &lt;- data.frame(
+    Electrode = count$n + seq_len(ne),
+    Label = sprintf(&quot;%s%d&quot;, label, count$labels[[label]] + seq_len(ne)),
+    LabelPrefix = label,
+    Dimension = paste(dim, collapse = &quot;x&quot;),
+    LocationType = type
+  )
+  count$n &lt;- count$n + ne
+  count$labels[[label]] &lt;- count$labels[[label]] + ne
+  re
+})
+plan_table &lt;- dipsaus::drop_nulls(plan_table)
+plan_table &lt;- do.call(&#39;rbind&#39;, unname(plan_table))
+
+electrodes &lt;- sort(subject$preprocess_settings$electrodes)
+if(length(electrodes) != length(plan_table$Electrode)) {
+  stop(sprintf(&quot;The electrode plan table (n=%d) has inconsistent length with registered electrode length (n=%d).&quot;, length(electrodes), length(plan_table$Electrode)))
+}
+plan_table$Electrode &lt;- electrodes
+# Load existing electrodes_unsaved.csv or electrodes.csv, generate plan table
+files &lt;- file.path(subject$meta_path, c(&quot;electrodes_unsaved.csv&quot;, &quot;electrodes.csv&quot;))
+files &lt;- files[file.exists(files)]
+
+try({
+  if(length(files)) {
+    files &lt;- files[[1]]
+    electrode_table &lt;- raveio::safe_read_csv(files)
+    tname1 &lt;- c(&quot;Electrode&quot;, &quot;Coord_x&quot;, &quot;Coord_y&quot;, &quot;Coord_z&quot;)
+    tname2 &lt;- c(&quot;Electrode&quot;, &quot;Coord_x&quot;, &quot;Coord_y&quot;, &quot;Coord_z&quot;, &quot;Radius&quot;, &quot;SurfaceType&quot;, 
+                &quot;Hemisphere&quot;, &quot;FSIndex&quot;, &quot;FSLabel&quot;, &quot;MNI305_x&quot;, &quot;MNI305_y&quot;, &quot;MNI305_z&quot;)
+    if(all(tname1 %in% names(electrode_table))) {
+      tname2 &lt;- tname2[tname2 %in% names(electrode_table)]
+      electrode_table &lt;- electrode_table[, tname2]
+      if(!setequal(as.integer(electrode_table$Electrode), as.integer(plan_table$Electrode)) ||
+         nrow(electrode_table) != nrow(plan_table)) {
+        stop(&quot;Existing electrode table has different row numbers to the plan table&quot;)
+      }
+      plan_table &lt;- merge(electrode_table, plan_table, by = &quot;Electrode&quot;)
+    }
+  }
+}, silent = TRUE)
+
+plan_table$Coord_x %?&lt;-% 0
+plan_table$Coord_y %?&lt;-% 0
+plan_table$Coord_z %?&lt;-% 0
+plan_table$Radius %?&lt;-% 1
+plan_table$SurfaceType %?&lt;-% &quot;pial&quot;
+plan_table$MNI305_x %?&lt;-% 0
+plan_table$MNI305_y %?&lt;-% 0
+plan_table$MNI305_z %?&lt;-% 0
+plan_table$VertexNumber &lt;- -1
+plan_table$FSIndex %?&lt;-% 0
+plan_table$FSLabel %?&lt;-% &quot;Unknown&quot;
+plan_table$SurfaceElectrode &lt;- plan_table$LocationType %in% c(&quot;ECoG&quot;)
+plan_table$SignalType &lt;- subject$preprocess_settings$electrode_types
+
+plan_list &lt;- split(plan_table, plan_table$LabelPrefix)
+
+# save to &quot;electrodes_unsaved.csv&quot;
+utils::write.csv(
+  plan_table,
+  file = file.path(subject$meta_path, &quot;electrodes_unsaved.csv&quot;),
+  row.names = FALSE
+)</code></pre>
+<pre class="r"><code>brain &lt;- threeBrain::freesurfer_brain2(
+  fs_subject_folder = subject$freesurfer_path,
+  subject_name = subject$subject_code
+)
 #&gt; [Importing YAB (first time will take seconds)]: initializing... 
 [Importing YAB (first time will take seconds)]: Transform Matrix (1 out of 26) 
 [Importing YAB (first time will take seconds)]: MRI-T1 (2 out of 26) 
@@ -5821,8 +5921,10 @@ if(length(path_ct_in_t1)) {
 
 
 if(has_ct) {
+  subject$set_default(&quot;ct_path&quot;, path_ct_in_t1, namespace = &quot;electrode_localization&quot;)
   ct_in_t1 &lt;- threeBrain:::read_nii2(ct_path)
 } else {
+  subject$set_default(&quot;ct_path&quot;, NULL, namespace = &quot;electrode_localization&quot;)
   ct_in_t1 &lt;- NA
 }</code></pre>
 <pre class="r"><code>ct_exists &lt;- isTRUE(!is.null(ct_in_t1) &amp;&amp; is.list(ct_in_t1))</code></pre>
@@ -5864,6 +5966,80 @@ if(!is.null(ct_in_t1) &amp;&amp; is.list(ct_in_t1)) {
 if(interactive()) {
   print(viewer)
 }</code></pre>
+<pre><code># template_brain &lt;- threeBrain::merge_brain(template_subject = &quot;N27&quot;)
+# atlas &lt;- template_brain$template_object$atlases$aparc_aseg$group
+# dim &lt;- atlas$get_data(&quot;datacube_dim_Atlas - aparc_aseg (N27)&quot;)
+# cube &lt;- atlas$get_data(&quot;datacube_value_Atlas - aparc_aseg (N27)&quot;)
+# dim(cube) &lt;- dim</code></pre>
+<pre class="r"><code>require(dipsaus)
+re &lt;- lapply(localization_list, function(item) {
+  
+  item$FSIndex %?&lt;-% 0
+  item$FSLabel %?&lt;-% &quot;Unknown&quot;
+  item$Radius %?&lt;-% 1
+  
+  tbl &lt;- data.frame(
+    Electrode = item$Electrode,
+    Coord_x = item$Coord_x, Coord_y = item$Coord_y, Coord_z = item$Coord_z,
+    Label = item$Label, LabelPrefix = item$LabelPrefix,
+    Dimension = item$Dimension, 
+    LocationType = item$LocationType, Radius = item$Radius, 
+    MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, MNI305_z = item$MNI305_z,
+    FSIndex = item$FSIndex, FSLabel = item$FSLabel
+  )
+  if(!nrow(tbl)) { return(NULL) }
+  tbl
+})
+re &lt;- do.call(&quot;rbind&quot;, dipsaus::drop_nulls(re))
+rownames(re) &lt;- NULL
+re &lt;- re[order(re$Electrode), ]
+re$SurfaceElectrode &lt;- re$LocationType %in% c(&quot;ECoG&quot;)
+re$SurfaceType &lt;- &quot;pial&quot;
+re$VertexNumber &lt;- -1
+
+# Calculate T1, MNI152
+empty_sel &lt;- (re$Coord_x)^2 + (re$Coord_y)^2 + (re$Coord_z)^2
+empty_sel &lt;- is.na(empty_sel) | empty_sel == 0
+tkrRAS &lt;- rbind(re$Coord_x, re$Coord_y, re$Coord_z, 1)
+t1 &lt;- brain$Norig %*% solve(brain$Torig) %*% tkrRAS
+mni305 &lt;- brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% tkrRAS
+mni152 &lt;- raveio:::MNI305_to_MNI152 %*% mni305
+
+mni305[, empty_sel] &lt;- 0
+mni152[, empty_sel] &lt;- 0
+t1[, empty_sel] &lt;- 0
+
+re$MNI305_x &lt;- mni305[1, ]
+re$MNI305_y &lt;- mni305[2, ]
+re$MNI305_z &lt;- mni305[3, ]
+re$T1R &lt;- t1[1, ]
+re$T1A &lt;- t1[2, ]
+re$T1S &lt;- t1[3, ]
+re$MNI152_x &lt;- mni152[1, ]
+re$MNI152_y &lt;- mni152[2, ]
+re$MNI152_z &lt;- mni152[3, ]
+
+# save to electrodes_unsaved.csv
+save_path &lt;- file.path(subject$meta_path, &quot;electrodes_unsaved.csv&quot;)
+utils::write.csv(re, save_path, row.names = FALSE)
+
+localization_result_initial &lt;- re</code></pre>
+<p>Make sure you run target <code>localization_result_initial</code>
+first</p>
+<pre class="r"><code>re &lt;- utils::read.csv(file.path(subject$meta_path, &quot;electrodes_unsaved.csv&quot;))
+brain$set_electrodes(electrodes = re)
+re &lt;- brain$calculate_template_coordinates(save_to = FALSE)
+
+# check Hemisphere, make sure no NAs
+sel &lt;- is.na(re$Hemisphere) | !re$Hemisphere %in% c(&quot;left&quot;, &quot;right&quot;)
+if(any(sel)) {
+  is_left &lt;- grepl(pattern = &quot;(left|lh-)&quot;, re$FSLabel, ignore.case = TRUE)
+  is_right &lt;- grepl(pattern = &quot;(right|rh-)&quot;, re$FSLabel, ignore.case = TRUE)
+  re$Hemisphere[sel &amp; (is_left | re$MNI305_x &lt; 0)] &lt;- &quot;left&quot;
+  re$Hemisphere[sel &amp; !is_left &amp; (is_right | re$MNI305_x &gt; 0)] &lt;- &quot;right&quot;
+}
+
+localization_result_final &lt;- re</code></pre>
 <div id="build-visualize-run" class="section level2">
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your
@@ -5877,8 +6053,8 @@ is built, you can visualize and execute the pipeline without the need of
 re-knit this document. Notice we use <code>r</code> block instead of
 <code>rave</code>. (This is because the code blocks are not part of
 pipeline targets.)</p>
-<div id="htmlwidget-a64f2d11a5eb4e250c18" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-a64f2d11a5eb4e250c18">{"x":{"nodes":{"name":["brain","ct_candidates","ct_exists","ct_in_t1","path_ct_in_t1","project_name","settings","settings_path","subject","subject_code","viewer"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated"],"seconds":[0.296,0.005,0,2.353,0,0.001,0.003,0,0.019,0.001,null],"bytes":[338215,153,48,34828339,110,58,7942,113,36806,56,null],"branches":[null,null,null,null,null,null,null,null,null,null,null],"label":["brain","ct_candidates","ct_exists","ct_in_t1","path_ct_in_t1","project_name","settings","settings_path","subject","subject_code","viewer"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5"],"id":["brain","ct_candidates","ct_exists","ct_in_t1","path_ct_in_t1","project_name","settings","settings_path","subject","subject_code","viewer"],"level":[5,5,6,5,3,3,2,1,4,3,6],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["ct_in_t1","subject","settings","settings","ct_in_t1","brain","subject","settings","project_name","subject_code","subject","path_ct_in_t1","settings_path"],"to":["ct_exists","brain","subject_code","path_ct_in_t1","viewer","viewer","ct_candidates","project_name","subject","subject","ct_in_t1","ct_in_t1","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-86224565ff8c504beb5b" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-86224565ff8c504beb5b">{"x":{"nodes":{"name":["brain","ct_exists","ct_in_t1","fslut","localization_list","localization_plan","localization_result_initial","path_ct_in_t1","plan_list","project_name","settings","settings_path","subject","subject_code","viewer","ct_candidates","localization_result_final"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated","outdated"],"seconds":[0.453,0.001,0.006,0.04,0,0,0.013,0,0.022,0,0.005,0,0.021,0,21.874,null,null],"bytes":[18489,48,49,51940,3127,234,4345,44,3119,58,12512,20498,36806,56,1280,null,null],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["brain","ct_exists","ct_in_t1","fslut","localization_list","localization_plan","localization_result_initial","path_ct_in_t1","plan_list","project_name","settings","settings_path","subject","subject_code","viewer","ct_candidates","localization_result_final"],"color":["#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["brain","ct_exists","ct_in_t1","fslut","localization_list","localization_plan","localization_result_initial","path_ct_in_t1","plan_list","project_name","settings","settings_path","subject","subject_code","viewer","ct_candidates","localization_result_final"],"level":[5,6,5,0,3,3,6,3,5,3,2,1,4,3,6,5,6],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["ct_in_t1","subject","settings","subject","brain","settings","settings","localization_list","brain","subject","ct_in_t1","brain","subject","localization_plan","subject","settings","project_name","subject_code","subject","path_ct_in_t1","settings_path","settings"],"to":["ct_exists","brain","localization_plan","localization_result_final","localization_result_final","subject_code","path_ct_in_t1","localization_result_initial","localization_result_initial","localization_result_initial","viewer","viewer","ct_candidates","plan_list","plan_list","project_name","subject","subject","ct_in_t1","ct_in_t1","settings","localization_list"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 
