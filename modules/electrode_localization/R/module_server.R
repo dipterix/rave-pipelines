@@ -86,6 +86,10 @@ module_server <- function(input, output, session, ...){
             project_name = subject$project_name,
             subject_code = subject$subject_code
           )
+
+          # backup unsaved.csv as it's not useful anymore
+          unlink(file.path(subject$meta_path, "electrodes_unsaved.csv"))
+
           dipsaus::shiny_alert2(
             title = "Success!",
             icon = 'success',
@@ -216,20 +220,6 @@ module_server <- function(input, output, session, ...){
       fslut <- raveio::pipeline_read('fslut', pipe_dir = pipeline_path)
 
       ravedash::logger("Repository read from the pipeline; initializing the module UI", level = "debug")
-
-      # check if the repository has the same subject as current one
-      old_subject <- component_container$data$subject
-      old_ct_exists <- component_container$data$ct_exists
-      if(inherits(subject, "RAVESubject")){
-
-        if( !attr(loaded_flag, "force") &&
-            identical(old_subject$subject_id, subject$subject_id) &&
-            identical(old_ct_exists, ct_exists) ){
-          ravedash::logger("The subject ID remain unchanged ({subject$subject_id}), skip initialization", level = "debug", use_glue = TRUE)
-          return()
-        }
-      }
-
 
       # Reset preset UI & data
       component_container$reset_data()
