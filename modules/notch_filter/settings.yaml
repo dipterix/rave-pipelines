@@ -1,5 +1,5 @@
 diagnostic_plot_params:
-  path: /var/folders/d1/_9fw182j7_d8tbx7xpttfyfr0000gn/T//RtmplKFCv0/fileea7198a2b1e.pdf
+  path: /data/R/cache_dir/tmp/RtmpDWJ6x6/filef715296b71e5.pdf
   window_length: 2048
   max_frequency: 300
   histogram_bins: 60
@@ -16,4 +16,4 @@ notch_filter_upperbound:
 - 122.0
 - 182.0
 project_name: devel
-subject_code: YAB
+subject_code: PAV002

@@ -365,6 +365,7 @@ module_server <- function(input, output, session, ...){
               "Dismiss" = TRUE
             )
           )
+          local_reactives$update_plots <- Sys.time()
         },
         onRejected = function(e) {
           dipsaus::close_alert2()
@@ -388,6 +389,7 @@ module_server <- function(input, output, session, ...){
   # Register outputs
   output$signal_plot <- shiny::renderPlot({
     electrode <- get_electrode()
+    local_reactives$update_plots
 
     shiny::validate(
       shiny::need(
@@ -443,7 +445,10 @@ module_server <- function(input, output, session, ...){
 
       dipsaus::shiny_alert2(
         title = "Exporting diagnostic plots",
-        text = paste0(ravedash::be_patient_text(), " \n\n", "Please do **NOT** switch to other modules."),
+        text = paste0(ravedash::be_patient_text(), " \n\n",
+                      "* The task is running in the background. ",
+                      "However, it is not recommended to switch to other modules ",
+                      "before the file is generated."),
         auto_close = FALSE, buttons = FALSE
       )
 
@@ -452,7 +457,7 @@ module_server <- function(input, output, session, ...){
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
-        async = FALSE,
+        async = TRUE,
         shortcut = TRUE,
         names = c(
           "settings",
