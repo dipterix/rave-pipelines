@@ -260,6 +260,18 @@ module_server <- function(input, output, session, ...){
         error_notification(list(message = "Please load epoch file first"))
         return()
       }
+
+      dipsaus::updateActionButtonStyled(
+        session = session, inputId = "load_signal_btn",
+        disabled = TRUE
+      )
+      on.exit({
+        dipsaus::updateActionButtonStyled(
+          session = session, inputId = "load_signal_btn",
+          disabled = FALSE
+        )
+      })
+
       varname <- input$varname
       sample_rate <- input$sample_rate
 
@@ -270,11 +282,20 @@ module_server <- function(input, output, session, ...){
 
       raveio <- asNamespace("raveio")
       if(type == "EDF") {
+        shidashi::show_notification(
+          title = "Loading...",
+          message = "Loading epoch signal in progress... Please wait a second.",
+          type = "default",
+          autohide = FALSE, class = ns("loading_notif")
+        )
+
         idx <- which(header$sHeaders$label == varname)
         s <- raveio$read_edf_signal2(header$fileName, convert_volt = NA,
                                      signal_numbers = idx)
         s <- s$get_signal(idx)
         s <- s$signal
+
+        shidashi::clear_notifications(class = ns("loading_notif"))
       } else {
         s <- header[[varname]][drop = TRUE]
       }

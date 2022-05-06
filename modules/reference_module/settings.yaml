@@ -11,5 +11,5 @@ electrode_group:
     name: G
     electrodes: 13-63,65-84
 project_name: devel
-reference_name: _unsaved
-subject_code: YAB
+reference_name: '[Blank profile]'
+subject_code: PAV002

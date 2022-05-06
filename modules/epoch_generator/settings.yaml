@@ -15,5 +15,5 @@ project_name: devel
 reference: default
 reference_name: default
 save_pipeline: yes
-subject_code: YAB
+subject_code: PAV002
 type: power
