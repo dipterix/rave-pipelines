@@ -88,7 +88,7 @@ if(skip_validation) {
 
 ```
 
-```{rave check_import_signals, language = "R", export = "preprocess_info"}
+```{rave check_import_signals, language = "R", export = "preprocess_info", cue = "always"}
 
 force(validation_result)
 
@@ -116,7 +116,7 @@ if(force_import) {
   
   existing <- preproc$electrodes
   existing <- existing[!existing %in% electrodes]
-  preproc$data$electrodes <- existing
+  preproc$data$electrodes <- NULL
   preproc$data$`@remove`(as.character(electrodes))
   
   if(!setequal(preproc$blocks, blocks)) {

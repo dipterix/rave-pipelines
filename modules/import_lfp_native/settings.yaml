@@ -6,9 +6,9 @@ import_blocks__session_block:
 - '011'
 - '012'
 import_channels__electrode_file: auto
-import_channels__electrodes: 13-16
+import_channels__electrodes: 13-16,24
 import_channels__sample_rate: 2000
 import_channels__unit: NA
 import_setup__project_name: devel
-import_setup__subject_code: YAU
-skip_validation: no
+import_setup__subject_code: YAB
+skip_validation: yes

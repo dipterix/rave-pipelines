@@ -243,7 +243,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                     x = indir_mri, ignore.case = TRUE)) {
                     error <- FALSE
                     cmdadd <- c(cmdadd, "# Copy MRI Nifti file to RAVE temporary directory", 
-                      "cp \"$subj_mri_in\" \"$subj_mri_out/MRI.nii\"")
+                      "cp -r \"$subj_mri_in\" \"$subj_mri_out")
                   } else {
                     cmdadd <- NULL
                   }
@@ -265,7 +265,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                     x = indir_ct, ignore.case = TRUE)) {
                     error <- FALSE
                     cmdadd <- c(cmdadd, "# Copy MRI Nifti file to RAVE temporary directory", 
-                      "cp \"$subj_ct_in\" \"$subj_ct_out/CT.nii\"")
+                      "cp -r \"$subj_ct_in\" \"$subj_ct_out\"")
                   } else {
                     cmdadd <- NULL
                   }

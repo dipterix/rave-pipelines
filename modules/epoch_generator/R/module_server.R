@@ -12,6 +12,7 @@ module_server <- function(input, output, session, ...){
 
   # get server tools to tweek
   server_tools <- get_default_handlers(session = session)
+  server_tools$auto_recalculate(FALSE)
 
   error_notification <- function(e) {
     shidashi::show_notification(

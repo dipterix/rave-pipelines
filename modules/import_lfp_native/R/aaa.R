@@ -22,8 +22,8 @@ module_ui_main <- function(){
 # ----- Presets ------
 comp_import_setup <- ravedash::presets_import_setup_native()
 comp_import_format <- ravedash::presets_import_setup_blocks()
-comp_import_channels <- presets_import_setup_channels()
-comp <- comp_import_channels
+comp_import_channels <- ravedash::presets_import_setup_channels()
+# comp <- comp_import_channels
 component_container <- ravedash:::RAVEShinyComponentContainer$new(
   module_id = module_id, pipeline_name = pipeline_name,
   pipeline_path = pipeline_path)

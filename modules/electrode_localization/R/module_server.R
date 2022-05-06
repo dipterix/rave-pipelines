@@ -317,13 +317,14 @@ module_server <- function(input, output, session, ...){
 
     ct_in_t1 <- raveio::pipeline_read("ct_in_t1", pipe_dir = pipeline_path)
 
-    control_presets <- c("localization")
+    control_presets <- c("localization", "animation", "display_highlights")
     controllers <- list()
     controllers[["Highlight Box"]] <- FALSE
     controllers[["Overlay Coronal"]] <- TRUE
     controllers[["Overlay Axial"]] <- TRUE
     controllers[["Overlay Sagittal"]] <- TRUE
     controllers[["Show Panels"]] <- FALSE
+    controllers[["Show Time"]] <- FALSE
 
     dipsaus::shiny_alert2(
       title = "Finalizing...",
@@ -356,6 +357,7 @@ module_server <- function(input, output, session, ...){
       viewer <- brain$plot(control_presets = control_presets, voxel_colormap = cmap,
                            controllers = controllers, show_modal = FALSE,
                            background = dipsaus::col2hexStr(theme$background),
+                           timestamp = FALSE,
                            custom_javascript = "canvas.controls.noPan=true;")
     } else {
       controllers[["Edit Mode"]] <- "MRI slice"
@@ -365,6 +367,7 @@ module_server <- function(input, output, session, ...){
       viewer <- brain$plot(control_presets = control_presets,
                            controllers = controllers, show_modal = FALSE,
                            background = dipsaus::col2hexStr(theme$background),
+                           timestamp = FALSE,
                            custom_javascript = "canvas.controls.noPan=true;")
     }
 

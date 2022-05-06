@@ -249,7 +249,7 @@ if(length(indir_mri) == 1) {
     cmdadd <- c(
       cmdadd,
       "# Copy MRI Nifti file to RAVE temporary directory",
-      'cp "$subj_mri_in" "$subj_mri_out/MRI.nii"'
+      'cp -r "$subj_mri_in" "$subj_mri_out'
     )
   } else {
     cmdadd <- NULL
@@ -281,7 +281,7 @@ if(length(indir_ct) == 1) {
     cmdadd <- c(
       cmdadd,
       "# Copy MRI Nifti file to RAVE temporary directory",
-      'cp "$subj_ct_in" "$subj_ct_out/CT.nii"'
+      'cp -r "$subj_ct_in" "$subj_ct_out"'
     )
   } else {
     cmdadd <- NULL

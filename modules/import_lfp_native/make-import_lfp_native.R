@@ -128,7 +128,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                   preproc$data$checklevel <- 0L
                   existing <- preproc$electrodes
                   existing <- existing[!existing %in% electrodes]
-                  preproc$data$electrodes <- existing
+                  preproc$data$electrodes <- NULL
                   preproc$data$`@remove`(as.character(electrodes))
                   if (!setequal(preproc$blocks, blocks)) {
                     lapply(existing, function(e) {
@@ -178,5 +178,5 @@ source("common.R", local = TRUE, chdir = TRUE)
         }), deps = c("validation_result", "subject", "import_blocks__session_block", 
         "import_channels__electrodes", "import_channels__sample_rate", 
         "import_blocks__format", "import_channels__unit", "force_import"
-        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"))

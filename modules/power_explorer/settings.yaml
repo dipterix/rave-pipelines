@@ -1,11 +1,11 @@
-analysis_electrodes: 13-16
+analysis_electrodes: '14'
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
     - 2
-    - 182
+    - 200
     time:
     - -1
     - 2
@@ -24,16 +24,19 @@ condition_groups:
   '1':
     group_name: All Conditions
     group_conditions:
-    - NoCondition
+    - drive_a
+    - known_a
+    - last_a
+    - meant_a
 electrode_category_selector: Electrode
-epoch_choice: default
+epoch_choice: YABaOutlier
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 13-25
-project_name: test3
-reference_name: noref
+loaded_electrodes: 14-16
+project_name: devel
+reference_name: default
 subject_code: YAB
 trial_ends: 2
 trial_starts: -1
