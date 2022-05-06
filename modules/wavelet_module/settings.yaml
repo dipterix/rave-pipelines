@@ -201,8 +201,8 @@ kernel_table:
   - 19.0
   - 20.0
   - 20.0
-pre_downsample: 2.0
+pre_downsample: 4.0
 precision: float
 project_name: devel
-subject_code: PAV002
+subject_code: YAB
 target_sample_rate: 100.0

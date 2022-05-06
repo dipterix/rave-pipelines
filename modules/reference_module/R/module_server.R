@@ -1242,6 +1242,7 @@ module_server <- function(input, output, session, ...){
       component_container$data$repository <- new_repository
       component_container$initialize_with_new_data()
       local_reactives$reference_table <- ref_tbl
+      local_reactives$group_confirmed <- FALSE
 
       local_data$bipolar_table <- NULL
       local_data$voltage_data <- list()
@@ -1290,6 +1291,7 @@ module_server <- function(input, output, session, ...){
           tbl_old <- tbl_old[, nms[!nms %in% c("Group")]]
           tbl_new <- merge(tbl_old, tbl_new, by = "Electrode", all.y = TRUE)
           local_reactives$reference_table <- tbl_new
+          local_reactives$group_confirmed <- TRUE
           shidashi::card_operate(title = "Electrode groups", method = "collapse")
           shidashi::card_operate(title = "Reference settings", method = "expand")
 
@@ -1443,6 +1445,14 @@ module_server <- function(input, output, session, ...){
 
   output$reference_details <- shiny::renderUI({
     local_reactives$refresh
+
+    if(!isTRUE(local_reactives$group_confirmed)) {
+      shidashi::card_operate(title = "Electrode groups", method = "expand")
+      return(shiny::p("Please confirm the electrode groups by pressing the button ",
+                      shiny::strong("Set groups"), " first."))
+    }
+
+
     reference_type <- input$reference_type
     group_name <- input$group_name
     group_info <- group_info()

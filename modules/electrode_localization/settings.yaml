@@ -155,6 +155,6 @@ localization_plan:
     dimension: '1'
     type: iEEG
     info: ~
-path_ct_in_t1: ~
+path_ct_in_t1: '{subject$freesurfer_path}/../coregistration/CT.nii.gz'
 project_name: devel
 subject_code: HUP229

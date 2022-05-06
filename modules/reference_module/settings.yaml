@@ -1,8 +1,4 @@
-changes:
-- group_name: G
-  electrodes: 13-63,65-84
-  reference_type: Common Average Reference
-  reference_signal: ref_13-63,65-84
+changes: []
 electrode_group:
   '1':
     name: Bad
@@ -11,5 +7,5 @@ electrode_group:
     name: G
     electrodes: 13-63,65-84
 project_name: devel
-reference_name: '[Blank profile]'
-subject_code: PAV002
+reference_name: _unsaved
+subject_code: YAB
