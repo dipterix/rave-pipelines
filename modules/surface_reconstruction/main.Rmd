@@ -540,7 +540,7 @@ cmd <- c(
   'flirt -in "$infile_ct" -ref "$infile_t1" \\',
   '  -out "$outdir/ct_in_t1.nii" -omat "$outdir/ct2t1.mat" \\',
   '  -interp trilinear -cost mutualinfo -dof 6 -searchcost mutualinfo \\',
-  '  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 >> "$log_dir/$log_file" 2>&1',
+  '  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -v >> "$log_dir/$log_file" 2>&1',
   'echo Done. >> "$log_dir/$log_file" && echo Done.'
 )
     

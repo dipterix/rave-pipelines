@@ -136,7 +136,9 @@ module_server <- function(input, output, session, ...){
             inputId = ns("jump_import_dicom"),
             label = shiny::tagList(
               "Convert .dcm images to .nii ", local({
-                if(isTRUE(file.exists(tools$dcm2niix))) {
+                if(length(tools$dcm2niix) == 1 &&
+                   !is.na(tools$dcm2niix) &&
+                   isTRUE(file.exists(tools$dcm2niix))) {
                   shiny::span(type = "primary", ravedash::shiny_icons$arrow_right)
                 } else {
                   shiny::icon("times")

@@ -26,8 +26,8 @@ server <- function(input, output, session){
   # tools <- ravedash::register_rave_session(session = session)
 
   # Fixed usage, call modules
-  shiny::observe({
-    try({
+  shiny::bindEvent(
+    ravedash::safe_observe({
       req <- list(QUERY_STRING = session$clientData$url_search)
       ravedash::logger("GET request: /{req$QUERY_STRING}", level = "trace", use_glue = TRUE)
 
@@ -74,12 +74,15 @@ server <- function(input, output, session){
 
           }, session = session)
         }
+      } else {
+        # No module, render rave_options
+        if(!isTRUE(raveio::raveio_getopt(key = "secure_mode", default = FALSE))) {
+          source("./R/rave-options.R", local = parse_env)
+          shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
+        }
       }
-    })
-  }) |>
-    shiny::bindEvent(session$clientData$url_search, ignoreNULL = TRUE)
-
-  # session$allowReconnect("force")
-
+    }),
+    session$clientData$url_search, ignoreNULL = TRUE
+  )
 
 }

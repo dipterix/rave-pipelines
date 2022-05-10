@@ -64,3 +64,125 @@ nav_class <- function(){
 }
 
 module_breadcrumb <- function(){}
+
+frontpage <- function(){
+
+  if(isTRUE(raveio::raveio_getopt(key = "secure_mode", default = FALSE))) {
+    return(shiny::tags$h2(
+      class = "display-4",
+      "Please choose any module to start"
+    ))
+  }
+
+
+  ns <- shiny::NS(namespace = "._raveoptions_.")
+  shiny::div(
+    class = "screen-height overflow-y-scroll fill padding-top-20",
+    shiny::div(
+      class = "container",
+      shiny::fixedRow(
+        shiny::column(
+          width = 7L,
+
+          shidashi::card(
+            title = "System snapshot",
+            class_body = "padding-bottom-0 padding-5",
+            # shiny::verbatimTextOutput(ns("snapshot"))
+            shiny::pre(
+              id = ns("snapshot"),
+              class = "shiny-text-output noplaceholder",
+              style = "word-wrap: break-word; word-break: break-word; white-space: break-spaces; background:transparent; "
+            )
+          )
+
+        ),
+
+        shiny::column(
+          width = 5L,
+          shidashi::card(
+            title = "Directory Preferences",
+            class_body = "padding-10",
+
+            # shiny::div(
+            #   class = "form-group shiny-input-container fill-width",
+            #   shiny::tags$label(`for` = ns("raw_data_dir"),
+            #                     "Raw data directory"),
+            #   shiny::div(
+            #     class = "input-group search-text",
+            #     shiny::tags$input(
+            #       id = ns("raw_data_dir"),
+            #       type = "text",
+            #       class = "form-control shiny-bound-input",
+            #       value = raveio::raveio_getopt("raw_data_dir", default = ""),
+            #       placeholder = "Root folder containing raw signals & imaging data"
+            #     ),
+            #     shiny::div(
+            #       class = "input-group-btn",
+            #       dipsaus::actionButtonStyled(
+            #         inputId = ns("raw_data_dir_search"),
+            #         label = NULL, type = "default",
+            #         class = "btn-addon",
+            #         ravedash::shiny_icons$arrow_right
+            #       )
+            #     )
+            #   )
+            # ),
+
+            shinyWidgets::searchInput(
+              inputId = ns("raw_data_dir"),
+              label = "Raw data directory",
+              value = raveio::raveio_getopt("raw_data_dir", default = ""),
+              placeholder = "Root folder containing raw signals & imaging data",
+              btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
+              width = "100%"
+            ),
+            shinyWidgets::searchInput(
+              inputId = ns("data_dir"),
+              label = "Main data directory",
+              value = raveio::raveio_getopt("data_dir", default = ""),
+              placeholder = "Where RAVE should store its generated files",
+              btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
+              width = "100%"
+            ),
+            shinyWidgets::searchInput(
+              inputId = ns("temp_dir"),
+              label = "Session directory",
+              value = raveio::raveio_getopt("tensor_temp_path", default = ""),
+              placeholder = "Removable temporary session files",
+              btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
+              width = "100%"
+            )
+
+          ),
+          shidashi::card(
+            title = "Resource Management",
+            class_body = "padding-10",
+
+            shinyWidgets::searchInput(
+              inputId = ns("max_worker"),
+              label = "Max parallel cores",
+              value = raveio::raveio_getopt("max_worker", default = 1L),
+              placeholder = "Recommended 2GB RAM per CPU core",
+              btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
+              width = "100%"
+            ),
+
+            shinyWidgets::switchInput(
+              inputId = ns("allow_fork_clusters"),
+              label = "Allow forked process",
+              labelWidth = "100%",width = "100%",
+              onStatus = "success",
+              offStatus = "danger",
+              onLabel = "Enabled",
+              offLabel = "Disabled",
+              value = isFALSE(raveio::raveio_getopt("disable_fork_clusters", default = FALSE))
+            )
+
+          )
+        )
+      )
+    )
+  )
+
+}
+
