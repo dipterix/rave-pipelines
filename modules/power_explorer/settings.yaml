@@ -35,8 +35,8 @@ epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
 loaded_electrodes: 14-16
-project_name: devel
-reference_name: default
+project_name: compare
+reference_name: noref
 subject_code: YAB
 trial_ends: 2
 trial_starts: -1

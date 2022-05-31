@@ -386,8 +386,8 @@ module_server <- function(input, output, session, ...){
       v1 <- log(cycle_range[[1]])
       v2 <- log(cycle_range[[2]])
 
-      cycle <- (v2 - v1) / (freq_range[[2]] - freq_range[[1]]) *
-        (freqs - freq_range[[1]]) + v1
+      cycle <- (v2 - v1) / (log(freq_range[[2]]) - log(freq_range[[1]])) *
+        (log(freqs) - log(freq_range[[1]])) + v1
 
       cycle <- round(exp(cycle))
 
