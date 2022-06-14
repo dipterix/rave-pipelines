@@ -100,33 +100,8 @@ frontpage <- function(){
         shiny::column(
           width = 5L,
           shidashi::card(
-            title = "Directory Preferences",
+            title = "Preferences",
             class_body = "padding-10",
-
-            # shiny::div(
-            #   class = "form-group shiny-input-container fill-width",
-            #   shiny::tags$label(`for` = ns("raw_data_dir"),
-            #                     "Raw data directory"),
-            #   shiny::div(
-            #     class = "input-group search-text",
-            #     shiny::tags$input(
-            #       id = ns("raw_data_dir"),
-            #       type = "text",
-            #       class = "form-control shiny-bound-input",
-            #       value = raveio::raveio_getopt("raw_data_dir", default = ""),
-            #       placeholder = "Root folder containing raw signals & imaging data"
-            #     ),
-            #     shiny::div(
-            #       class = "input-group-btn",
-            #       dipsaus::actionButtonStyled(
-            #         inputId = ns("raw_data_dir_search"),
-            #         label = NULL, type = "default",
-            #         class = "btn-addon",
-            #         ravedash::shiny_icons$arrow_right
-            #       )
-            #     )
-            #   )
-            # ),
 
             shinyWidgets::searchInput(
               inputId = ns("raw_data_dir"),
@@ -151,12 +126,17 @@ frontpage <- function(){
               placeholder = "Removable temporary session files",
               btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
               width = "100%"
-            )
+            ),
 
-          ),
-          shidashi::card(
-            title = "Resource Management",
-            class_body = "padding-10",
+            shinyWidgets::searchInput(
+              inputId = ns("template_subject"),
+              label = "Template Brain",
+              value = raveio::raveio_getopt("threeBrain_template_subject",
+                                            default = "N27"),
+              placeholder = "N27, fsaverage, bert, ...",
+              btnSearch = shiny::tagList(ravedash::shiny_icons$arrow_right),
+              width = "100%"
+            ),
 
             shinyWidgets::searchInput(
               inputId = ns("max_worker"),

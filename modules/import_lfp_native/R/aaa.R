@@ -7,16 +7,16 @@ local_data <- fastmap::fastmap()
 local_reactives <- shiny::reactiveValues()
 
 
-module_ui_loader <- function(){
-  shiny::tagList(
-    ui_step1(),
-    ui_step2()
-  )
-}
-
-module_ui_main <- function(){
-  module_ui_loader()
-}
+# module_ui_loader <- function(){
+#   shiny::tagList(
+#     # ui_step1(),
+#     ui_step2()
+#   )
+# }
+#
+# module_ui_main <- function(){
+#   module_ui_loader()
+# }
 
 
 # ----- Presets ------

@@ -4,13 +4,21 @@ divider:
   Built-ins:
     order: 10
 groups:
+  Import Signals:
+    order: 1
+    open: no
   Surface & Electrodes:
-    order: 6
+    order: 7
     open: no
 modules:
   import_lfp_native:
-    label: Import LFP (Native)
-    order: 1
+    label: Native Structure
+    group: Import Signals
+    order: 1.1
+  # import_lfp_native:
+  #   label: BIDS Structure
+  #   group: Import Signals
+  #   order: 1.2
   power_explorer:
     label: Power Explorer
     order: 11
@@ -21,21 +29,21 @@ modules:
     badge: Experimental|badge-warning
   notch_filter:
     label: Notch Filter
-    order: 2
+    order: 3
   wavelet_module:
     label: Wavelet
-    order: 3
+    order: 4
   epoch_generator:
     label: Generate Epoch
-    order: 4
+    order: 5
   reference_module:
     label: Reference Channels
-    order: 5
+    order: 6
   surface_reconstruction:
     label: Surface & Registration
     group: Surface & Electrodes
-    order: 7
+    order: 7.1
   electrode_localization:
     label: Electrode Localization
     group: Surface & Electrodes
-    order: 8
+    order: 7.2

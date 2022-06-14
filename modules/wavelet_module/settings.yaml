@@ -203,6 +203,6 @@ kernel_table:
   - 20.0
 pre_downsample: 1.0
 precision: double
-project_name: compare
-subject_code: YAB
+project_name: test
+subject_code: KC
 target_sample_rate: 100.0

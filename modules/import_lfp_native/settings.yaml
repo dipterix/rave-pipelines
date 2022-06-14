@@ -1,14 +1,10 @@
 force_import: yes
 import_blocks__format: .mat/.h5 file per electrode per block
-import_blocks__session_block:
-- 008
-- '010'
-- '011'
-- '012'
+import_blocks__session_block: '003'
 import_channels__electrode_file: auto
-import_channels__electrodes: 14-15
+import_channels__electrodes: 1-92
 import_channels__sample_rate: 2000
 import_channels__unit: NA
-import_setup__project_name: compare
-import_setup__subject_code: YAB
+import_setup__project_name: test
+import_setup__subject_code: KC
 skip_validation: yes

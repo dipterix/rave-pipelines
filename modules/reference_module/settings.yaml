@@ -7,6 +7,6 @@ electrode_group:
   '1':
     name: Default
     electrodes: 14-15
-project_name: compare
-reference_name: _unsaved
+project_name: test
+reference_name: '[Blank profile]'
 subject_code: YAB

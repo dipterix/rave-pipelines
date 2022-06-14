@@ -4,11 +4,11 @@ rave_option_server <- function(input, output, session){
   max_cores <- dipsaus::detectCores()
 
   local_reactives <- shiny::reactiveValues(
-    fresh = NULL
+    refresh = NULL
   )
 
   output$snapshot <- shiny::renderPrint({
-    local_reactives$fresh
+    local_reactives$refresh
 
     session_info <- utils::sessionInfo()
 
@@ -155,6 +155,7 @@ rave_option_server <- function(input, output, session){
           value = current_val,
           trigger = FALSE
         )
+        local_reactives$refresh <- Sys.time()
 
       }),
       input[[input_id]],
@@ -225,6 +226,7 @@ rave_option_server <- function(input, output, session){
           session = session, inputId = "max_worker",
           value = as.character(current_val), trigger = FALSE
         )
+        local_reactives$refresh <- Sys.time()
 
 
       }),
@@ -253,6 +255,100 @@ rave_option_server <- function(input, output, session){
 
     }),
     input$allow_fork_clusters,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  get_available_templates <- local({
+    templates <- NULL
+    function(){
+      if(is.null(templates)) {
+        templates <<- threeBrain::available_templates()
+      }
+      templates
+    }
+  })
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      template_subject <- input$template_subject
+      if(!length(template_subject)) { return() }
+      if(is.na(template_subject)) { return() }
+
+      template_subject <- gsub("[^a-zA-Z0-9_-]", "", template_subject)
+      if( !nchar(template_subject) ) {
+        shinyWidgets::updateSearchInput(
+          session = session, inputId = "template_subject",
+          value = "", trigger = FALSE
+        )
+        return()
+      }
+
+      ravedash::logger(
+        "Trying to set RAVE option [threeBrain_template_subject] <- {template_subject}",
+        level = "debug", use_glue = TRUE
+      )
+
+      # check path
+      root_path <- threeBrain::default_template_directory()
+      path <- file.path(root_path, template_subject)
+
+      if(dir.exists(path)) {
+        raveio::raveio_setopt("threeBrain_template_subject", value = template_subject)
+        shidashi::show_notification("New template is set!", title = "Succeed!", type = "success")
+      } else {
+        templates <- get_available_templates()
+        if(template_subject %in% names(templates)) {
+
+          timeout <- getOption("timeout")
+          shidashi::show_notification(
+            message = sprintf(
+              "Template [%s] is missing. Trying to download... Please wait",
+              template_subject
+            ),
+            title = "Downloading template",
+            class = ns("download_notif"),
+            delay = 30000,
+            type = "default"
+          )
+          options("timeout" = 100000)
+          on.exit({
+            shidashi::clear_notifications(class = ns("download_notif"))
+            options("timeout" = timeout)
+          })
+          template_subject <- tryCatch({
+            threeBrain::download_template_subject(subject_code = template_subject,
+                                                  url = templates[[template_subject]],
+                                                  template_dir = root_path)
+            raveio::raveio_setopt("threeBrain_template_subject", value = template_subject)
+            shidashi::show_notification("New template is set!", title = "Succeed!", type = "success")
+            template_subject
+          }, error = function(e){
+            old_template <- raveio::raveio_getopt("threeBrain_template_subject",
+                                                  default = "N27")
+            shidashi::show_notification(sprintf(
+              "Cannot download template subject [%s] due to the following reason: \n'%s'. Rewinding to previous subject [%s]",
+              template_subject, paste(e$message, collapse = ""), old_template
+            ), title = "Fail to download the template", type = 'danger')
+            old_template
+          })
+        } else {
+          shidashi::show_notification(sprintf(
+            "Cannot set template subject [%s]. Please check your template folder and make sure this name is correct", template_subject
+          ), title = "Fail to set the template", type = 'danger')
+          return()
+        }
+      }
+
+      ravedash::logger("RAVE option [threeBrain_template_subject] is set: {template_subject}", level = "info",  use_glue = TRUE)
+
+      shinyWidgets::updateSearchInput(
+        session = session, inputId = "template_subject",
+        value = template_subject, trigger = FALSE
+      )
+      local_reactives$refresh <- Sys.time()
+
+    }),
+    input$template_subject,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 

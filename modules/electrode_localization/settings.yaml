@@ -147,54 +147,14 @@ localization_list:
 localization_plan:
   '1':
     label: G
-    dimension: '32'
+    dimension: 8x8
     type: iEEG
     info: ~
   '2':
-    label: LF
-    dimension: '6'
+    label: S
+    dimension: '28'
     type: iEEG
     info: ~
-  '3':
-    label: LOF
-    dimension: '4'
-    type: iEEG
-    info: ~
-  '4':
-    label: LAIT
-    dimension: '4'
-    type: iEEG
-    info: ~
-  '5':
-    label: LPIT
-    dimension: '4'
-    type: iEEG
-    info: ~
-  '6':
-    label: LPT
-    dimension: '8'
-    type: iEEG
-    info: ~
-  '7':
-    label: LPT_mini
-    dimension: '8'
-    type: iEEG
-    info: ~
-  '8':
-    label: RAT
-    dimension: '6'
-    type: iEEG
-    info: ~
-  '9':
-    label: RPT
-    dimension: '8'
-    type: iEEG
-    info: ~
-  '10':
-    label: RIT
-    dimension: '4'
-    type: iEEG
-    info: ~
-path_ct_in_t1: '{subject$freesurfer_path}/../coregistration/ct_in_t1.nii.gz'
-project_name: devel
-subject_code: YAB
+path_ct_in_t1: '{subject$freesurfer_path}/coregistration/ctINt1.nii.gz'
+project_name: test
+subject_code: KC

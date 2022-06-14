@@ -140,7 +140,7 @@ loader_server <- function(input, output, session, ...){
           ne <- prod(dimension)
         }
 
-        label <- item$label
+        label <- trimws(item$label)
         if(!nchar(label)) {
           label <- "NoLabel"
         }
@@ -152,10 +152,10 @@ loader_server <- function(input, output, session, ...){
         if(ne == 0) {
           msg <- "No electrode in this group; please enter a valid electrode dimension."
         } else if(ne == 1){
-          msg <- sprintf("Electrode %d (%s%d): total 1 %s electrode",
+          msg <- sprintf("Electrode %d (%s%.0f): total 1 %s electrode",
                          n + 1, label, labels[[label]] + 1, type)
         } else {
-          msg <- sprintf("Electrode %d (%s%d) - %d (%s%d): total %d %s electrodes",
+          msg <- sprintf("Electrode %d (%s%.0f) - %d (%s%.0f): total %.0f %s electrodes",
                          n + 1, label, labels[[label]] + 1, n + ne, label, labels[[label]] + ne, ne, type)
         }
         n <- n + ne
@@ -164,7 +164,7 @@ loader_server <- function(input, output, session, ...){
         session$sendCustomMessage(
           "shidashi.set_html",
           list(
-            selector = sprintf("#%s", ns(sprintf("loader_plan_info_%d", ii))),
+            selector = sprintf("#%s", ns(sprintf("loader_plan_info_%s", ii))),
             content = msg
           )
         )
