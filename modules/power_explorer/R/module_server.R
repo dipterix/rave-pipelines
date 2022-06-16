@@ -37,7 +37,7 @@ module_server <- function(input, output, session, ...){
         "electrode_text", "baseline_choices", "condition_groups", "analysis_ranges"
       ))
 
-      pipeline_set(.list = settings)
+      pipeline$set_settings(.list = settings)
 
       #' Run pipeline without blocking the main session
       #' The trick to speed up is to set
@@ -49,8 +49,8 @@ module_server <- function(input, output, session, ...){
       #' scheduler's overhead can be removed.
       #' `type="smart"` will start `future` plan in the background, allowing
       #' multicore calculation
-      results <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      results <- pipeline$run(
+        as_promise = TRUE,
         scheduler = "none",
         type = "smart",
         callr_function = NULL,
@@ -68,11 +68,11 @@ module_server <- function(input, output, session, ...){
 
 
       local_data$results <- results
-      ravedash::logger("Scheduled: ", pipeline_name, level = 'debug', reset_timer = TRUE)
+      ravedash::logger("Scheduled: ", pipeline$pipeline_name, level = 'debug', reset_timer = TRUE)
 
       results$promise$then(
         onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline_name, level = 'debug')
+          ravedash::logger("Fulfilled: ", pipeline$pipeline_name, level = 'debug')
           shidashi::clear_notifications(class = "pipeline-error")
           local_reactives$update_outputs <- Sys.time()
           return(TRUE)
@@ -105,7 +105,7 @@ module_server <- function(input, output, session, ...){
     ravedash::safe_observe({
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
-      new_repository <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+      new_repository <- pipeline$read("repository")
       if(!inherits(new_repository, "rave_prepare_power")){
         ravedash::logger("Repository read from the pipeline, but it is not an instance of `rave_prepare_power`. Abort initialization", level = "warning")
         return()
@@ -159,8 +159,8 @@ module_server <- function(input, output, session, ...){
       )
     )
 
-    collapsed_data <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "collapsed_data")
-    repository <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "repository")
+    collapsed_data <- pipeline$read(var_names = "collapsed_data")
+    repository <- pipeline$read(var_names = "repository")
 
     time_points <- repository$time_points
     frequencies <- repository$frequency

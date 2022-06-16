@@ -4,8 +4,8 @@ analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
-    - 2
-    - 200
+    - 22
+    - 135
     time:
     - -1
     - 2
@@ -16,7 +16,7 @@ baseline__windows:
   '1':
     window_interval:
     - -1
-    - -0.26
+    - -0.49
 baseline_windows:
 - - -1.0
   - -0.38
@@ -29,15 +29,15 @@ condition_groups:
     - last_a
     - meant_a
 electrode_category_selector: Electrode
-epoch_choice: YABaOutlier
+epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2
 epoch_choice__trial_starts: -1
 epoch_name: KCaOutlier
 global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 14-16
-project_name: compare
-reference_name: noref
-subject_code: YAB
+loaded_electrodes: 13-16,24
+project_name: demo
+reference_name: default
+subject_code: DemoSubject
 trial_ends: 2
 trial_starts: -1
 unit_of_analysis: z-score Power

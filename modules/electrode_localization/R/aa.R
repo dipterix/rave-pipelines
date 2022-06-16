@@ -2,13 +2,15 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables. These are required
-pipeline_name <- "electrode_localization"
-pipeline_settings_file <- "settings.yaml"
+pipeline <- raveio::pipeline(
+  pipeline_name = "electrode_localization",
+  paths = "./modules"
+)
 module_id <- "electrode_localization"
 debug <- TRUE
 
-options(shiny.maxRequestSize = 300 * 1024 ^ 2)
-dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_function = NULL)
+# options(shiny.maxRequestSize = 300 * 1024 ^ 2)
+# dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_function = NULL)
 
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
@@ -20,13 +22,13 @@ dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  brain <- raveio::pipeline_read('brain', pipe_dir = pipeline_path)
+  brain <- pipeline$read('brain')
   if(first_time || is.null(brain)) {
     ravedash::fire_rave_event('loader_message', NULL)
     return(FALSE)
   } else {
-    ct_exists <- raveio::pipeline_read('ct_exists', pipe_dir = pipeline_path)
-    subject <- raveio::pipeline_read('subject', pipe_dir = pipeline_path)
+    ct_exists <- pipeline$read('ct_exists')
+    subject <- pipeline$read('subject')
     if(isTRUE(ct_exists)) {
       ravedash::fire_rave_event('loader_message', sprintf("Localizing [%s] with CT", subject$subject_id))
     } else {
@@ -47,13 +49,5 @@ if(exists('debug', inherits = FALSE) && isTRUE(get('debug'))){
   ravedash::logger_threshold("info", module_id = module_id)
 }
 
-# Register RAVE pipeline, this will give you:
-# `pipeline_set`: set variables in the pipeline
-# `pipeline_get`: get variables in the pipeline
-# `pipeline_settings_path`: where the settings file locate
-# `pipeline_path`: parent directory path of the pipeline
-register_pipeline(pipeline_name = pipeline_name,
-                  settings_file = pipeline_settings_file,
-                  env = environment())
 
 

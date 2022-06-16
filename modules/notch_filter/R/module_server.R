@@ -21,7 +21,7 @@ module_server <- function(input, output, session, ...){
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
 
-      data <- raveio::pipeline_read(c("subject", "imported_electrodes"), pipe_dir = pipeline_path)
+      data <- pipeline$read(var_names = c("subject", "imported_electrodes"))
 
       subject <- data$subject
       blocks <- subject$preprocess_settings$blocks
@@ -267,20 +267,18 @@ module_server <- function(input, output, session, ...){
         notch_filter_lowerbound <- center_frequencies - bandwidths
         notch_filter_upperbound <- center_frequencies + bandwidths
 
-        pipeline_set(
+        pipeline$set_settings(
           notch_filter_lowerbound = notch_filter_lowerbound,
           notch_filter_upperbound = notch_filter_upperbound
         )
 
-        res <- pipeline_run(pipe_dir = pipeline_path, scheduler = 'none', type = "vanilla", callr_function = NULL, names = "filter_settings", async = FALSE)
+        res <- pipeline$run(scheduler = 'none', type = "vanilla", callr_function = NULL, names = "filter_settings", async = FALSE, as_promise = TRUE)
 
         res$promise$then(
           onFulfilled = function(...){
 
-            subject <- raveio::pipeline_read("subject",
-                                             pipe_dir = pipeline_path)
-            filter_settings <- raveio::pipeline_read("filter_settings",
-                                                     pipe_dir = pipeline_path)
+            subject <- pipeline$read(var_names = "subject")
+            filter_settings <- pipeline$read(var_names = "filter_settings")
 
             shiny::showModal(shiny::modalDialog(
               title = "Confirmation",
@@ -342,15 +340,12 @@ module_server <- function(input, output, session, ...){
         buttons = FALSE, auto_close = FALSE
       )
 
-      res <-
-        pipeline_run(
-          names = "apply_notch",
-          pipe_dir = pipeline_path,
-          scheduler = 'none',
-          type = "smart",
-          callr_function = NULL,
-          async = FALSE
-        )
+      res <- pipeline$run(names = "apply_notch",
+                          scheduler = 'none',
+                          type = "smart",
+                          callr_function = NULL,
+                          async = FALSE,
+                          as_promise = TRUE)
 
       res$promise$then(
         onFulfilled = function(...) {
@@ -430,7 +425,7 @@ module_server <- function(input, output, session, ...){
       theme <- ravedash::current_shiny_theme()
       electrode <- local_data$imported_electrodes
 
-      pipeline_set(
+      pipeline$set_settings(
         diagnostic_plot_params = list(
           path = conn,
           window_length = input$pwelch_winlen,
@@ -452,8 +447,7 @@ module_server <- function(input, output, session, ...){
         auto_close = FALSE, buttons = FALSE
       )
 
-      results <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      results <- pipeline$run(
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
@@ -467,7 +461,8 @@ module_server <- function(input, output, session, ...){
           "subject",
           "imported_electrodes",
           "diagnostic_plots"
-        )
+        ),
+        as_promise = TRUE
       )
       # results$await(names = "diagnostic_plots")
       return(results$promise$then(

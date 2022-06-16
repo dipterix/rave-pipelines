@@ -1,7 +1,7 @@
-dcm2niix_path: ''
-dryrun: no
-freesurfer_path: /Applications/freesurfer
-fsl_path: /Users/beauchamplab/fsl
+dcm2niix_path: /opt/homebrew/bin/dcm2niix
+dryrun: yes
+freesurfer_path: ''
+fsl_path: ''
 params:
   nii_t1: ''
   nii_ct: ''
@@ -13,9 +13,9 @@ params:
     steps: -all
     fresh_start: no
 params_dcm2niix: ~
-path_ct: Guerrero_Evangelina_Cortez/CTBRAINWITHOUTCONTRAST
-path_mri: Guerrero_Evangelina_Cortez/mri
+path_ct: Harris_Ralph_Emanuel_CT
+path_mri: Harris_Ralph_Emanuel_MR
 project_name: devel
 skip_coregistration: no
-skip_recon: yes
+skip_recon: no
 subject_code: YAB

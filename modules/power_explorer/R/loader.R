@@ -92,13 +92,13 @@ loader_server <- function(input, output, session, ...){
       ),
       map = settings
     )
-    pipeline_set(.list = settings)
+    pipeline$set_settings(.list = settings)
 
     default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
     default_reference <- isTRUE(loader_epoch$get_sub_element_input("default"))
 
     # Run the pipeline!
-    tarnames <- raveio::pipeline_target_names(pipe_dir = pipeline_path)
+    tarnames <- pipeline$target_table$Names
 
     count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
 
@@ -109,8 +109,8 @@ loader_server <- function(input, output, session, ...){
       ), icon = "info", auto_close = FALSE, buttons = FALSE
     )
 
-    res <- raveio::pipeline_run(
-      pipe_dir = pipeline_path,
+    res <- pipeline$run(
+      as_promise = TRUE,
       names = "repository",
       scheduler = "none",
       type = "smart",  # parallel
@@ -121,7 +121,7 @@ loader_server <- function(input, output, session, ...){
     res$promise$then(
       onFulfilled = function(e){
         if(default_epoch || default_reference){
-          repo <- raveio::pipeline_read("repository", pipe_dir = pipeline_path)
+          repo <- pipeline$read("repository")
           if(default_epoch){
             repo$subject$set_default("epoch_name", repo$epoch_name)
           }

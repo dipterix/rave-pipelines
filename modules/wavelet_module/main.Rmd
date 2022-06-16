@@ -38,7 +38,7 @@ notch_filtere_stamp <- subject$get_default(namespace = "notch_filter", "paramete
 electrodes <- subject$electrodes
 etypes <- subject$electrode_types
 notch_filtered_electrodes <- electrodes[
-  subject$preprocess_settings$notch_filtered &&
+  subject$preprocess_settings$notch_filtered &
     etypes %in% c("LFP", "EKG", "Audio")
 ]
 if(!length(notch_filtered_electrodes)) {

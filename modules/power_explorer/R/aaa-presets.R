@@ -7,8 +7,7 @@ if(getOption("rave.run.if_false", FALSE)){
 }
 
 component_container <- ravedash:::RAVEShinyComponentContainer$new(
-  module_id = module_id, pipeline_name = pipeline_name,
-  settings_file = "settings.yaml"
+  module_id = module_id, pipeline_name = pipeline$pipeline_name
 )
 
 

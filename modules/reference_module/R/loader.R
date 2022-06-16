@@ -69,10 +69,10 @@ loader_server <- function(input, output, session, ...){
       # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
-      pipeline_set(.list = settings)
+      pipeline$set_settings(.list = settings)
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = c("reference_table_initial", "voltage_data", "brain"),
       )
 

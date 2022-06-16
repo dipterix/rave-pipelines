@@ -49,8 +49,8 @@ module_server <- function(input, output, session, ...){
       if(!loaded_flag){ return() }
 
       # There is not too many interaction, so update everytime
-      check_result <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "check_result")
-      cmd_tools <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "cmd_tools")
+      check_result <- pipeline$read(var_names = "check_result")
+      cmd_tools <- pipeline$read(var_names = "cmd_tools")
       local_reactives$project_name <- check_result$project_name
       local_reactives$subject_code <- check_result$subject_code
       paths <- raveio::rave_directories(subject_code = check_result$subject_code, project_name = check_result$project_name)
@@ -294,23 +294,23 @@ module_server <- function(input, output, session, ...){
     dryrun = TRUE, ...
   ) {
     dryrun <- raveio::is_dry_run() || dryrun
-    pipeline_set(
+    pipeline$set_settings(
       dryrun = dryrun
     )
 
-    res <- raveio::pipeline_run(
-      pipe_dir = pipeline_path,
+    res <- pipeline$run(
+      as_promise = TRUE,
       names = script_name,
       scheduler = "none",
       type = "vanilla",
       async = FALSE
     )
-    script_details <- raveio::pipeline_read(script_name, pipe_dir = pipeline_path)
+    script_details <- pipeline$read(script_name)
     local_data$log_file <- script_details$log_file
 
     if(dryrun) {
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = execute_name,
         scheduler = "none",
         type = "vanilla"
@@ -320,8 +320,8 @@ module_server <- function(input, output, session, ...){
 
       ravedash::logger("Running system command with log file: ", local_data$log_file, level = "info")
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = execute_name,
         scheduler = "none",
         type = "vanilla",
@@ -350,7 +350,7 @@ module_server <- function(input, output, session, ...){
         watch_log()
         dipsaus::updateActionButtonStyled(session = session, inputId = 'dismiss_modal', disabled = FALSE, label = "Finished")
 
-        conv <- raveio::pipeline_read(execute_name, pipe_dir = pipeline_path)
+        conv <- pipeline$read(execute_name)
         if(conv$dry_run) {
           shidashi::show_notification(
             message = shiny::div(
@@ -486,12 +486,12 @@ module_server <- function(input, output, session, ...){
       params <- input_params()
       print(params)
       # save parameters
-      pipeline_set(
+      pipeline$set_settings(
         params = params
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = c("settings", "params", "script_dcm2nii"),
         type = "vanilla",
         scheduler = "none",
@@ -500,7 +500,7 @@ module_server <- function(input, output, session, ...){
 
       res$promise$then(
         onFulfilled = function(...){
-          script_dcm2nii <- raveio::pipeline_read(var_names = "script_dcm2nii", pipe_dir = pipeline_path)
+          script_dcm2nii <- pipeline$read(var_names = "script_dcm2nii")
           local_reactives$script_dcm2nii <- script_dcm2nii
         },
         onRejected = function(e) {
@@ -511,8 +511,8 @@ module_server <- function(input, output, session, ...){
         }
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = "script_recon",
         type = "vanilla",
         scheduler = "none",
@@ -521,7 +521,7 @@ module_server <- function(input, output, session, ...){
 
       res$promise$then(
         onFulfilled = function(...){
-          script_recon <- raveio::pipeline_read(var_names = "script_recon", pipe_dir = pipeline_path)
+          script_recon <- pipeline$read(var_names = "script_recon")
           local_reactives$script_recon <- script_recon
         },
         onRejected = function(e) {
@@ -533,8 +533,8 @@ module_server <- function(input, output, session, ...){
       )
 
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = "script_coreg",
         type = "vanilla",
         scheduler = "none",
@@ -543,7 +543,7 @@ module_server <- function(input, output, session, ...){
 
       res$promise$then(
         onFulfilled = function(...){
-          script_coreg <- raveio::pipeline_read(var_names = "script_coreg", pipe_dir = pipeline_path)
+          script_coreg <- pipeline$read(var_names = "script_coreg")
           local_reactives$script_coreg <- script_coreg
         },
         onRejected = function(e) {

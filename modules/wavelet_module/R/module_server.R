@@ -44,19 +44,19 @@ module_server <- function(input, output, session, ...){
         use_float <- input$precision
         target_sample_rate <- as.numeric(input$target_sample_rate)
         pre_downsample <- as.numeric(input$pre_downsample)
-        pipeline_set(
+        pipeline$set_settings(
           precision = ifelse(use_float, "float", "double"),
           pre_downsample = pre_downsample,
           target_sample_rate = target_sample_rate,
           kernel_table = tbl
         )
 
-        res <- raveio::pipeline_run(pipe_dir = pipeline_path, names = "kernels")
+        res <- pipeline$run(as_promise = TRUE, names = "kernels")
 
         res$promise$then(
           onFulfilled = function(...){
 
-            settings <- pipeline_get()
+            settings <- pipeline$get_settings()
 
             shiny::showModal(shiny::modalDialog(
               title = "Confirmation",
@@ -128,8 +128,7 @@ module_server <- function(input, output, session, ...){
       buttons = FALSE
     )
 
-    res <- raveio::pipeline_run(
-      pipe_dir = pipeline_path,
+    res <- pipeline$run(
       names = "wavelet_params",
       scheduler = "none",
       type = "smart",
@@ -137,7 +136,8 @@ module_server <- function(input, output, session, ...){
       async = async,
       check_interval = 1,
       progress_title = "Running wavelet in the background",
-      progress_max = 3
+      progress_max = 3,
+      as_promise = TRUE
     )
 
     res$promise$then(
@@ -153,8 +153,8 @@ module_server <- function(input, output, session, ...){
           buttons = list("OK" = TRUE)
         )
 
-        raveio::pipeline_run(
-          pipe_dir = pipeline_path,
+        pipeline$run(
+          as_promise = TRUE,
           names = c("subject", "clear_cache"),
           scheduler = "none",
           callr_function = NULL,
@@ -202,7 +202,7 @@ module_server <- function(input, output, session, ...){
       if(!loaded_flag){ return() }
 
 
-      subject <- raveio::pipeline_read("subject", pipe_dir = pipeline_path)
+      subject <- pipeline$read("subject")
 
       all_electrodes <- subject$electrodes
       etypes <- subject$preprocess_settings$electrode_types

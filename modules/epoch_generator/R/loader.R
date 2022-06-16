@@ -61,7 +61,7 @@ loader_server <- function(input, output, session, ...){
       # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
-      pipeline_set(.list = settings)
+      pipeline$set_settings(.list = settings)
 
       # Let the module know the data has been changed
       ravedash::fire_rave_event('data_changed', Sys.time())

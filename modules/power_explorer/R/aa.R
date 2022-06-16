@@ -2,9 +2,11 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables
-pipeline_name <- "power_explorer"
 module_id <- "power_explorer"
 debug <- TRUE
+pipeline <- raveio::pipeline(
+  pipeline_name = "power_explorer",
+  paths = "./modules")
 
 analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
 max_analysis_ranges <- 2
@@ -32,7 +34,7 @@ auto_recalculate_onchange <- c(
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
   re <- tryCatch({
-    repo <- raveio::pipeline_read('repository', pipe_dir = pipeline_path)
+    repo <- pipeline$read('repository')
     if(!inherits(repo, "rave_prepare_power")) {
       stop("No repository found")
     }
@@ -60,8 +62,4 @@ if(exists('debug', inherits = FALSE) && isTRUE(get('debug'))){
 } else {
   ravedash::logger_threshold("info", module_id = module_id)
 }
-
-register_pipeline(pipeline_name = pipeline_name,
-                  settings_file = "settings.yaml",
-                  env = environment())
 

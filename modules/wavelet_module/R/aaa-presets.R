@@ -5,8 +5,8 @@ NULL
 
 # Create a component container
 component_container <- ravedash::new_rave_shiny_component_container(
-  module_id = module_id, pipeline_name = pipeline_name,
-  settings_file = pipeline_settings_file
+  module_id = module_id,
+  pipeline_name = pipeline$pipeline_name
 )
 
 

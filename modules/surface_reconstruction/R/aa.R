@@ -2,10 +2,11 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables. These are required
-pipeline_name <- "surface_reconstruction"
-pipeline_settings_file <- "settings.yaml"
 module_id <- "surface_reconstruction"
 debug <- TRUE
+pipeline <- raveio::pipeline(
+  pipeline_name = "surface_reconstruction",
+  paths = "./modules")
 
 autorecon_flags <- c(
   "-all", "-autorecon1", "-autorecon2", "-autorecon3",
@@ -27,7 +28,7 @@ check_data_loaded <- function(first_time = FALSE){
     return(FALSE)
   }
   tryCatch({
-    check_result <- raveio::pipeline_read(pipe_dir = pipeline_path, var_names = "check_result")
+    check_result <- pipeline$read("check_result")
     if(is.list(check_result) && all(
       c("project_name", "subject_code", "fs_path", "fs_reconstructed",
         "skip_recon", "skip_coregistration", "has_dcm2niix", "has_freesurfer",
@@ -54,11 +55,4 @@ if(exists('debug', inherits = FALSE) && isTRUE(get('debug'))){
   ravedash::logger_threshold("info", module_id = module_id)
 }
 
-# Register RAVE pipeline, this will give you:
-# `pipeline_set`: set variables in the pipeline
-# `pipeline_get`: get variables in the pipeline
-# `pipeline_settings_path`: where the settings file locate
-# `pipeline_path`: parent directory path of the pipeline
-register_pipeline(pipeline_name = pipeline_name,
-                  settings_file = pipeline_settings_file,
-                  env = environment())
+

@@ -1,12 +1,12 @@
 changes:
 - group_name: Default
-  electrodes: 14-15
+  electrodes: 1-14
   reference_type: Common Average Reference
-  reference_signal: ref_14-15
+  reference_signal: ref_1-13
 electrode_group:
   '1':
     name: Default
-    electrodes: 14-15
-project_name: test
-reference_name: '[Blank profile]'
-subject_code: YAB
+    electrodes: 1-14
+project_name: test2
+reference_name: _unsaved
+subject_code: KC

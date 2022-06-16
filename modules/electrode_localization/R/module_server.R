@@ -66,8 +66,8 @@ module_server <- function(input, output, session, ...){
         icon = "info", auto_close = FALSE, buttons = FALSE
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
@@ -78,7 +78,7 @@ module_server <- function(input, output, session, ...){
       res$promise$then(
         onFulfilled = function(...){
           dipsaus::close_alert2()
-          table <- raveio::pipeline_read('localization_result_final', pipe_dir = pipeline_path)
+          table <- pipeline$read('localization_result_final')
           subject <- component_container$data$subject
           raveio::save_meta2(
             data = table,
@@ -136,10 +136,10 @@ module_server <- function(input, output, session, ...){
 
       # Collect input data
       local_reactives$table_preview <- NULL
-      pipeline_set(localization_list = local_data$plan_list)
+      pipeline$set_settings(localization_list = local_data$plan_list)
 
-      results <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      results <- pipeline$run(
+        as_promise = TRUE,
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
@@ -149,9 +149,9 @@ module_server <- function(input, output, session, ...){
 
       results$promise$then(
         onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline_name, " - localization_result_initial", level = 'debug')
+          ravedash::logger("Fulfilled: ", pipeline$pipeline_name, " - localization_result_initial", level = 'debug')
 
-          table_preview <- raveio::pipeline_read("localization_result_initial", pipe_dir = pipeline_path)
+          table_preview <- pipeline$read("localization_result_initial")
           local_reactives$table_preview <- table_preview
 
           shidashi::clear_notifications(class = "pipeline-error")
@@ -214,10 +214,10 @@ module_server <- function(input, output, session, ...){
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
 
-      subject <- raveio::pipeline_read("subject", pipe_dir = pipeline_path)
-      ct_exists <- raveio::pipeline_read('ct_exists', pipe_dir = pipeline_path)
-      brain <- raveio::pipeline_read('brain', pipe_dir = pipeline_path)
-      fslut <- raveio::pipeline_read('fslut', pipe_dir = pipeline_path)
+      subject <- pipeline$read("subject")
+      ct_exists <- pipeline$read('ct_exists')
+      brain <- pipeline$read('brain')
+      fslut <- pipeline$read('fslut')
 
       ravedash::logger("Repository read from the pipeline; initializing the module UI", level = "debug")
 
@@ -315,7 +315,7 @@ module_server <- function(input, output, session, ...){
     #   subject_name = subject$subject_code
     # )
 
-    ct_in_t1 <- raveio::pipeline_read("ct_in_t1", pipe_dir = pipeline_path)
+    ct_in_t1 <- pipeline$read("ct_in_t1")
 
     control_presets <- c("localization", "animation", "display_highlights")
     controllers <- list()

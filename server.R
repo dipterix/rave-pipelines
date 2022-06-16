@@ -23,6 +23,14 @@ server <- function(input, output, session){
   shared_data$enable_broadcast()
   shared_data$enable_sync()
 
+  # Set max upload file size to be 300MB by default
+  if(!isTRUE(getOption('shiny.maxRequestSize', 0) > 0)) {
+    options(shiny.maxRequestSize = 300 * 1024 ^ 2)
+  }
+
+  # # Register bindings for compound input
+  # dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_function = NULL)
+
   # tools <- ravedash::register_rave_session(session = session)
 
   # Fixed usage, call modules

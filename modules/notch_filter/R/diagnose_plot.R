@@ -69,6 +69,7 @@ diagnose_notch_filters <- function(
         ravetools::diagnose_channel(
           raw_signal,
           notch_signal,
+          sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
           srate = srate,
           max_freq = max_freq,
           try_compress = TRUE,
@@ -90,6 +91,7 @@ diagnose_notch_filters <- function(
         ravetools::diagnose_channel(
           raw_signal,
           notch_signal,
+          sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
           srate = srate,
           max_freq = max_freq,
           try_compress = TRUE,

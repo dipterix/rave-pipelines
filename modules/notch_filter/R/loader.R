@@ -61,12 +61,9 @@ loader_server <- function(input, output, session, ...){
       # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
-      pipeline_set(.list = settings)
+      pipeline$set_settings(.list = settings)
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
-        names = "imported_electrodes",
-      )
+      res <- pipeline$run(names = "imported_electrodes", as_promise = TRUE)
 
       res$promise$then(
 

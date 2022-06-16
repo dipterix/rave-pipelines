@@ -110,7 +110,7 @@ module_server <- function(input, output, session, ...){
         return(re)
       }
 
-      voltage_data <- raveio::pipeline_read(var_names = "voltage_data", pipe_dir = pipeline_path)
+      voltage_data <- pipeline$read(var_names = "voltage_data")
       if(!is.list(voltage_data) || !is.list(voltage_data$data)){ return() }
       arr <- voltage_data$data[[block]]
 
@@ -1192,7 +1192,7 @@ module_server <- function(input, output, session, ...){
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
 
-      new_subject <- raveio::pipeline_read("subject", pipe_dir = pipeline_path)
+      new_subject <- pipeline$read("subject")
       new_subject <- raveio::as_rave_subject(new_subject$subject_id)
       new_repository <- raveio::prepare_subject_bare(subject = new_subject, electrodes = new_subject$electrodes, reference_name = "_unsaved")
 
@@ -1268,14 +1268,14 @@ module_server <- function(input, output, session, ...){
       ravedash::logger("Applying changes to electrode groups", level = "trace")
 
       electrode_group <- input$electrode_group
-      pipeline_set(
+      pipeline$set_settings(
         reference_name = "_unsaved",
         electrode_group = electrode_group,
         changes = list()
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         scheduler = "none", type = "vanilla",
         names = c(
           'electrode_group', 'reference_group'),
@@ -1283,7 +1283,7 @@ module_server <- function(input, output, session, ...){
 
       res$promise$then(
         onFulfilled = function(...){
-          tbl_new <- raveio::pipeline_read("reference_group", pipe_dir = pipeline_path)
+          tbl_new <- pipeline$read("reference_group")
           tbl_new <- tbl_new[, c("Electrode", "Group")]
           tbl_old <- shiny::isolate(local_reactives$reference_table)
           # update
@@ -1883,7 +1883,7 @@ module_server <- function(input, output, session, ...){
           reference_signal = ref_signals
         )
 
-        changes <- as.list(pipeline_get("changes"))
+        changes <- as.list(pipeline$get_settings("changes"))
 
         # Make changes
         dup <- vapply(changes, function(item){
@@ -1893,20 +1893,19 @@ module_server <- function(input, output, session, ...){
         changes[[length(changes) + 1]] <- current_change
 
 
-        pipeline_set(changes = changes)
+        pipeline$set_settings(changes = changes)
       }
 
-      res <- raveio::pipeline_run(
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = "reference_updated",
-        pipe_dir = pipeline_path,
         scheduler = "none",
         type = "vanilla")
 
       res$promise$then(
         onFulfilled = function(...){
 
-          updated_reftable <- raveio::pipeline_read("reference_updated",
-                                                    pipe_dir = pipeline_path)
+          updated_reftable <- pipeline$read("reference_updated")
 
           local_reactives$reference_table <- updated_reftable
 

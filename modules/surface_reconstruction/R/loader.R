@@ -162,7 +162,7 @@ loader_server <- function(input, output, session, ...){
       # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
-      pipeline_set(
+      pipeline$set_settings(
         path_mri = input$mri_path,
         path_ct = input$ct_path,
         skip_recon = input$skip_recon,
@@ -174,8 +174,8 @@ loader_server <- function(input, output, session, ...){
         .list = settings
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = "check_result",
         type = "vanilla", scheduler = "none"
       )
@@ -185,8 +185,8 @@ loader_server <- function(input, output, session, ...){
         # When data can be imported
         onFulfilled = function(e){
 
-          check_result <- raveio::pipeline_read("check_result", pipe_dir = pipeline_path)
-          cmd_tools <- raveio::pipeline_read("cmd_tools", pipe_dir = pipeline_path)
+          check_result <- pipeline$read("check_result")
+          cmd_tools <- pipeline$read("cmd_tools")
 
           msg_ui <- NULL
           warn_ui <- NULL
@@ -272,8 +272,8 @@ loader_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = "default_paths",
         type = "vanilla",
         scheduler = "none"
@@ -356,8 +356,8 @@ loader_server <- function(input, output, session, ...){
         }
       }
       selected <- c(
-        subject$get_default("raw_mri_path", namespace = pipeline_name),
-        pipeline_get("path_mri"), selected
+        subject$get_default("raw_mri_path", namespace = pipeline$pipeline_name),
+        pipeline$get_settings("path_mri"), selected
       ) %OF% paths
       shiny::updateSelectInput(session = session, inputId = "mri_path", choices = paths, selected = selected)
 
@@ -368,8 +368,8 @@ loader_server <- function(input, output, session, ...){
         }
       }
       selected <- c(
-        subject$get_default("raw_ct_path", namespace = pipeline_name),
-        pipeline_get("path_ct"), selected
+        subject$get_default("raw_ct_path", namespace = pipeline$pipeline_name),
+        pipeline$get_settings("path_ct"), selected
       ) %OF% paths
       shiny::updateSelectInput(session = session, inputId = "ct_path", choices = paths, selected = selected)
 

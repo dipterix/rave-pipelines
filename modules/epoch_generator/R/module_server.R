@@ -33,8 +33,8 @@ module_server <- function(input, output, session, ...){
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
 
-      project_name <- pipeline_get("project_name")
-      subject_code <- pipeline_get("subject_code")
+      project_name <- pipeline$get_settings("project_name")
+      subject_code <- pipeline$get_settings("subject_code")
 
       subject <- raveio::RAVESubject$new(project_name = project_name,
                                          subject_code = subject_code,

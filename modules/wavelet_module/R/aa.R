@@ -2,9 +2,12 @@ library(ravedash)
 # global variables for the module
 
 # Stores global variables. These are required
-pipeline_name <- "wavelet_module"
-pipeline_settings_file <- "settings.yaml"
 module_id <- "wavelet_module"
+pipeline <- raveio::pipeline(
+  pipeline_name = "wavelet_module",
+  settings_file = "settings.yaml",
+  paths = "./modules"
+)
 debug <- TRUE
 
 #' Function to check whether data is loaded.
@@ -19,8 +22,8 @@ debug <- TRUE
 check_data_loaded <- function(first_time = FALSE){
   if( first_time ) { return(FALSE) }
 
-  project_name <- pipeline_get("project_name")
-  subject_code <- pipeline_get("subject_code")
+  project_name <- pipeline$get_settings("project_name")
+  subject_code <- pipeline$get_settings("subject_code")
 
   # Invalid inputs
   if(length(project_name) != 1 || length(subject_code) != 1 ||
@@ -57,13 +60,5 @@ if(exists('debug', inherits = FALSE) && isTRUE(get('debug'))){
   ravedash::logger_threshold("info", module_id = module_id)
 }
 
-# Register RAVE pipeline, this will give you:
-# `pipeline_set`: set variables in the pipeline
-# `pipeline_get`: get variables in the pipeline
-# `pipeline_settings_path`: where the settings file locate
-# `pipeline_path`: parent directory path of the pipeline
-register_pipeline(pipeline_name = pipeline_name,
-                  settings_file = pipeline_settings_file,
-                  env = environment())
 
 

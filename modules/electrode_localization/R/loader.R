@@ -1,8 +1,6 @@
 # UI components for loader
 loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
-  # electrode_plan <- pipeline_get("electrode_plan")
-
   shiny::div(
     class = "container",
     shiny::fluidRow(
@@ -459,7 +457,7 @@ loader_server <- function(input, output, session, ...){
       }
 
       # Save the variables into pipeline settings file
-      pipeline_set(
+      pipeline$set_settings(
         path_ct_in_t1 = rpath,
         localization_plan = input$loader_plan,
         .list = settings
@@ -467,13 +465,13 @@ loader_server <- function(input, output, session, ...){
 
       dipsaus::shiny_alert2(
         title = "Loading in progress",
-        text = "Loading the viewer and CT file. If this is the first time, it might take a while to generate cache files.",
+        text = "Loading the viewer and CT file. It will take a while to generate prepare.",
         icon = "info",
         auto_close = FALSE, buttons = FALSE
       )
 
-      res <- raveio::pipeline_run(
-        pipe_dir = pipeline_path,
+      res <- pipeline$run(
+        as_promise = TRUE,
         names = c("plan_list", "brain", "ct_in_t1", "ct_exists", "fslut"),
         type = "vanilla",
         scheduler = "none",
