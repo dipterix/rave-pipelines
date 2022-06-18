@@ -16,21 +16,30 @@ BugReports: https://github.com/beauchamplab/rave-pipelines/issues
 URL: https://github.com/beauchamplab/rave-pipelines
 Depends: R (>= 4.1.0)
 Imports:
+    graphics,
     grDevices,
-    filearray,
+    utils,
     dipsaus,
-    targets,
     DT,
-    ravetools,
-    yaml,
-    raveio,
+    filearray,
     future,
+    jsonlite,
+    raveio,
+    ravetools,
+    ravedash,
+    rpymat,
+    shidashi,
+    shiny,
+    shinyvalidate,
+    shinyWidgets,
     stringr,
-    raveutils
+    targets,
+    threeBrain,
+    yaml,
 Suggests:
-    rstudioapi
-Remotes:
-    dipterix/raveutils
+    rstudioapi,
+    knitr,
+    rlang
 InheritPipelines:
 SubPipelines:
     modules/import_lfp_native,
