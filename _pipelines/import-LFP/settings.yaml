@@ -1,9 +1,0 @@
-skip_validation: yes
-import_setup__subject_code: YAB
-import_setup__project_name: congruency
-import_channels__sample_rate: 1024
-import_channels__electrodes: 1-84
-import_channels__unit: NA
-import_channels__electrode_file: auto
-import_blocks__format: Single EDF(+) file per block
-import_blocks__session_block: 008

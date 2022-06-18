@@ -1,3 +1,0 @@
-import-freesurfer:
-  script: make-main.R
-  store: shared

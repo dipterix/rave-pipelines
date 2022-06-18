@@ -1,3 +1,0 @@
-notch-filter:
-  script: make-main.R
-  store: shared

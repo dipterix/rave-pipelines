@@ -1,3 +1,0 @@
-jupyterlab:
-  script: make-main.R
-  store: shared
