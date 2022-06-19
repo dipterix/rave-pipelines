@@ -9,14 +9,8 @@ module_server <- function(input, output, session, ...){
     data_loaded <- ravedash::watch_data_loaded()
     if(data_loaded){
 
-      port <- raveio::raveio_getopt("jupyter_port", default = 17284)
-      jupyter_list <- jupyter_server_status(port = port, force = FALSE, verbose = FALSE)
-      instance <- jupyter_list$instances[
-        jupyter_list$instances$port == port
-      ]
-
       jupyter_url <- sprintf("http://%s:%s/jupyter/lab?token=%s",
-                             instance$host, instance$port, instance$token)
+                             local_data$host, local_data$port, local_data$token)
 
       shiny::tags$iframe(
         src = jupyter_url,

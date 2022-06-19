@@ -20,8 +20,8 @@ module_ui_loader <- function(session = shiny::getDefaultReactiveDomain()){
 }
 
 server_loader <- function(input, output, session, ...){
-  shiny::observe({
-    print(session$clientData)
-  })
+  # shiny::observe({
+  #   print(session$clientData)
+  # })
 
 }
