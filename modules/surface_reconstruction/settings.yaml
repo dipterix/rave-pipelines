@@ -1,4 +1,4 @@
-dcm2niix_path: /opt/homebrew/bin/dcm2niix
+dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
 dryrun: yes
 freesurfer_path: ''
 fsl_path: ''
@@ -15,7 +15,7 @@ params:
 params_dcm2niix: ~
 path_ct: Harris_Ralph_Emanuel_CT
 path_mri: Harris_Ralph_Emanuel_MR
-project_name: devel
+project_name: congruency
 skip_coregistration: no
 skip_recon: no
 subject_code: YAB

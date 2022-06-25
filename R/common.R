@@ -55,7 +55,7 @@ nav_class <- function(){
   c(
     "main-header",
     "navbar",
-    "navbar-expand",
+    "navbar-expand-md",
     "navbar-dark",
     # "navbar-light",
     "navbar-primary",

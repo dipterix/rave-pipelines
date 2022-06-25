@@ -1,14 +1,21 @@
-analysis_electrodes: '14'
+analysis_electrodes: '14 '
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
-    - 22
-    - 135
+    - 29
+    - 125.5
     time:
-    - -1
-    - 2
+    - -0.92
+    - 1.64
+  '2':
+    frequency:
+    - 43.5
+    - 118.5
+    time:
+    - 0
+    - 1
 analysis_ranges__lock: Unlocked
 baseline__global_baseline_choice: Per frequency, trial, and electrode
 baseline__unit_of_analysis: Decibel
@@ -28,6 +35,9 @@ condition_groups:
     - known_a
     - last_a
     - meant_a
+  '2':
+    group_name: ''
+    group_conditions: []
 electrode_category_selector: Electrode
 epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2
