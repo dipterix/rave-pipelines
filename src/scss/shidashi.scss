@@ -532,6 +532,7 @@ body.iframe-mode section.module_main_ui .screen-height {
   max-height: calc(100vh - 16px);
 }
 
+
 .content-header {
   padding: 0.5rem;
 }
@@ -556,6 +557,48 @@ body.navbar-iframe-hidden .content-wrapper.iframe-mode {
       min-height: calc(-41px + 100vh);
     }
   }
+}
+
+body.navbar-hidden:not(.iframe-mode-fullscreen) nav.main-header {
+  display: none!important;
+}
+
+body.scroller-not-top:not(.iframe-mode-fullscreen),
+body.navbar-hidden:not(.iframe-mode-fullscreen) {
+  &.iframe-mode .card.maximized-card {
+    padding-top: 40px;
+  }
+
+  & nav.main-header {
+    opacity: 0.3;
+    margin-bottom: -40px;
+
+    &:hover {
+      opacity: 1;
+    }
+
+  }
+
+  & .content-wrapper.iframe-mode {
+    max-height: 100vh;
+
+    &>.tab-content {
+      min-height: 100vh;
+
+      & .tab-empty,
+      & .tab-pane,
+      & .tab-pane > iframe {
+        min-height: 100vh;
+      }
+    }
+  }
+
+  & .stretch-inner-height,
+  & section.module_main_ui .screen-height {
+    max-height: calc(-16px + 100vh);
+    height: 100%;
+  }
+
 }
 
 body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
@@ -586,11 +629,18 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
   padding-left: 0.8rem;
 }
 
-.main-header {
+
+nav.main-header {
   background-image: url("shidashi/img/header-bg.png");
   background-blend-mode: soft-light; // lighten;
   background-repeat: no-repeat;
-  background-size: cover;
+  // background-size: cover;
+  background-size: 100vw 100% ;
+  background-position: left top;
+  transition: margin-bottom .3s ease-in-out, opacity .3s ease-in-out, margin .3s ease-in-out !important;
+
+  pointer-events: none;
+  padding: 0 3rem 0 0!important;
 
   &.bg-blend-screen {
     background-blend-mode: screen;
@@ -604,6 +654,7 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
 
   & .nav-item {
     transition: background-color 0.2s ease-in-out;
+    pointer-events: all;
     &:hover {
       background-color: rgba(0, 0, 0, 0.3);
     }

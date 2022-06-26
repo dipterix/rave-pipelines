@@ -60,8 +60,8 @@ nav_class <- function(){
     # "navbar-dark",
     # "navbar-light",
     "navbar-primary",
-    "border-bottom-0",
-    "no-padding"
+    "border-bottom-0"
+    # "no-padding"
   )
 }
 

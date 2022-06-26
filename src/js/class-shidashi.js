@@ -21,11 +21,11 @@ const default_scroll_opt = {
   }
 };
 
-
 class Shidashi {
 
   constructor (Shiny){
     this._keep_alive = true;
+    this._moduleId = undefined;
     this._active_module = undefined;
     this._shiny_inactive = false;
     this._shiny_callstacks = [];
@@ -48,15 +48,58 @@ class Shidashi {
     this._listeners = {};
     this._storageDuration = 1000 * 60 * 60 * 24; // 1000 days
     this.sessionData = {};
+    this._bodyClasses = [];
+    this.variableBodyClasses = ["scroller-not-top", "navbar-hidden"];
     this.scroller = this.makeFancyScroll(
       "body:not(.overflow-hidden)",
       {
         overflowBehavior : {
             x : "hidden",
             y : "scroll"
-        }
+        },
+        callbacks : {
+          onScroll : () => {
+            this._mainScrollCallback(this.scroller);
+          },
+        },
       }
     );
+  }
+
+  _mainScrollCallback(scrollers) {
+    let isTop, param;
+    if(Array.isArray(scrollers)) {
+      isTop = scrollers
+        .map((scroller, ii) => {
+          param = scroller.scroll();
+          return(param.position.y);
+        })
+        .filter(v => {
+          return(v == 0);
+        })
+        .length;
+    } else {
+      param = scrollers.scroll();
+      isTop = param.position.y == 0;
+    }
+
+    if(isTop) {
+      this.notifyParent(
+        "removeClass", [
+          "body",
+          "scroller-not-top"
+        ]
+      );
+      this.removeClass("body", "scroller-not-top");
+    } else {
+      this.notifyParent(
+        "addClass", [
+          "body",
+          "scroller-not-top"
+        ]
+      );
+      this.addClass("body", "scroller-not-top");
+    }
   }
 
   ensureShiny(then){
@@ -267,6 +310,16 @@ class Shidashi {
     }
   }
 
+  notifyParent(method, args) {
+    if(window.parent && window.parent !== window) {
+      if( window.parent.shidashi ) {
+        window.parent.shidashi[method](...args);
+      }
+    }
+  }
+
+  // status
+
   // theme-mode
   asLightMode(){
     this.$body.removeClass("dark-mode");
@@ -307,6 +360,26 @@ class Shidashi {
       });
     }
     this._reportTheme("dark");
+  }
+
+  resumeStatus(parentShidashi) {
+    if(!parentShidashi) {
+      return;
+    }
+    if(parentShidashi._active_module !== this._moduleId){
+      return;
+    }
+
+    console.debug(`Resuming status - ${ this._moduleId }`);
+    // body classes
+    this.variableBodyClasses.forEach((cls) => {
+      if( this._bodyClasses.contains(cls) ) {
+        parentShidashi.addClass("body", cls);
+      } else {
+        parentShidashi.removeClass("body", cls);
+      }
+    });
+
   }
 
   // Trigger actions
@@ -510,9 +583,15 @@ class Shidashi {
   // html css operations
   addClass(selector, cls){
     $(selector).addClass(cls);
+    if( selector.startsWith("body") ) {
+      this._bodyClasses = this.$body[0].classList;
+    }
   }
   removeClass(selector, cls){
     $(selector).removeClass(cls);
+    if( selector.startsWith("body") ) {
+      this._bodyClasses = this.$body[0].classList;
+    }
   }
 
   setInnerHtml(selector, content) {
@@ -801,12 +880,26 @@ class Shidashi {
     });
 
     // --------------- Fancy scroll ---------------
-    this.makeFancyScroll(".fancy-scroll-y:not(.overflow-hidden), .overflow-y-auto", {
+    this.makeFancyScroll(".fancy-scroll-y:not(.overflow-hidden,.screen-height), .overflow-y-auto", {
         overflowBehavior : {
             x : "hidden",
             y : "scroll"
         }
       });
+
+    const screenScrollers = this.makeFancyScroll(".screen-height.overflow-y-scroll", {
+      overflowBehavior : {
+          x : "hidden",
+          y : "scroll"
+      },
+      callbacks : {
+        onScroll : () => {
+          this._mainScrollCallback(screenScrollers);
+        },
+      },
+    });
+
+
     this.makeFancyScroll(".resize-vertical", {
         resize: "vertical",
         overflowBehavior : {
@@ -975,6 +1068,10 @@ class Shidashi {
     if(this._shiny_registered) { return; }
     this._shiny_registered = true;
 
+    this.shinyHandler("set_crrent_module", (params) => {
+      this._moduleId = params.module_id;
+    });
+
     this.shinyHandler("click", (params) => {
       this.click(params.selector);
     });
@@ -1068,6 +1165,19 @@ class Shidashi {
 
     this.shinyHandler("reset_output", (params) => {
       this.shinyResetOutput(params.outputId, params.message || "");
+    });
+
+    this.shinyHandler("hide_header", (params) => {
+      this.addClass("body", "navbar-hidden");
+      this.notifyParent("addClass", [
+        "body", "navbar-hidden"
+      ])
+    });
+    this.shinyHandler("show_header", (params) => {
+      this.removeClass("body", "navbar-hidden");
+      this.notifyParent("removeClass", [
+        "body", "navbar-hidden"
+      ])
     });
 
     // keep alive

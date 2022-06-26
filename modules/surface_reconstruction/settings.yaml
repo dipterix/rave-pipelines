@@ -1,5 +1,5 @@
 dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
-dryrun: yes
+dryrun: no
 freesurfer_path: ''
 fsl_path: ''
 params:

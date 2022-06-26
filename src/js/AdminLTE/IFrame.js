@@ -72,6 +72,8 @@ class IFrame {
     this._config = config
     this._element = element
     this._init()
+
+    $(this._element).data("adminLTEIframeHandler", this);
   }
 
   // Public
@@ -284,11 +286,6 @@ class IFrame {
   }
 
   _setupListeners() {
-    const initialized = $(this._element).data("setupListeners_initialized")
-    if(initialized !== undefined){
-    	return
-    }
-    $(this._element).data("setupListeners_initialized", true)
     $(window).on('resize', () => {
       setTimeout(() => {
         this._fixHeight()
