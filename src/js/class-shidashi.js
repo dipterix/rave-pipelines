@@ -270,8 +270,8 @@ class Shidashi {
   // theme-mode
   asLightMode(){
     this.$body.removeClass("dark-mode");
-    this.$aside.removeClass("sidebar-dark-primary")
-      .addClass("sidebar-light-primary");
+    //this.$aside.removeClass("sidebar-dark-primary")
+    //  .addClass("sidebar-light-primary");
     this.$navIfarme.removeClass("navbar-dark")
       .addClass("navbar-light");
     if(this.$iframeWrapper.length){
@@ -291,8 +291,8 @@ class Shidashi {
   asDarkMode(){
 
     this.$body.addClass("dark-mode");
-    this.$aside.removeClass("sidebar-light-primary")
-      .addClass("sidebar-dark-primary");
+    //this.$aside.removeClass("sidebar-light-primary")
+    //  .addClass("sidebar-dark-primary");
     this.$navIfarme.removeClass("navbar-light")
       .addClass("navbar-dark");
     if(this.$iframeWrapper.length){

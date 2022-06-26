@@ -1,9 +1,10 @@
 import $ from 'jquery';
-import 'bootstrap';
-import 'admin-lte/dist/js/adminlte.js';
-import "admin-lte/dist/css/adminlte.css";
+// import 'bootstrap';
+// import 'admin-lte/dist/js/adminlte.js';
+import './js/AdminLTE/AdminLTE.js'
+// import "admin-lte/dist/css/adminlte.css";
 import "./css/OverlayScrollbars.css";
-import "./css/shidashi.css";
+import "./scss/shidashi.scss";
 import { registerProgressOutput } from './js/shiny-progress.js';
 import { registerClipboardOutput } from './js/shiny-clipboard.js';
 import { registerHighlightJS } from './js/import-highlightjs.js';

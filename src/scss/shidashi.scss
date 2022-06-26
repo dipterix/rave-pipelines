@@ -1,14 +1,18 @@
 @use "sass:meta";
 @use "sass:map";
 
-/** variables from AdminLTE **/
+// Bootstrap
+// ---------------------------------------------------
+@import "~bootstrap/scss/functions";
+
+// Custom Theme Color START
 $lightblue: #86bad8;
 $navy: #002c59;
 $olive: #74c8a3;
 $lime: #67ffa9;
 $fuchsia: #f672d8;
 $maroon: #ed6c9b;
-$blue: #3f6791;
+$blue: #007bff; // #3f6791;
 $indigo: #6610f2;
 $purple: #6f42c1;
 $pink: #e83e8c;
@@ -21,7 +25,8 @@ $cyan: #3498db;
 $white: #fff;
 $gray: #6c757d;
 $gray-dark: #343a40;
-$primary: #3f6791;
+$primary: #669bbc; // #5aa5cd;
+// $primary-alt: #00b2ca;
 $secondary: #6c757d;
 $success: #00bc8c;
 $info: #3498db;
@@ -31,6 +36,26 @@ $light: #f8f9fa;
 $light-gray: #c8c9ca;
 $dark: #343a40;
 $light-dark: #454d55;
+// Custom Theme Color END
+
+
+@import './AdminLTE/bootstrap-variables';
+@import "~bootstrap/scss/bootstrap";
+
+// Variables and Mixins
+// ---------------------------------------------------
+@import './AdminLTE/variables';
+@import "./AdminLTE/variables-alt";
+@import './AdminLTE/mixins';
+
+@import './AdminLTE/parts/core';
+@import './AdminLTE/parts/components';
+@import './AdminLTE/parts/extra-components';
+@import './AdminLTE/parts/pages';
+@import './AdminLTE/parts/plugins';
+@import './AdminLTE/parts/miscellaneous';
+
+// Custom Style START
 
 /** global variables **/
 $sizes-margin-padding: 0,1,2,3,4,5,6,7,8,9,10,11,12,15,20,25,30,40,50,60,70,80,90,100;
@@ -561,6 +586,38 @@ body.iframe-mode-fullscreen .content-wrapper.iframe-mode {
   padding-left: 0.8rem;
 }
 
+.main-header {
+  background-image: url("shidashi/img/header-bg.png");
+  background-blend-mode: soft-light; // lighten;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+  &.bg-blend-screen {
+    background-blend-mode: screen;
+  }
+  &.bg-blend-darken {
+    background-blend-mode: darken;
+  }
+  &.bg-blend-lighten {
+    background-blend-mode: lighten;
+  }
+
+  & .nav-item {
+    transition: background-color 0.2s ease-in-out;
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+  }
+  & a {
+    color: $light-gray;
+    // text-shadow: 0 0 5px black;
+
+    &:hover,
+    &:focus{
+      text-decoration: none;
+    }
+  }
+}
 
 // Sidebar-related
 

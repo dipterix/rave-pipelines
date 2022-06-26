@@ -56,9 +56,11 @@ nav_class <- function(){
     "main-header",
     "navbar",
     "navbar-expand-md",
-    "navbar-dark",
+    # "bg-blend-darken",
+    # "navbar-dark",
     # "navbar-light",
     "navbar-primary",
+    "border-bottom-0",
     "no-padding"
   )
 }
