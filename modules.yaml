@@ -3,22 +3,11 @@ divider:
     order: 0
   Built-ins:
     order: 10
-groups:
-  Import Signals:
-    order: 1
-    open: no
-  Surface & Electrodes:
-    order: 7
-    open: no
 modules:
   import_lfp_native:
     label: Native Structure
     group: Import Signals
     order: 1.1
-  # import_lfp_native:
-  #   label: BIDS Structure
-  #   group: Import Signals
-  #   order: 1.2
   power_explorer:
     label: Power Explorer
     order: 11
@@ -47,3 +36,13 @@ modules:
     label: Electrode Localization
     group: Surface & Electrodes
     order: 7.2
+  standalone_viewer:
+    label: Standalone Viewer
+    hidden: yes
+groups:
+  Import Signals:
+    order: 1
+    open: no
+  Surface & Electrodes:
+    order: 7
+    open: no

@@ -1071,7 +1071,7 @@ class Shidashi {
     if(this._shiny_registered) { return; }
     this._shiny_registered = true;
 
-    this.shinyHandler("set_crrent_module", (params) => {
+    this.shinyHandler("set_current_module", (params) => {
       this._moduleId = params.module_id;
       this._raveId = params.rave_id;
     });
