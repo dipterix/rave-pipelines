@@ -35,9 +35,6 @@ condition_groups:
     - known_a
     - last_a
     - meant_a
-  '2':
-    group_name: ''
-    group_conditions: []
 electrode_category_selector: Electrode
 epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2

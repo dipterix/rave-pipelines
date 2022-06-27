@@ -36,59 +36,84 @@ server <- function(input, output, session){
   # Fixed usage, call modules
   shiny::bindEvent(
     ravedash::safe_observe({
-      req <- list(QUERY_STRING = session$clientData$url_search)
-      ravedash::logger("GET request: /{req$QUERY_STRING}", level = "trace", use_glue = TRUE)
+      query_string <- session$clientData$url_search
+      if(length(query_string) != 1) {
+        query_string <- "/"
+      }
 
-      parse_env <- new.env(parent = globalenv())
+      ravedash::logger("GET request: /{query_string}", level = "trace", use_glue = TRUE)
 
-      resource <- shidashi::load_module(request = req, env = parse_env)
-      if(resource$has_module){
+      # query_string <- "/?type=widget&output_id=aaaa&rave_id=NAXzMcGKxoqwFeCjswfX"
+      query_list <- httr::parse_url(query_string)
 
-        module_table <- shidashi::module_info()
-        module_table <- module_table[module_table$id %in% resource$module$id, ]
-        if(nrow(module_table)){
-          group_name <- as.character(module_table$group[[1]])
-          if(is.na(group_name)){
-            group_name <- "<no group>"
-          }
-          if(system.file(package = "logger") != ''){
-            ravedash::logger(
-              level = "info",
-              "Loading - { module_table$label[1] } ({group_name}/{ module_table$id })",
-              use_glue = TRUE
-            )
-          }
-          rave_action <- list(
-            type = "active_module",
-            id = module_table$id,
-            label = module_table$label[1]
-          )
-          # ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
-          # ravedash::logger("[{rave_action$type}] (rave-action).", level = "trace", use_glue = TRUE)
-          shiny::moduleServer(resource$module$id, function(input, output, session, ...){
-
-            # ravedash::register_rave_session(session = session)
-
-            # Register a common screen
-            ravedash::module_server_common(
-              resource$module$id,
-              check_data_loaded = parse_env$check_data_loaded,
-              session = session,
-              parse_env = parse_env,
-              ...
-            )
-
-            resource$module$server(input, output, session, ...)
-
-          }, session = session)
+      if(identical(query_list$query$type, "widget")) {
+        # This is a widget that should belongs to some module
+        parent_session <- ravedash::get_session_by_rave_id(query_list$query$rave_id)
+        if(is.null(parent_session)) {
+          stop("There is no shiny-session with provided `rave_id`.")
         }
+        module_info <- ravedash::get_active_module_info(session = parent_session)
+        if(is.null(module_info)) {
+          stop("There is a shiny-session with provided `rave_id`. However, the module information is broken")
+        }
+        module_id <- module_info$id
+        shiny::moduleServer(module_id, function(input, output, session, ...){
+          # link parent_session
+        })
+
       } else {
-        # No module, render rave_options
-        if(!isTRUE(raveio::raveio_getopt(key = "secure_mode", default = FALSE))) {
-          source("./R/rave-options.R", local = parse_env)
-          shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
+        parse_env <- new.env(parent = globalenv())
+        resource <- shidashi::load_module(request = list(QUERY_STRING = query_string),
+                                          env = parse_env)
+        if(resource$has_module){
+
+          module_table <- shidashi::module_info()
+          module_table <- module_table[module_table$id %in% resource$module$id, ]
+          if(nrow(module_table)){
+            group_name <- as.character(module_table$group[[1]])
+            if(is.na(group_name)){
+              group_name <- "<no group>"
+            }
+            if(system.file(package = "logger") != ''){
+              ravedash::logger(
+                level = "info",
+                "Loading - { module_table$label[1] } ({group_name}/{ module_table$id })",
+                use_glue = TRUE
+              )
+            }
+            rave_action <- list(
+              type = "active_module",
+              id = module_table$id,
+              label = module_table$label[1]
+            )
+            # ravedash::fire_rave_event(key = rave_action$type, value = rave_action)
+            # ravedash::logger("[{rave_action$type}] (rave-action).", level = "trace", use_glue = TRUE)
+            shiny::moduleServer(resource$module$id, function(input, output, session, ...){
+
+              # ravedash::register_rave_session(session = session)
+
+              # Register a common screen
+              ravedash::module_server_common(
+                resource$module$id,
+                check_data_loaded = parse_env$check_data_loaded,
+                session = session,
+                parse_env = parse_env,
+                ...
+              )
+
+              resource$module$server(input, output, session, ...)
+
+            }, session = session)
+          }
+        } else {
+          # No module, render rave_options
+          if(!isTRUE(raveio::raveio_getopt(key = "secure_mode", default = FALSE))) {
+            source("./R/rave-options.R", local = parse_env)
+            shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
+          }
         }
       }
+
     }),
     session$clientData$url_search, ignoreNULL = TRUE
   )

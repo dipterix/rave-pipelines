@@ -26,6 +26,7 @@ class Shidashi {
   constructor (Shiny){
     this._keep_alive = true;
     this._moduleId = undefined;
+    this._raveId = undefined;
     this._active_module = undefined;
     this._shiny_inactive = false;
     this._shiny_callstacks = [];
@@ -67,6 +68,8 @@ class Shidashi {
   }
 
   _mainScrollCallback(scrollers) {
+    // FIXME: Hide navbar when scrolled down to show more space. It's tricky
+    return;
     let isTop, param;
     if(Array.isArray(scrollers)) {
       isTop = scrollers
@@ -1070,6 +1073,7 @@ class Shidashi {
 
     this.shinyHandler("set_crrent_module", (params) => {
       this._moduleId = params.module_id;
+      this._raveId = params.rave_id;
     });
 
     this.shinyHandler("click", (params) => {
