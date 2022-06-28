@@ -1,6 +1,17 @@
 
 module_server <- function(input, output, session, ...){
 
+  # Save output options such that standalone viewer can use it
+  ravedash::register_output_options(
+    outputId = ns("plot_overall"),
+    width = "100%", height = "200px",
+    click = NULL,
+    dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
+                                   clip = TRUE),
+    brush = shiny::brushOpts(ns("plot_overall__brush"),
+                             clip = TRUE, direction = "x")
+  )
+
   # Local reactive values, used to store reactive event triggers
   local_reactives <- shiny::reactiveValues(
     refresh = NULL,

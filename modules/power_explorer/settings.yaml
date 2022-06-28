@@ -1,21 +1,14 @@
-analysis_electrodes: '14 '
+analysis_electrodes: '14'
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
-    - 29
+    - 2
     - 125.5
     time:
     - -0.92
     - 1.64
-  '2':
-    frequency:
-    - 43.5
-    - 118.5
-    time:
-    - 0
-    - 1
 analysis_ranges__lock: Unlocked
 baseline__global_baseline_choice: Per frequency, trial, and electrode
 baseline__unit_of_analysis: Decibel

@@ -139,6 +139,7 @@ module_html <- function(){
 
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
+
                   shiny::plotOutput(
                     outputId = ns("plot_overall"),
                     width = "100%", height = "200px",
@@ -148,6 +149,7 @@ module_html <- function(){
                     brush = shiny::brushOpts(ns("plot_overall__brush"),
                                              clip = TRUE, direction = "x")
                   )
+
                 ),
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
