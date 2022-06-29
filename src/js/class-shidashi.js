@@ -41,6 +41,10 @@ class Shidashi {
 
     this._dummy = document.createElement("div");
     this._dummy2 = document.createElement("div");
+    this._dummyLink = document.createElement("a");
+    this._dummyLink.setAttribute("target", "_blank");
+
+//shidashi.$body.append("aaaaa")
     this._localStorage = window.localStorage;
     this._sessionStorage = window.sessionStorage;
     this._keyPrefix = "shidashi-session-";
@@ -103,6 +107,17 @@ class Shidashi {
       );
       this.addClass("body", "scroller-not-top");
     }
+  }
+
+  openURL(url, target = "_blank") {
+    this._dummyLink.setAttribute("target", target);
+    this._dummyLink.setAttribute("href", url);
+    this._dummyLink.click();
+  }
+
+  launchStandaloneViewer(outputId) {
+    const url = `/?output_id=${ outputId }&rave_id=${ this._raveId }&module=standalone_viewer`;
+    this.openURL(url);
   }
 
   ensureShiny(then){
@@ -1005,6 +1020,18 @@ class Shidashi {
         '.card-tools .btn-tool[data-card-widget="refresh"]',
         () => {
           this.triggerResize(50);
+        }
+      );
+
+      this.matchSelector(
+        evt.target,
+        '.ravedash-output-widget[data-type="standalone"]',
+        (el) => {
+          let outputId = el.getAttribute("data-target");
+          if( outputId.startsWith(this._moduleId + "-") ) {
+            outputId = outputId.replace(this._moduleId + "-", "");
+          }
+          this.launchStandaloneViewer(outputId);
         }
       );
 

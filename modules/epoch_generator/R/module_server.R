@@ -1,16 +1,6 @@
 
 module_server <- function(input, output, session, ...){
 
-  # Save output options such that standalone viewer can use it
-  ravedash::register_output_options(
-    outputId = ns("plot_overall"),
-    width = "100%", height = "200px",
-    click = NULL,
-    dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
-                                   clip = TRUE),
-    brush = shiny::brushOpts(ns("plot_overall__brush"),
-                             clip = TRUE, direction = "x")
-  )
 
   # Local reactive values, used to store reactive event triggers
   local_reactives <- shiny::reactiveValues(
@@ -338,50 +328,108 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = FALSE, ignoreInit = FALSE
   )
 
-  output$plot_overall <- shiny::renderPlot({
-    plot_signal <- local_reactives$plot_signal
-    plot_range <- input$plot_range
-    sample_rate <- input$sample_rate
+  ravedash::render_output(
+    outputId = "plot_overall",
+    renderer = shiny::renderPlot,
+    .export_type = "plot",
+    .session = session,
+    expr = {
+      plot_signal <- local_reactives$plot_signal
+      plot_range <- input$plot_range
+      sample_rate <- input$sample_rate
 
-    shiny::validate(
-      shiny::need(
-        length(plot_signal) > 0,
-        message = "No epoch channel imported"
-      ),
-      shiny::need(
-        isTRUE(sample_rate > 1),
-        message = "Sample rate is invalid"
+      shiny::validate(
+        shiny::need(
+          length(plot_signal) > 0,
+          message = "No epoch channel imported"
+        ),
+        shiny::need(
+          isTRUE(sample_rate > 1),
+          message = "Sample rate is invalid"
+        )
       )
+
+      q <- ceiling(length(plot_signal) / 20000)
+
+      if(q > 1) {
+        plot_signal <- ravetools::decimate(plot_signal, q)
+        time <- seq(0, length.out = length(plot_signal), by = q / sample_rate)
+      } else {
+        time <- seq_along(plot_signal)
+      }
+
+      if(length(plot_range) != 1 || is.na(plot_range) || plot_range <= 0) {
+        ylim <- range(plot_signal)
+      } else {
+        ylim <- c(-plot_range, plot_range)
+      }
+      if(isTRUE(input$plot_absolute)) {
+        ylim[[1]] <- 0
+      }
+
+      opt <- graphics::par(c("mai", "mar", "cex.axis"))
+      on.exit({ do.call(graphics::par, opt) }, add = TRUE, after = FALSE)
+      graphics::par(
+        mai = c(0.52, 0.4, 0.1, 0.1),
+        cex.axis = 0.8
+      )
+      plot(time, plot_signal, type = 'l', ylim = ylim, main = "",
+           ylab = "", xlab = "Time (s)")
+      addlines()
+    },
+    .options = list(
+      click = NULL,
+      dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
+                                     clip = TRUE),
+      brush = shiny::brushOpts(ns("plot_overall__brush"),
+                               clip = TRUE, direction = "x")
     )
+  )
 
-    q <- ceiling(length(plot_signal) / 20000)
-
-    if(q > 1) {
-      plot_signal <- ravetools::decimate(plot_signal, q)
-      time <- seq(0, length.out = length(plot_signal), by = q / sample_rate)
-    } else {
-      time <- seq_along(plot_signal)
-    }
-
-    if(length(plot_range) != 1 || is.na(plot_range) || plot_range <= 0) {
-      ylim <- range(plot_signal)
-    } else {
-      ylim <- c(-plot_range, plot_range)
-    }
-    if(isTRUE(input$plot_absolute)) {
-      ylim[[1]] <- 0
-    }
-
-    opt <- graphics::par(c("mai", "mar", "cex.axis"))
-    on.exit({ do.call(graphics::par, opt) }, add = TRUE, after = FALSE)
-    graphics::par(
-      mai = c(0.52, 0.4, 0.1, 0.1),
-      cex.axis = 0.8
-    )
-    plot(time, plot_signal, type = 'l', ylim = ylim, main = "",
-         ylab = "", xlab = "Time (s)")
-    addlines()
-  })
+  # output$plot_overall <- shiny::renderPlot({
+  #   plot_signal <- local_reactives$plot_signal
+  #   plot_range <- input$plot_range
+  #   sample_rate <- input$sample_rate
+  #
+  #   shiny::validate(
+  #     shiny::need(
+  #       length(plot_signal) > 0,
+  #       message = "No epoch channel imported"
+  #     ),
+  #     shiny::need(
+  #       isTRUE(sample_rate > 1),
+  #       message = "Sample rate is invalid"
+  #     )
+  #   )
+  #
+  #   q <- ceiling(length(plot_signal) / 20000)
+  #
+  #   if(q > 1) {
+  #     plot_signal <- ravetools::decimate(plot_signal, q)
+  #     time <- seq(0, length.out = length(plot_signal), by = q / sample_rate)
+  #   } else {
+  #     time <- seq_along(plot_signal)
+  #   }
+  #
+  #   if(length(plot_range) != 1 || is.na(plot_range) || plot_range <= 0) {
+  #     ylim <- range(plot_signal)
+  #   } else {
+  #     ylim <- c(-plot_range, plot_range)
+  #   }
+  #   if(isTRUE(input$plot_absolute)) {
+  #     ylim[[1]] <- 0
+  #   }
+  #
+  #   opt <- graphics::par(c("mai", "mar", "cex.axis"))
+  #   on.exit({ do.call(graphics::par, opt) }, add = TRUE, after = FALSE)
+  #   graphics::par(
+  #     mai = c(0.52, 0.4, 0.1, 0.1),
+  #     cex.axis = 0.8
+  #   )
+  #   plot(time, plot_signal, type = 'l', ylim = ylim, main = "",
+  #        ylab = "", xlab = "Time (s)")
+  #   addlines()
+  # })
 
   # brush
   brush_content <- shiny::bindEvent(

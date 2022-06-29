@@ -140,6 +140,16 @@ module_html <- function(){
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
 
+                  ravedash::output_widget_container(
+                    ravedash::output_widget(
+                      outputId = ns("plot_overall"),
+                      type = "standalone"
+                    ),
+                    ravedash::output_widget(
+                      outputId = ns("plot_overall"),
+                      type = "download"
+                    )
+                  ),
                   shiny::plotOutput(
                     outputId = ns("plot_overall"),
                     width = "100%", height = "200px",
@@ -153,6 +163,13 @@ module_html <- function(){
                 ),
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
+
+                  ravedash::output_widget_container(
+                    ravedash::output_widget(
+                      outputId = ns("plot_subset"),
+                      type = "standalone"
+                    )
+                  ),
                   shiny::plotOutput(
                     outputId = ns("plot_subset"),
                     width = "100%", height = "200px"

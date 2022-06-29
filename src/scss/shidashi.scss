@@ -1084,3 +1084,27 @@ fieldset,
   padding-right: 7.5px;
   padding-left: 7.5px;
 }
+
+/*RAVE dashboard*/
+.ravedash-output-widget-container {
+  float: right;
+  padding: 0;
+  position: relative;
+  z-index: 1;
+  background-color: rgba($gray, 0.1);
+}
+.ravedash-output-widget {
+  padding: 2px;
+  opacity: .2;
+  color: #6c757d;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-block;
+  text-align: center;
+  transition: 100ms;
+  font-size: 0.8rem;
+}
+.ravedash-output-widget:hover {
+  opacity: 1;
+  background-color: rgba($primary, 0.1);
+}

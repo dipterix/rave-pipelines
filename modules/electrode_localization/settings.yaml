@@ -1790,7 +1790,7 @@ localization_list:
 localization_plan:
   '1':
     label: ' G'
-    dimension: '20'
+    dimension: '2'
     type: iEEG
     info: ~
   '2':
