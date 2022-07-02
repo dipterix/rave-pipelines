@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ module_title() }}</title>
+
+  {{ shidashi::include_view("header.html") }}
+
+</head>
+<body class="layout-top-nav {{ shidashi::guess_body_class(body_class()) }}">
+<div class="wrapper">
+
+
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- /.content-header -->
+
+    <!-- Main content -->
+    <section class="module_loader_ui position-absolute soft-hidden fill-width">
+      {{ loader_html() }}
+    </section>
+    <section class="module_main_ui soft-hidden fill-width">
+      {{ module_html() }}
+    </section>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+
+</div>
+<!-- ./wrapper -->
+
+{{ shidashi::include_view("footer.html") }}
+</body>
+</html>

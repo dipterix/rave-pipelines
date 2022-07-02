@@ -4,11 +4,11 @@ analysis_lock: Unlocked
 analysis_ranges:
   '1':
     frequency:
-    - 22
-    - 135
-    time:
-    - -1
     - 2
+    - 125.5
+    time:
+    - -0.92
+    - 1.64
 analysis_ranges__lock: Unlocked
 baseline__global_baseline_choice: Per frequency, trial, and electrode
 baseline__unit_of_analysis: Decibel

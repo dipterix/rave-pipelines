@@ -382,39 +382,42 @@ module_server <- function(input, output, session, ...){
   )
 
   # Register outputs
-  output$signal_plot <- shiny::renderPlot({
-    electrode <- get_electrode()
-    local_reactives$update_plots
+  ravedash::register_output(
+    shiny::renderPlot({
+      electrode <- get_electrode()
+      local_reactives$update_plots
 
-    shiny::validate(
-      shiny::need(
-        length(electrode) == 1,
-        message = "We cannot find any imported electrode"
+      shiny::validate(
+        shiny::need(
+          length(electrode) == 1,
+          message = "We cannot find any imported electrode"
+        )
       )
-    )
 
-    theme <- ravedash::current_shiny_theme()
+      theme <- ravedash::current_shiny_theme()
 
-    diagnose_notch_filters(
-      subject = local_data$subject,
-      electrodes = electrode,
-      blocks = input$block,
-      max_freq = input$pwelch_freqlim,
-      winlen = input$pwelch_winlen,
-      nbins = input$pwelch_nbins,
-      bg = theme$background,
-      fg = theme$foreground,
-      cex = 3,
-      std = 3,
-      lwd = 0.3,
-      mar = c(5.2, 5.4, 4.1, 2.1),
-      mai = c(0.6, 0.8, 0.4, 0.1),
-      quiet = TRUE
-    )
+      diagnose_notch_filters(
+        subject = local_data$subject,
+        electrodes = electrode,
+        blocks = input$block,
+        max_freq = input$pwelch_freqlim,
+        winlen = input$pwelch_winlen,
+        nbins = input$pwelch_nbins,
+        bg = theme$background,
+        fg = theme$foreground,
+        cex = 3,
+        std = 3,
+        lwd = 0.3,
+        mar = c(5.2, 5.4, 4.1, 2.1),
+        mai = c(0.6, 0.8, 0.4, 0.1),
+        quiet = TRUE
+      )
 
 
-  })
-
+    }),
+    outputId = "signal_plot",
+    export_type = "pdf"
+  )
 
   output$download_as_pdf <- shiny::downloadHandler(
     filename = function(){

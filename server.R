@@ -36,12 +36,19 @@ server <- function(input, output, session){
   # Fixed usage, call modules
   shiny::bindEvent(
     ravedash::safe_observe({
-      req <- list(QUERY_STRING = session$clientData$url_search)
-      ravedash::logger("GET request: /{req$QUERY_STRING}", level = "trace", use_glue = TRUE)
+      query_string <- session$clientData$url_search
+      if(length(query_string) != 1) {
+        query_string <- "/"
+      }
+
+      ravedash::logger("GET request: /{query_string}", level = "trace", use_glue = TRUE)
+
+      # query_string <- "/?type=widget&output_id=aaaa&rave_id=NAXzMcGKxoqwFeCjswfX"
+      query_list <- httr::parse_url(query_string)
 
       parse_env <- new.env(parent = globalenv())
-
-      resource <- shidashi::load_module(request = req, env = parse_env)
+      resource <- shidashi::load_module(request = list(QUERY_STRING = query_string),
+                                        env = parse_env)
       if(resource$has_module){
 
         module_table <- shidashi::module_info()
@@ -89,6 +96,7 @@ server <- function(input, output, session){
           shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
         }
       }
+
     }),
     session$clientData$url_search, ignoreNULL = TRUE
   )

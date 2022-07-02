@@ -405,16 +405,20 @@ module_server <- function(input, output, session, ...){
 
 
   # shiny::outputOptions(output, "kernel_table", suspendWhenHidden = FALSE)
-  output$kernel_table <- DT::renderDataTable({
-    tbl <- kernel_params()
-    shiny::validate(
-      shiny::need(
-        is.data.frame(tbl),
-        message = "Please upload preset table"
+  ravedash::register_output(
+    DT::renderDataTable({
+      tbl <- kernel_params()
+      shiny::validate(
+        shiny::need(
+          is.data.frame(tbl),
+          message = "Please upload preset table"
+        )
       )
-    )
-    DT::datatable(tbl)
-  })
+      DT::datatable(tbl)
+    }),
+    outputId = "kernel_table",
+    export_type = "csv"
+  )
 
   output$download_kernel_table <- shiny::downloadHandler(
     "RAVE-wavelet-parameters.csv",
@@ -429,49 +433,56 @@ module_server <- function(input, output, session, ...){
   )
 
 
-  output$kernel_plot <- shiny::renderPlot({
+  ravedash::register_output(
+    shiny::renderPlot({
 
-    local_reactives$refresh
-    tbl <- kernel_params()
+      local_reactives$refresh
+      tbl <- kernel_params()
 
-    srate <- local_data$sample_rates
-    etypes <- local_data$electrode_types
-    theme <- ravedash::current_shiny_theme()
+      srate <- local_data$sample_rates
+      etypes <- local_data$electrode_types
+      theme <- ravedash::current_shiny_theme()
 
-    shiny::validate(
-      shiny::need(
-        is.data.frame(tbl),
-        message = "Please upload preset table"
-      ),
-      shiny::need(
-        length(srate) > 0,
-        message = "No electrodes found"
+      shiny::validate(
+        shiny::need(
+          is.data.frame(tbl),
+          message = "Please upload preset table"
+        ),
+        shiny::need(
+          length(srate) > 0,
+          message = "No electrodes found"
+        )
       )
-    )
 
-    if('LFP' %in% etypes){
-      srate <- srate[etypes == "LFP"][[1]]
-    } else {
-      srate <- min(srate)
-    }
+      if('LFP' %in% etypes){
+        srate <- srate[etypes == "LFP"][[1]]
+      } else {
+        srate <- min(srate)
+      }
 
-    old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub"))
-    graphics::par(
-      fg = theme$foreground,
-      bg = theme$background,
-      col.axis = theme$foreground,
-      col.lab = theme$foreground,
-      col.main = theme$foreground,
-      col.sub = theme$foreground
+      old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub"))
+      graphics::par(
+        fg = theme$foreground,
+        bg = theme$background,
+        col.axis = theme$foreground,
+        col.lab = theme$foreground,
+        col.main = theme$foreground,
+        col.sub = theme$foreground
+      )
+      on.exit({
+        do.call(graphics::par, old_theme)
+      }, add = TRUE)
+      kernel <- ravetools::wavelet_kernels(
+        freqs = tbl$Frequency, wave_num = tbl$Cycles,
+        srate = srate
+      )
+      plot(kernel, cex = 1.4, mai = c(1.02,0.82,0.82,0.42))
+    }),
+    outputId = "kernel_plot",
+    export_type = "pdf",
+    export_settings = list(
+      width = 24, height = 13.6
     )
-    on.exit({
-      do.call(graphics::par, old_theme)
-    }, add = TRUE)
-    kernel <- ravetools::wavelet_kernels(
-      freqs = tbl$Frequency, wave_num = tbl$Cycles,
-      srate = srate
-    )
-    plot(kernel, cex = 1.4, mai = c(1.02,0.82,0.82,0.42))
-  })
+  )
 
 }

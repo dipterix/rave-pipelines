@@ -139,22 +139,30 @@ module_html <- function(){
 
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
-                  shiny::plotOutput(
-                    outputId = ns("plot_overall"),
-                    width = "100%", height = "200px",
-                    click = NULL,
-                    dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
-                                                   clip = TRUE),
-                    brush = shiny::brushOpts(ns("plot_overall__brush"),
-                                             clip = TRUE, direction = "x")
+                  title = "Press down, hold, and draw a time-range to see details",
+                  ravedash::output_gadget_container(
+                    shiny::plotOutput(
+                      outputId = ns("plot_overall"),
+                      width = "100%", height = "200px",
+                      click = NULL,
+                      dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
+                                                     clip = TRUE),
+                      brush = shiny::brushOpts(ns("plot_overall__brush"),
+                                               clip = TRUE, direction = "x")
+                    )
                   )
+
                 ),
                 shidashi::flex_item(
                   size = 1, class = "overflow-hidden",
-                  shiny::plotOutput(
-                    outputId = ns("plot_subset"),
-                    width = "100%", height = "200px"
+
+                  ravedash::output_gadget_container(
+                    shiny::plotOutput(
+                      outputId = ns("plot_subset"),
+                      width = "100%", height = "200px"
+                    )
                   )
+
                 ),
                 shidashi::flex_break()
 

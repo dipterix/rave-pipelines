@@ -1789,15 +1789,30 @@ localization_list:
     - LFP
 localization_plan:
   '1':
-    label: G
-    dimension: '64'
+    label: ' G'
+    dimension: '2'
     type: iEEG
     info: ~
   '2':
-    label: S
-    dimension: '28'
+    label: ' G'
+    dimension: '2'
     type: iEEG
     info: ~
-path_ct_in_t1: '{subject$freesurfer_path}/coregistration/ctINt1.nii.gz'
-project_name: test
+  '3':
+    label: ' G'
+    dimension: '2'
+    type: iEEG
+    info: ~
+  '4':
+    label: ' G'
+    dimension: '2'
+    type: iEEG
+    info: ~
+  '5':
+    label: ' G'
+    dimension: '2'
+    type: iEEG
+    info: ~
+path_ct_in_t1: ~
+project_name: demo
 subject_code: KC

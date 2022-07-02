@@ -129,16 +129,22 @@ module_html <- function(){
               shidashi::flip_box(
                 inputId = ns("kernel_flip_container"),
                 front = shiny::div(
+                  title = "Double-click to see settings table",
                   class = "fill height-700 min-height-450 resize-vertical",
                   shiny::div(
                     class = 'position-relative fill',
-                    shiny::plotOutput(ns("kernel_plot"),
-                                      width = '100%', height = "100%")
+                    ravedash::output_gadget_container(
+                      shiny::plotOutput(ns("kernel_plot"),
+                                        width = '100%', height = "100%")
+                    )
                   )
                 ),
                 back = shiny::div(
                   class = "padding-7 bg-white",
-                  DT::dataTableOutput(ns("kernel_table"), width = "100%")
+                  title = "Double-click again to view the kernel figure",
+                  ravedash::output_gadget_container(
+                    DT::dataTableOutput(ns("kernel_table"), width = "100%")
+                  )
                 )
               ),
 
