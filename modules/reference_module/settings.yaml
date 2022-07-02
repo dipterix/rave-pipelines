@@ -1,8 +1,4 @@
-changes:
-- group_name: Default
-  electrodes: 1-14
-  reference_type: Common Average Reference
-  reference_signal: ref_1-13
+changes: []
 electrode_group:
   '1':
     name: Default

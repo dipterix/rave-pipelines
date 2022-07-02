@@ -600,68 +600,112 @@ module_server <- function(input, output, session, ...){
     floor(nrow(vdata$data) / vdata$sample_rate)
   })
 
-  output$reference_plot_signals <- shiny::renderPlot({
-    data_loaded <- ravedash::watch_data_loaded()
-    vdata <- voltage_data()
-    ginsp_start <- input$ginsp_start
-    ginsp_duration <- input$ginsp_duration
-    ginsp_gap <- input$ginsp_gap
-    ginsp_type <- input$ginsp_type
-    ginsp_hide <- dipsaus::parse_svec(input$ginsp_hide)
-    ginfo <- current_group()
-    theme <- ravedash::current_shiny_theme()
-    block <- input$plot_block
-    existing_refs <- get_reference_options()
+  ravedash::register_output(
+    shiny::renderPlot({
+      data_loaded <- ravedash::watch_data_loaded()
+      vdata <- voltage_data()
+      ginsp_start <- input$ginsp_start
+      ginsp_duration <- input$ginsp_duration
+      ginsp_gap <- input$ginsp_gap
+      ginsp_type <- input$ginsp_type
+      ginsp_hide <- dipsaus::parse_svec(input$ginsp_hide)
+      ginfo <- current_group()
+      theme <- ravedash::current_shiny_theme()
+      block <- input$plot_block
+      existing_refs <- get_reference_options()
 
-    if(!length(ginsp_gap) || is.na(ginsp_gap)){ ginsp_gap <- 0.999 }
+      if(!length(ginsp_gap) || is.na(ginsp_gap)){ ginsp_gap <- 0.999 }
 
-    shiny::validate(
-      shiny::need(isTRUE(data_loaded), message = "Data not loaded"),
-      shiny::need(is.list(vdata), message = "Waiting for the data"),
-      shiny::need(isTRUE(
-        ginsp_start >= 0 && ginsp_duration >= 0 &&
-          ginsp_gap > 0 && length(ginsp_type) == 1
-      ), message = "Waiting for initialization"),
-      shiny::need(is.list(ginfo), message = "Please choose a valid group")
-    )
+      shiny::validate(
+        shiny::need(isTRUE(data_loaded), message = "Data not loaded"),
+        shiny::need(is.list(vdata), message = "Waiting for the data"),
+        shiny::need(isTRUE(
+          ginsp_start >= 0 && ginsp_duration >= 0 &&
+            ginsp_gap > 0 && length(ginsp_type) == 1
+        ), message = "Waiting for initialization"),
+        shiny::need(is.list(ginfo), message = "Please choose a valid group")
+      )
 
-    electrodes <- ginfo$data$Electrode
-    electrodes <- electrodes[!electrodes %in% ginsp_hide]
-    electrodes <- vdata$electrodes[vdata$electrodes %in% electrodes]
+      electrodes <- ginfo$data$Electrode
+      electrodes <- electrodes[!electrodes %in% ginsp_hide]
+      electrodes <- vdata$electrodes[vdata$electrodes %in% electrodes]
 
-    shiny::validate(
-      shiny::need(length(electrodes) >= 1,
-                  message = "At least 1 electrodes need to be selected to show."),
-      shiny::need(length(block) == 1,
-                  message = "Invalid block choice"),
-    )
+      shiny::validate(
+        shiny::need(length(electrodes) >= 1,
+                    message = "At least 1 electrodes need to be selected to show."),
+        shiny::need(length(block) == 1,
+                    message = "Invalid block choice"),
+      )
 
-    old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub", "mai"))
-    fg <- theme$foreground
-    bg <- theme$background
-    graphics::par(fg = fg, bg = bg, col.axis = fg, col.lab = fg, col.main = fg,
-                  col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
-    on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
+      old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub", "mai"))
+      fg <- theme$foreground
+      bg <- theme$background
+      graphics::par(fg = fg, bg = bg, col.axis = fg, col.lab = fg, col.main = fg,
+                    col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
+      on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
 
 
-    signals <- vdata$data[,vdata$electrodes %in% electrodes, drop = FALSE]
+      signals <- vdata$data[,vdata$electrodes %in% electrodes, drop = FALSE]
 
-    is_bipolar <- isTRUE(ginfo$data$Type[[1]] %in% reference_choices[4])
+      is_bipolar <- isTRUE(ginfo$data$Type[[1]] %in% reference_choices[4])
 
-    if( is_bipolar ) {
+      if( is_bipolar ) {
 
-      ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
-      invalids <- ref_names == ""
+        ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
+        invalids <- ref_names == ""
 
-      get_cols <- function(col, invalid = "red"){
-        re <- rep(col, length(electrodes))
-        re[invalids] <- invalid
-        re
-      }
+        get_cols <- function(col, invalid = "red"){
+          re <- rep(col, length(electrodes))
+          re[invalids] <- invalid
+          re
+        }
 
-      if(ginsp_type == "Show original signals only") {
-        rave::plot_signals(
-          signals = t(signals),
+        if(ginsp_type == "Show original signals only") {
+          rave::plot_signals(
+            signals = t(signals),
+            sample_rate = vdata$sample_rate,
+            space = ginsp_gap,
+            start_time = ginsp_start,
+            duration = ginsp_duration,
+            compress = TRUE,
+            channel_names = electrodes,
+            ylab = "Electrode Channels",
+            new_plot = TRUE,
+            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+            main = "Reference: Bi-polar",
+            col = get_cols('gray60')
+          )
+          return()
+        }
+
+
+        refed_signals <- sapply(seq_along(ref_names), function(ii){
+          name <- ref_names[[ii]]
+          name2 <- dipsaus::parse_svec(gsub("^ref_", "", name))
+          if(name %in% c("", "noref") || !length(name2)) {
+            return(signals[,ii])
+          }
+
+          if(length(name2) == 1 && isTRUE(name2 %in% vdata$electrodes)) {
+            ref_data <- vdata$data[, vdata$electrodes %in% name2, drop = FALSE]
+            return(signals[,ii] - ref_data)
+          }
+
+          if(name %in% existing_refs) {
+            ref_data <- get_reference_data(name)
+            if(is.null(ref_data)) {
+              ref_data <- 0
+            } else {
+              ref_data <- ref_data$voltage[[block]]
+            }
+            return(signals[,ii] - ref_data)
+          }
+          return(signals[,ii])
+        })
+
+
+        params <- rave::plot_signals(
+          signals = t(refed_signals),
           sample_rate = vdata$sample_rate,
           space = ginsp_gap,
           start_time = ginsp_start,
@@ -672,131 +716,6 @@ module_server <- function(input, output, session, ...){
           new_plot = TRUE,
           space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
           main = "Reference: Bi-polar",
-          col = get_cols('gray60')
-        )
-        return()
-      }
-
-
-      refed_signals <- sapply(seq_along(ref_names), function(ii){
-        name <- ref_names[[ii]]
-        name2 <- dipsaus::parse_svec(gsub("^ref_", "", name))
-        if(name %in% c("", "noref") || !length(name2)) {
-          return(signals[,ii])
-        }
-
-        if(length(name2) == 1 && isTRUE(name2 %in% vdata$electrodes)) {
-          ref_data <- vdata$data[, vdata$electrodes %in% name2, drop = FALSE]
-          return(signals[,ii] - ref_data)
-        }
-
-        if(name %in% existing_refs) {
-          ref_data <- get_reference_data(name)
-          if(is.null(ref_data)) {
-            ref_data <- 0
-          } else {
-            ref_data <- ref_data$voltage[[block]]
-          }
-          return(signals[,ii] - ref_data)
-        }
-        return(signals[,ii])
-      })
-
-
-      params <- rave::plot_signals(
-        signals = t(refed_signals),
-        sample_rate = vdata$sample_rate,
-        space = ginsp_gap,
-        start_time = ginsp_start,
-        duration = ginsp_duration,
-        compress = TRUE,
-        channel_names = electrodes,
-        ylab = "Electrode Channels",
-        new_plot = TRUE,
-        space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-        main = "Reference: Bi-polar",
-        col = get_cols('dodgerblue3')
-      )
-
-
-      if(ginsp_type == "Show all") {
-        rave::plot_signals(
-          signals = t(signals),
-          sample_rate = vdata$sample_rate,
-          space = params$space,
-          start_time = ginsp_start,
-          duration = ginsp_duration,
-          compress = params$compress,
-          channel_names = electrodes,
-          new_plot = FALSE,
-          space_mode = "absolute",
-          col = get_cols('gray60', invalid = NA)
-        )
-      }
-      return()
-
-    } else {
-
-      ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
-      invalids <- ref_names == ""
-      get_cols <- function(col, invalid = "red"){
-        re <- rep(col, length(electrodes))
-        re[invalids] <- invalid
-        c("orange", re)
-      }
-
-      ref_signal <- unique(ginfo$data$Reference)
-      ref_signal <- ref_signal[ref_signal %in% existing_refs]
-      if(length(ref_signal)) {
-        ref_signal <- ref_signal[[1]]
-        ref_data <- get_reference_data(ref_signal)
-        if(is.null(ref_data)) {
-          ref_signal <- "noref"
-          signals <- cbind(NA, signals)
-        } else {
-          ref_data <- ref_data$voltage[[block]]
-        }
-        signals <- cbind(ref_data, signals)
-      } else {
-        ref_signal <- "noref"
-        signals <- cbind(NA, signals)
-      }
-      refed_signals <- signals
-      sel <- (ginfo$data$Reference == ref_signal)[ginfo$data$Electrode %in% electrodes]
-      if(ref_signal != "noref" && any(sel)) {
-        sel <- c(FALSE, sel)
-        refed_signals[, sel] <- refed_signals[, sel] - refed_signals[,1]
-      }
-
-      if(ginsp_type == "Show original signals only") {
-        rave::plot_signals(
-          signals = t(signals),
-          sample_rate = vdata$sample_rate,
-          space = ginsp_gap,
-          start_time = ginsp_start,
-          duration = ginsp_duration,
-          compress = TRUE,
-          channel_names = c("REF", electrodes),
-          ylab = "Electrode Channels",
-          new_plot = TRUE,
-          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-          main = sprintf("Reference: %s", ref_signal),
-          col = get_cols('gray60')
-        )
-        return()
-      } else {
-        params <- rave::plot_signals(
-          signals = t(refed_signals),
-          sample_rate = vdata$sample_rate,
-          space = ginsp_gap,
-          start_time = ginsp_start,
-          duration = ginsp_duration,
-          compress = TRUE,
-          channel_names = c("REF", electrodes),
-          ylab = "Electrode Channels",
-          new_plot = TRUE,
-          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-          main = sprintf("Reference: %s", ref_signal),
           col = get_cols('dodgerblue3')
         )
 
@@ -809,276 +728,372 @@ module_server <- function(input, output, session, ...){
             start_time = ginsp_start,
             duration = ginsp_duration,
             compress = params$compress,
-            channel_names = c("REF", electrodes),
+            channel_names = electrodes,
             new_plot = FALSE,
             space_mode = "absolute",
             col = get_cols('gray60', invalid = NA)
           )
         }
-      }
-
-
-      return()
-    }
-
-
-  })
-
-
-  output$reference_plot_electrode <- shiny::renderPlot({
-    data_loaded <- ravedash::watch_data_loaded()
-    vdata <- voltage_data()
-    einsp_electrode <- as.integer(input$einsp_electrode)
-    einsp_winlen <- input$einsp_winlen
-    einsp_freq <- input$einsp_freq
-    ginfo <- current_group()
-    theme <- ravedash::current_shiny_theme()
-    block <- input$plot_block
-
-    shiny::validate(
-      shiny::need(isTRUE(data_loaded), message = "Data not loaded"),
-      shiny::need(is.list(vdata), message = "Waiting for the data"),
-      shiny::need(isTRUE(
-        length(vdata$sample_rate) > 0 &&
-        length(einsp_winlen) == 1 && length(einsp_freq) == 1 &&
-        einsp_winlen > 0 && einsp_freq > 0 &&
-          einsp_winlen <= 2 * vdata$sample_rate && einsp_freq <= vdata$sample_rate / 2
-      ), message = "Waiting for initialization"),
-      shiny::need(is.list(ginfo), message = "Please choose a valid group"),
-      shiny::need(
-        length(einsp_electrode) == 1 && !is.na(einsp_electrode) &&
-          einsp_electrode %in% vdata$electrodes,
-        message = "Invalid electrode"),
-      shiny::need(length(block) == 1,
-                  message = "Invalid block choice")
-    )
-
-    srate <- vdata$sample_rate
-
-
-    # old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub", "mai"))
-    # fg <- theme$foreground
-    # bg <- theme$background
-    # graphics::par(fg = fg, bg = bg, col.axis = fg, col.lab = fg, col.main = fg,
-    #               col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
-    # on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
-
-
-    signals <- vdata$data[,vdata$electrodes == einsp_electrode, drop = TRUE]
-
-    ref_name <- ginfo$data$Reference[ginfo$data$Electrode == einsp_electrode]
-    if(length(ref_name) == 1 && startsWith(ref_name, "ref_")) {
-
-      elecs <- dipsaus::parse_svec(gsub("^ref_", "", ref_name))
-
-      if(length(elecs) == 0) {
-        ref_data <- 0
-      } else if(length(elecs) == 1 && elecs %in% vdata$electrodes) {
-        ref_data <- vdata$data[,vdata$electrodes == elecs, drop = TRUE]
+        return()
 
       } else {
-        ref_data <- get_reference_data(ref_name)
-        if(is.null(ref_data)) {
-          ref_data <- 0
-        } else {
-          ref_data <- ref_data$voltage[[block]]
+
+        ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
+        invalids <- ref_names == ""
+        get_cols <- function(col, invalid = "red"){
+          re <- rep(col, length(electrodes))
+          re[invalids] <- invalid
+          c("orange", re)
         }
+
+        ref_signal <- unique(ginfo$data$Reference)
+        ref_signal <- ref_signal[ref_signal %in% existing_refs]
+        if(length(ref_signal)) {
+          ref_signal <- ref_signal[[1]]
+          ref_data <- get_reference_data(ref_signal)
+          if(is.null(ref_data)) {
+            ref_signal <- "noref"
+            signals <- cbind(NA, signals)
+          } else {
+            ref_data <- ref_data$voltage[[block]]
+          }
+          signals <- cbind(ref_data, signals)
+        } else {
+          ref_signal <- "noref"
+          signals <- cbind(NA, signals)
+        }
+        refed_signals <- signals
+        sel <- (ginfo$data$Reference == ref_signal)[ginfo$data$Electrode %in% electrodes]
+        if(ref_signal != "noref" && any(sel)) {
+          sel <- c(FALSE, sel)
+          refed_signals[, sel] <- refed_signals[, sel] - refed_signals[,1]
+        }
+
+        if(ginsp_type == "Show original signals only") {
+          rave::plot_signals(
+            signals = t(signals),
+            sample_rate = vdata$sample_rate,
+            space = ginsp_gap,
+            start_time = ginsp_start,
+            duration = ginsp_duration,
+            compress = TRUE,
+            channel_names = c("REF", electrodes),
+            ylab = "Electrode Channels",
+            new_plot = TRUE,
+            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+            main = sprintf("Reference: %s", ref_signal),
+            col = get_cols('gray60')
+          )
+          return()
+        } else {
+          params <- rave::plot_signals(
+            signals = t(refed_signals),
+            sample_rate = vdata$sample_rate,
+            space = ginsp_gap,
+            start_time = ginsp_start,
+            duration = ginsp_duration,
+            compress = TRUE,
+            channel_names = c("REF", electrodes),
+            ylab = "Electrode Channels",
+            new_plot = TRUE,
+            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
+            main = sprintf("Reference: %s", ref_signal),
+            col = get_cols('dodgerblue3')
+          )
+
+
+          if(ginsp_type == "Show all") {
+            rave::plot_signals(
+              signals = t(signals),
+              sample_rate = vdata$sample_rate,
+              space = params$space,
+              start_time = ginsp_start,
+              duration = ginsp_duration,
+              compress = params$compress,
+              channel_names = c("REF", electrodes),
+              new_plot = FALSE,
+              space_mode = "absolute",
+              col = get_cols('gray60', invalid = NA)
+            )
+          }
+        }
+
+
+        return()
       }
 
 
-
-    } else {
-      ref_data <- 0
-    }
-
-
-    ravetools::pwelch(x = signals, fs = srate, window = einsp_winlen, )
-    ravetools::diagnose_channel(
-      signals - ref_data,
-      signals,
-      srate = srate,
-      max_freq = einsp_freq,
-      try_compress = TRUE,
-      window = einsp_winlen,
-      cex = 2,
-      std = 3,
-      lwd = 0.3,
-      name = c("Referenced", "Raw"),
-      col = c("dodgerblue3", "gray60"),
-      mar = c(5.2, 5.4, 4.1, 2.1),
-      mai = c(0.6, 0.8, 0.4, 0.1),
-      nclass = 30,
-      main = sprintf("Block %s, Electrode %s",
-                     block, einsp_electrode)
+    }),
+    outputId = "reference_plot_signals",
+    export_type = "pdf",
+    export_settings = list(
+      width = 13.5, height = 24
     )
+  )
 
-  })
+  ravedash::register_output(
+    shiny::renderPlot({
+      data_loaded <- ravedash::watch_data_loaded()
+      vdata <- voltage_data()
+      einsp_electrode <- as.integer(input$einsp_electrode)
+      einsp_winlen <- input$einsp_winlen
+      einsp_freq <- input$einsp_freq
+      ginfo <- current_group()
+      theme <- ravedash::current_shiny_theme()
+      block <- input$plot_block
 
-
-  output$reference_plot_heatmap <- shiny::renderPlot({
-
-    refinsp_epoch <- input$refinsp_epoch
-    refinsp_pre <- input$refinsp_pre
-    refinsp_post <- input$refinsp_post
-    refinsp_baseline <- input$refinsp_baseline
-    refinsp_baseline_method <- input$refinsp_baseline_method
-    refinsp_range <- input$refinsp_range
-    refinsp_freq_range <- input$refinsp_freq_range
-
-    ginfo <- current_group()
-    data_loaded <- ravedash::watch_data_loaded()
-    block <- input$plot_block
-
-    repo <- component_container$data$repository
-    subject <- repo$subject
-
-    shiny::validate(
-      shiny::need(
-        data_loaded && !is.null(subject),
-        message = "Subject is not loaded",
-      ),
-      shiny::need(
-        length(refinsp_epoch) == 1 && refinsp_epoch != "",
-        message = "No epoch is found"
-      ),
-      shiny::need(
-        length(refinsp_pre) == 1 && refinsp_pre >= 0,
-        message = "Epoch pre-onset must be non-negative"
-      ),
-      shiny::need(
-        length(refinsp_post) == 1 && refinsp_post >= 0,
-        message = "Epoch post-onset must be non-negative"
-      ),
-      shiny::need(
-        is.list(ginfo),
-        message = "Please select a reference group"
-      ),
-      shiny::need(
-        length(refinsp_baseline) == 2 &&
-          length(refinsp_baseline_method) == 1 &&
-          length(refinsp_freq_range) == 2 &&
-          length(block) > 0,
-        message = "Waiting for the initialization..."
+      shiny::validate(
+        shiny::need(isTRUE(data_loaded), message = "Data not loaded"),
+        shiny::need(is.list(vdata), message = "Waiting for the data"),
+        shiny::need(isTRUE(
+          length(vdata$sample_rate) > 0 &&
+            length(einsp_winlen) == 1 && length(einsp_freq) == 1 &&
+            einsp_winlen > 0 && einsp_freq > 0 &&
+            einsp_winlen <= 2 * vdata$sample_rate && einsp_freq <= vdata$sample_rate / 2
+        ), message = "Waiting for initialization"),
+        shiny::need(is.list(ginfo), message = "Please choose a valid group"),
+        shiny::need(
+          length(einsp_electrode) == 1 && !is.na(einsp_electrode) &&
+            einsp_electrode %in% vdata$electrodes,
+          message = "Invalid electrode"),
+        shiny::need(length(block) == 1,
+                    message = "Invalid block choice")
       )
-    )
 
-    ref_type <- ginfo$data$Type
-    ref_name <- unique(ginfo$data$Reference)
-    ref_name <- ref_name[startsWith(ref_name, "ref_")]
+      srate <- vdata$sample_rate
 
-    shiny::validate(
-      shiny::need(
-        length(ref_type) > 0 &&
-          ref_type[[1]] %in% reference_choices[c(2,3)] &&
-          length(ref_name) > 0,
-        message = "This plot is designed to visualize non-zero common-average or white-matter reference signals."
-      )
-    )
 
-    ref_data <- get_reference_data(ref_name)
-    ref_data <- ref_data$wavelet
-    ref_data <- structure(lapply(ref_data, function(x) {
-      Mod(x)^2
-    }), names = names(ref_data))
+      # old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main", "col.sub", "mai"))
+      # fg <- theme$foreground
+      # bg <- theme$background
+      # graphics::par(fg = fg, bg = bg, col.axis = fg, col.lab = fg, col.main = fg,
+      #               col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
+      # on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
 
-    # epoch
-    # refinsp_epoch <- input$refinsp_epoch
-    # refinsp_pre <- input$refinsp_pre
-    # refinsp_post <- input$refinsp_post
-    # refinsp_baseline <- input$refinsp_baseline
-    # refinsp_baseline_method <- input$refinsp_baseline_method
-    # refinsp_range <- input$refinsp_range
-    srate <- subject$power_sample_rate
-    epoch <- subject$get_epoch(epoch_name = refinsp_epoch, as_table = FALSE)
-    tidx <- seq(-refinsp_pre * srate, refinsp_post * srate, by = 1L)
-    freq <- subject$preprocess_settings$wavelet_params$frequencies
-    freq_sel <- freq >= refinsp_freq_range[[1]] & freq <= refinsp_freq_range[[2]]
-    if(!any(freq_sel)) {
-      freq_sel <- which.min(abs(freq - refinsp_freq_range[[1]]))
-    }
 
-    power <- lapply(seq_len(epoch$n_trials), function(ii) {
-      trial <- epoch$trial_at(ii, df = FALSE)
-      idx <- round(trial$Time * srate + tidx)
-      block_data <- ref_data[[trial$Block]]
-      if(!is.matrix(block_data)) { return(NULL) }
-      dm <- dim(block_data)
+      signals <- vdata$data[,vdata$electrodes == einsp_electrode, drop = TRUE]
 
-      if(any(idx <= 1 | idx > dm[[1]])){
-        return(NULL)
-      }
-      re <- block_data[idx,freq_sel,drop=FALSE]
-      if(!length(re)) { return(NULL) }
-      re
-    })
-    missing_trial <- vapply(power, is.null, FUN.VALUE = FALSE)
-    power <- power[!missing_trial]
-    if(!length(power)) {
-      error_notification(list(message = "No trial satisfies the condition. Please make sure the epoch is valid, and epoch time range (-pre, post) is reasonable."))
-      return()
-    }
-    if(sum(missing_trial) > 0) {
-      shidashi::clear_notifications(class = "error_notif")
-      shidashi::show_notification(
-        message = sprintf("Dropped %d trials due to missing data. (Missing blocks, or invalid epoch time range)", sum(missing_trial)),
-        title = "Trials dropped",
-        type = "warning",
-        close = TRUE,
-        autohide = TRUE,
-        class = ns("error_notif"),
-        collapse = "\n"
-      )
-    }
+      ref_name <- ginfo$data$Reference[ginfo$data$Electrode == einsp_electrode]
+      if(length(ref_name) == 1 && startsWith(ref_name, "ref_")) {
 
-    power <- simplify2array(power, higher = TRUE)
-    baseline_method <- structure(list(
-      "percentage", "sqrt_percentage", "decibel", "zscore", "sqrt_zscore"
-    ), names = c("Power % change", "sqrt(power) % change", "decibel",
-                 "Power z-score", "sqrt(power) z-score")) [[refinsp_baseline_method]]
+        elecs <- dipsaus::parse_svec(gsub("^ref_", "", ref_name))
 
-    idxpts <- tidx / srate
-    idxpts <- which(idxpts >= refinsp_baseline[[1]] & idxpts <= refinsp_baseline[[2]])
-    bl <- ravetools::baseline_array(power, along_dim = 1L,
-                                    method = baseline_method,
-                                    baseline_indexpoints = idxpts)
+        if(length(elecs) == 0) {
+          ref_data <- 0
+        } else if(length(elecs) == 1 && elecs %in% vdata$electrodes) {
+          ref_data <- vdata$data[,vdata$electrodes == elecs, drop = TRUE]
 
-    bl <- ravetools::collapse(bl, keep = c(1, 3), average = TRUE)
-    pal <- colorRampPalette(c("navy", "white", "red"))(101)
+        } else {
+          ref_data <- get_reference_data(ref_name)
+          if(is.null(ref_data)) {
+            ref_data <- 0
+          } else {
+            ref_data <- ref_data$voltage[[block]]
+          }
+        }
 
-    if(length(refinsp_range) == 1 && isTRUE(refinsp_range > 0)) {
-      if(refinsp_range <= 1) {
-        zlim <- quantile(abs(bl), probs = refinsp_range)
+
+
       } else {
-        zlim <- refinsp_range
+        ref_data <- 0
       }
-    } else {
-      zlim <- max(abs(range(bl)))
-    }
-    bl[bl > zlim] <- zlim
-    bl[bl < -zlim] <- -zlim
 
-    layout(matrix(c(1,2), nrow = 1), widths = c(1, lcm(2.5)))
 
-    par(mai = c(0.82, 0.82, 0.82, 0.1))
-    image(z = bl, x = tidx / srate, y = seq_len(ncol(bl)), las = 1,
-          xlab = "Time (s)", ylab = "Trial", zlim = zlim * c(-1, 1),
-          col = pal, axes = FALSE, main = sprintf("Baselined power heatmap (%s)", ref_name))
-    axis(side = 1, at = pretty(tidx / srate))
-    axis(side = 2, at = pretty(seq_len(ncol(bl))), las = 1)
-    abline(v = 0, lty = 3, col = "gray40", lwd = 2)
+      ravetools::pwelch(x = signals, fs = srate, window = einsp_winlen, )
+      ravetools::diagnose_channel(
+        signals - ref_data,
+        signals,
+        srate = srate,
+        max_freq = einsp_freq,
+        try_compress = TRUE,
+        window = einsp_winlen,
+        cex = 2,
+        std = 3,
+        lwd = 0.3,
+        name = c("Referenced", "Raw"),
+        col = c("dodgerblue3", "gray60"),
+        mar = c(5.2, 5.4, 4.1, 2.1),
+        mai = c(0.6, 0.8, 0.4, 0.1),
+        nclass = 30,
+        main = sprintf("Block %s, Electrode %s",
+                       block, einsp_electrode)
+      )
 
-    par(mai = c(0.82, 0, 0.82, 0.5))
-    image(z = matrix(seq(-zlim, zlim, length.out = length(pal)),
-                     nrow = 1),
-          col = pal, axes = FALSE)
+    }),
+    outputId = "reference_plot_electrode",
+    export_type = "pdf"
+  )
 
-    zlim_str <- sprintf("%.1f", zlim)
-    zlim_str <- gsub("\\.0$", "", zlim_str)
 
-    axis(side = 4, at = c(0, 0.5, 1),
-         labels = c(zlim_str, 0, sprintf("-%s", zlim_str)))
+  ravedash::register_output(
+    shiny::renderPlot({
 
-  })
+      refinsp_epoch <- input$refinsp_epoch
+      refinsp_pre <- input$refinsp_pre
+      refinsp_post <- input$refinsp_post
+      refinsp_baseline <- input$refinsp_baseline
+      refinsp_baseline_method <- input$refinsp_baseline_method
+      refinsp_range <- input$refinsp_range
+      refinsp_freq_range <- input$refinsp_freq_range
+
+      ginfo <- current_group()
+      data_loaded <- ravedash::watch_data_loaded()
+      block <- input$plot_block
+
+      repo <- component_container$data$repository
+      subject <- repo$subject
+
+      shiny::validate(
+        shiny::need(
+          data_loaded && !is.null(subject),
+          message = "Subject is not loaded",
+        ),
+        shiny::need(
+          length(refinsp_epoch) == 1 && refinsp_epoch != "",
+          message = "No epoch is found"
+        ),
+        shiny::need(
+          length(refinsp_pre) == 1 && refinsp_pre >= 0,
+          message = "Epoch pre-onset must be non-negative"
+        ),
+        shiny::need(
+          length(refinsp_post) == 1 && refinsp_post >= 0,
+          message = "Epoch post-onset must be non-negative"
+        ),
+        shiny::need(
+          is.list(ginfo),
+          message = "Please select a reference group"
+        ),
+        shiny::need(
+          length(refinsp_baseline) == 2 &&
+            length(refinsp_baseline_method) == 1 &&
+            length(refinsp_freq_range) == 2 &&
+            length(block) > 0,
+          message = "Waiting for the initialization..."
+        )
+      )
+
+      ref_type <- ginfo$data$Type
+      ref_name <- unique(ginfo$data$Reference)
+      ref_name <- ref_name[startsWith(ref_name, "ref_")]
+
+      shiny::validate(
+        shiny::need(
+          length(ref_type) > 0 &&
+            ref_type[[1]] %in% reference_choices[c(2,3)] &&
+            length(ref_name) > 0,
+          message = "This plot is designed to visualize non-zero common-average or white-matter reference signals."
+        )
+      )
+
+      ref_data <- get_reference_data(ref_name)
+      ref_data <- ref_data$wavelet
+      ref_data <- structure(lapply(ref_data, function(x) {
+        Mod(x)^2
+      }), names = names(ref_data))
+
+      # epoch
+      # refinsp_epoch <- input$refinsp_epoch
+      # refinsp_pre <- input$refinsp_pre
+      # refinsp_post <- input$refinsp_post
+      # refinsp_baseline <- input$refinsp_baseline
+      # refinsp_baseline_method <- input$refinsp_baseline_method
+      # refinsp_range <- input$refinsp_range
+      srate <- subject$power_sample_rate
+      epoch <- subject$get_epoch(epoch_name = refinsp_epoch, as_table = FALSE)
+      tidx <- seq(-refinsp_pre * srate, refinsp_post * srate, by = 1L)
+      freq <- subject$preprocess_settings$wavelet_params$frequencies
+      freq_sel <- freq >= refinsp_freq_range[[1]] & freq <= refinsp_freq_range[[2]]
+      if(!any(freq_sel)) {
+        freq_sel <- which.min(abs(freq - refinsp_freq_range[[1]]))
+      }
+
+      power <- lapply(seq_len(epoch$n_trials), function(ii) {
+        trial <- epoch$trial_at(ii, df = FALSE)
+        idx <- round(trial$Time * srate + tidx)
+        block_data <- ref_data[[trial$Block]]
+        if(!is.matrix(block_data)) { return(NULL) }
+        dm <- dim(block_data)
+
+        if(any(idx <= 1 | idx > dm[[1]])){
+          return(NULL)
+        }
+        re <- block_data[idx,freq_sel,drop=FALSE]
+        if(!length(re)) { return(NULL) }
+        re
+      })
+      missing_trial <- vapply(power, is.null, FUN.VALUE = FALSE)
+      power <- power[!missing_trial]
+      if(!length(power)) {
+        error_notification(list(message = "No trial satisfies the condition. Please make sure the epoch is valid, and epoch time range (-pre, post) is reasonable."))
+        return()
+      }
+      if(sum(missing_trial) > 0) {
+        shidashi::clear_notifications(class = "error_notif")
+        shidashi::show_notification(
+          message = sprintf("Dropped %d trials due to missing data. (Missing blocks, or invalid epoch time range)", sum(missing_trial)),
+          title = "Trials dropped",
+          type = "warning",
+          close = TRUE,
+          autohide = TRUE,
+          class = ns("error_notif"),
+          collapse = "\n"
+        )
+      }
+
+      power <- simplify2array(power, higher = TRUE)
+      baseline_method <- structure(list(
+        "percentage", "sqrt_percentage", "decibel", "zscore", "sqrt_zscore"
+      ), names = c("Power % change", "sqrt(power) % change", "decibel",
+                   "Power z-score", "sqrt(power) z-score")) [[refinsp_baseline_method]]
+
+      idxpts <- tidx / srate
+      idxpts <- which(idxpts >= refinsp_baseline[[1]] & idxpts <= refinsp_baseline[[2]])
+      bl <- ravetools::baseline_array(power, along_dim = 1L,
+                                      method = baseline_method,
+                                      baseline_indexpoints = idxpts)
+
+      bl <- ravetools::collapse(bl, keep = c(1, 3), average = TRUE)
+      pal <- colorRampPalette(c("navy", "white", "red"))(101)
+
+      if(length(refinsp_range) == 1 && isTRUE(refinsp_range > 0)) {
+        if(refinsp_range <= 1) {
+          zlim <- quantile(abs(bl), probs = refinsp_range)
+        } else {
+          zlim <- refinsp_range
+        }
+      } else {
+        zlim <- max(abs(range(bl)))
+      }
+      bl[bl > zlim] <- zlim
+      bl[bl < -zlim] <- -zlim
+
+      layout(matrix(c(1,2), nrow = 1), widths = c(1, lcm(2.5)))
+
+      par(mai = c(0.82, 0.82, 0.82, 0.1))
+      image(z = bl, x = tidx / srate, y = seq_len(ncol(bl)), las = 1,
+            xlab = "Time (s)", ylab = "Trial", zlim = zlim * c(-1, 1),
+            col = pal, axes = FALSE, main = sprintf("Baselined power heatmap (%s)", ref_name))
+      axis(side = 1, at = pretty(tidx / srate))
+      axis(side = 2, at = pretty(seq_len(ncol(bl))), las = 1)
+      abline(v = 0, lty = 3, col = "gray40", lwd = 2)
+
+      par(mai = c(0.82, 0, 0.82, 0.5))
+      image(z = matrix(seq(-zlim, zlim, length.out = length(pal)),
+                       nrow = 1),
+            col = pal, axes = FALSE)
+
+      zlim_str <- sprintf("%.1f", zlim)
+      zlim_str <- gsub("\\.0$", "", zlim_str)
+
+      axis(side = 4, at = c(0, 0.5, 1),
+           labels = c(zlim_str, 0, sprintf("-%s", zlim_str)))
+
+    }),
+    outputId = "reference_plot_heatmap",
+    export_type = "pdf"
+  )
+
 
   shiny::bindEvent(
     ravedash::safe_observe({

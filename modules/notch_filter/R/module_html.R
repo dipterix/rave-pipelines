@@ -148,7 +148,11 @@ module_html <- function(){
               class_body = "no-padding fill-width screen-height height-700 min-height-450 resize-vertical",
               shiny::div(
                 class = 'position-relative fill',
-                shiny::plotOutput(ns("signal_plot"), width = '100%', height = "100%")
+                ravedash::output_gadget_container(
+                  shiny::plotOutput(ns("signal_plot"),
+                                    width = '100%', height = "100%")
+                )
+
               )
             )
           )

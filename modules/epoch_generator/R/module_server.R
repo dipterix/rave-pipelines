@@ -328,12 +328,9 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = FALSE, ignoreInit = FALSE
   )
 
-  ravedash::render_output(
-    outputId = "plot_overall",
-    renderer = shiny::renderPlot,
-    .export_type = "plot",
-    .session = session,
-    expr = {
+
+  ravedash::register_output(
+    render_function = shiny::renderPlot({
       plot_signal <- local_reactives$plot_signal
       plot_range <- input$plot_range
       sample_rate <- input$sample_rate
@@ -376,14 +373,16 @@ module_server <- function(input, output, session, ...){
       plot(time, plot_signal, type = 'l', ylim = ylim, main = "",
            ylab = "", xlab = "Time (s)")
       addlines()
-    },
-    .options = list(
+    }),
+    outputId = "plot_overall",
+    output_opts = list(
       click = NULL,
       dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
                                      clip = TRUE),
       brush = shiny::brushOpts(ns("plot_overall__brush"),
                                clip = TRUE, direction = "x")
-    )
+    ),
+    export_type = "pdf"
   )
 
   # output$plot_overall <- shiny::renderPlot({
@@ -500,26 +499,30 @@ module_server <- function(input, output, session, ...){
   }
 
   # brush output
-  output$plot_subset <- shiny::renderPlot({
-    content <- brush_content()
-    shiny::validate(
-      shiny::need(
-        is.list(content) && length(content) == 2,
-        "Please subset the figure to my left"
+  ravedash::register_output(
+    shiny::renderPlot({
+      content <- brush_content()
+      shiny::validate(
+        shiny::need(
+          is.list(content) && length(content) == 2,
+          "Please subset the figure to my left"
+        )
       )
-    )
 
-    opt <- graphics::par(c("mai", "mar", "cex.axis"))
-    on.exit({ do.call(graphics::par, opt) }, add = TRUE, after = FALSE)
-    graphics::par(
-      mai = c(0.52, 0.4, 0.1, 0.1),
-      cex.axis = 0.8
-    )
-    plot(content$time, content$data, type = 'l', main = "",
-         ylab = "", xlab = "Time (s)")
-    addlines()
+      opt <- graphics::par(c("mai", "mar", "cex.axis"))
+      on.exit({ do.call(graphics::par, opt) }, add = TRUE, after = FALSE)
+      graphics::par(
+        mai = c(0.52, 0.4, 0.1, 0.1),
+        cex.axis = 0.8
+      )
+      plot(content$time, content$data, type = 'l', main = "",
+           ylab = "", xlab = "Time (s)")
+      addlines()
 
-  })
+    }),
+    outputId = "plot_subset",
+    export_type = "pdf"
+  )
 
   # threshold signals
   dblclick_evt <- shiny::debounce(shiny::reactive({

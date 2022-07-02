@@ -1,7 +1,6 @@
 
 loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
-
   ravedash::simple_layout(
     input_width = 4L,
     container_fixed = TRUE,
