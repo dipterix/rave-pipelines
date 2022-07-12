@@ -1,0 +1,77 @@
+---
+title: "RAVE Data Tools"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include = FALSE}
+# This code block sets up the engine environment
+# Please do not remove me
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+build_pipeline <- raveio::configure_knitr()
+
+# For debug use, try to mimic the environment of pipeline
+# Load R scripts starting with `shared-` in R/ folder
+.project_path <- rstudioapi::getActiveProject()
+.module_id <- "compatibility_rave1"
+lapply(
+  list.files(
+    file.path(.project_path, "modules", .module_id, "R"),
+    pattern = "^shared-.*\\.R$",
+    ignore.case = TRUE,
+    full.names = TRUE
+  ), 
+  function(f){
+    source(f, local = FALSE, chdir = TRUE)
+    invisible()
+  })
+
+# Load variables in `settings.yaml` and expose them to the current environment
+.settings <- raveio::load_yaml(file.path(
+  .project_path, "modules", 
+  .module_id, "settings.yaml"))
+list2env(as.list(.settings), envir = environment())
+```
+
+
+```{rave load_subject_instance, language = "R", export = "subject"}
+# Use strict=FALSE in case the subject is invalid
+subject <- raveio::RAVESubject$new(
+  project_name = project_name,
+  subject_code = subject_code,
+  strict = FALSE)
+```
+
+Using `cue="always"` to never skip the target
+
+```{rave plot_data, language = "R", export = "plot_data", cue = "always"}
+plot_data <- Sys.time()
+plot(input_data, pch = pch, col = col)
+```
+
+
+## Build, Visualize, & Run
+
+Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-compatibility_rave1.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
+
+```{r build, echo=FALSE, results='hide'}
+build_pipeline(make_file = "make-compatibility_rave1.R")
+```
+
+
+Once the pipeline script `make-compatibility_rave1.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
+
+```{r visualize, echo=FALSE}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+try({
+  raveio::pipeline_visualize()
+}, silent = TRUE)
+```
+
+
+
+
+
+
+

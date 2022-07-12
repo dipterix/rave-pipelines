@@ -36,9 +36,6 @@ modules:
     label: Electrode Localization
     group: Surface & Electrodes
     order: 7.2
-  compatibility_rave1:
-    label: Data Tools
-    order: 8
   standalone_viewer:
     label: Standalone Viewer
     hidden: yes

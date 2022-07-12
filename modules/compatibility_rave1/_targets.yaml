@@ -1,0 +1,3 @@
+compatibility_rave1:
+  script: make-main.R
+  store: shared

@@ -672,7 +672,7 @@ nav.main-header {
 
 // Sidebar-related
 
-.nav-sidebar .nav-header.nav-divider {
+.sidebar .nav-sidebar .nav-header.nav-divider {
   display: flex;
   flex-wrap: nowrap;
   white-space: nowrap;
@@ -692,6 +692,24 @@ nav.main-header {
     padding: 0 12px;
     text-align: center;
     display: ruby;
+  }
+}
+
+.main-sidebar .sidebar .nav-sidebar .nav-item {
+  white-space: nowrap;
+  word-break: keep-all;
+  width: 100%;
+  overflow: clip;
+  text-overflow: ellipsis;
+
+  & .nav-link,
+  & .nav-leaf {
+    overflow: clip;
+    text-overflow: ellipsis;
+
+    & p {
+      white-space: nowrap;
+    }
   }
 }
 
