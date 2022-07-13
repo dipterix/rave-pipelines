@@ -1,5 +1,5 @@
 ---
-title: "RAVE Pipeline Markdown Template"
+title: "RAVE Preprocessing - Morlet Wavelet"
 output:
   html_document: default
   pdf_document: default
@@ -28,6 +28,15 @@ subject <- raveio::RAVESubject$new(
   subject_code = subject_code
 )
 print(subject)
+```
+
+```{rave clear_cache, language = "R", export = "clear_cache", cue = "always"}
+# clear all existing cache data in cache_dir
+
+clear_cache <- raveio::clear_cached_files(
+  subject_code = subject$subject_code
+)
+
 ```
 
 ```{rave get_notch_filter_timestamp, language = "R", export = "notch_filtere_stamp", cue = "always"}
@@ -103,6 +112,9 @@ kernels <- list(
 ```{rave run_wavelet, language = "R", export = "wavelet_params", cue = "always"}
 # If notch filter results not changed, we can skip the wavelet
 force(notch_filtere_stamp)
+raveio::clear_cached_files(
+  subject_code = subject$subject_code
+)
 
 blocks <- subject$preprocess_settings$blocks
 electrodes <- notch_filtered_electrodes
@@ -358,17 +370,14 @@ utils::write.csv(
   )
 )
 
-```
-
-
-```{rave clear_cache, language = "R", export = "clear_cache", cue = "always"}
-# clear all existing cache data in cache_dir
-
-clear_cache <- raveio::clear_cached_files(
+# Finalizing: clear cache
+raveio::clear_cached_files(
   subject_code = subject$subject_code
 )
 
 ```
+
+
 
 ## Build, Visualize, & Run
 

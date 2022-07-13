@@ -21,18 +21,18 @@ kernel_table:
   - 182
   - 192
   Cycles:
-  - 3.0
-  - 6.0
+  - 2.0
+  - 5.0
+  - 7.0
   - 8.0
   - 9.0
-  - 11.0
+  - 10.0
   - 11.0
   - 12.0
   - 13.0
   - 14.0
   - 15.0
   - 15.0
-  - 16.0
   - 16.0
   - 17.0
   - 17.0
@@ -41,8 +41,8 @@ kernel_table:
   - 19.0
   - 19.0
   - 20.0
-pre_downsample: 4.0
-precision: float
+pre_downsample: 1.0
+precision: double
 project_name: test2
 subject_code: KC
 target_sample_rate: 100.0
