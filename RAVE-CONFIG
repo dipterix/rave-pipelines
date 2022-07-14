@@ -55,4 +55,5 @@ InteractiveModules:
     modules/epoch_generator,
     modules/reference_module,
     modules/surface_reconstruction,
-    modules/electrode_localization
+    modules/electrode_localization,
+    modules/compatibility_rave1
