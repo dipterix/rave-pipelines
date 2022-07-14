@@ -13,128 +13,15 @@ module_server <- function(input, output, session, ...){
   # get server tools to tweek
   server_tools <- get_default_handlers(session = session)
 
-  # Run analysis once the following input IDs are changed
-  # This is used by auto-recalculation feature
-  server_tools$run_analysis_onchange(
-    component_container$get_input_ids(c(
-      "electrode_text", "baseline_choices",
-      "analysis_ranges", "condition_groups"
-    ))
-  )
 
-  # Register event: main pipeline need to run
-  shiny::bindEvent(
-    ravedash::safe_observe({
-
-      # Invalidate previous results (stop them because they are no longer needed)
-      if(!is.null(local_data$results)) {
-        local_data$results$invalidate()
-        ravedash::logger("Invalidating previous run", level = "trace")
-      }
-
-
-      # Collect input data
-      settings <- component_container$collect_settings(ids = c(
-        "electrode_text", "baseline_choices", "condition_groups", "analysis_ranges"
-      ))
-
-      pipeline$set_settings(.list = settings)
-
-      #' Run pipeline without blocking the main session
-      #' The trick to speed up is to set
-      #' `async=TRUE` will run the pipeline in the background
-      #' `shortcut=TRUE` will ignore the dependencies and directly run `names`
-      #' `names` are the target nodes to run
-      #' `scheduler="none"` will try to avoid starting any schedulers and
-      #' run targets sequentially. Combined with `callr_function=NULL`,
-      #' scheduler's overhead can be removed.
-      #' `type="smart"` will start `future` plan in the background, allowing
-      #' multicore calculation
-      results <- pipeline$run(
-        as_promise = TRUE,
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL,
-        progress_title = "Calculating in progress",
-        async = TRUE,
-        check_interval = 0.1,
-        shortcut = TRUE,
-        names = c(
-          "settings",
-          names(settings),
-          "requested_electrodes", "analysis_ranges_index", "cond_groups",
-          "bl_power", "collapsed_data"
-        )
-      )
-
-
-      local_data$results <- results
-      ravedash::logger("Scheduled: ", pipeline$pipeline_name,
-                       level = 'debug', reset_timer = TRUE)
-
-      results$promise$then(
-        onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline$pipeline_name,
-                           level = 'debug')
-          shidashi::clear_notifications(class = "pipeline-error")
-          local_reactives$update_outputs <- Sys.time()
-          return(TRUE)
-        },
-        onRejected = function(e, ...){
-          msg <- paste(e$message, collapse = "\n")
-          if(inherits(e, "error")){
-            ravedash::logger(msg, level = 'error')
-            ravedash::logger(traceback(e), level = 'error', .sep = "\n")
-            shidashi::show_notification(
-              message = msg,
-              title = "Error while running pipeline", type = "danger",
-              autohide = FALSE, close = TRUE, class = "pipeline-error"
-            )
-          }
-          return(msg)
-        }
-      )
-
-      return()
-
-    }),
-    server_tools$run_analysis_flag(),
-    ignoreNULL = TRUE, ignoreInit = TRUE
-  )
-
-
-  # (Optional) check whether the loaded data is valid
   shiny::bindEvent(
     ravedash::safe_observe({
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
-      new_repository <- pipeline$read("repository")
-      if(!inherits(new_repository, "rave_prepare_power")){
-        ravedash::logger("Repository read from the pipeline, but it is not an instance of `rave_prepare_power`. Abort initialization", level = "warning")
-        return()
-      }
-      ravedash::logger("Repository read from the pipeline; initializing the module UI", level = "debug")
 
-      # check if the repository has the same subject as current one
-      old_repository <- component_container$data$repository
-      if(inherits(old_repository, "rave_prepare_power")){
-
-        if( !attr(loaded_flag, "force") &&
-            identical(old_repository$signature, new_repository$signature) ){
-          ravedash::logger("The repository data remain unchanged ({new_repository$subject$subject_id}), skip initialization", level = "debug", use_glue = TRUE)
-          return()
-        }
-      }
-
-      # TODO: reset UIs to default
-
-      # Reset preset UI & data
-      component_container$reset_data()
-      component_container$data$repository <- new_repository
-      component_container$initialize_with_new_data()
-
-      # Reset outputs
-      shidashi::reset_output("collapse_over_trial")
+      local_reactives$validation_results <- NULL
+      shidashi::card_operate(title = "Data integrity check", method = "collapse")
+      shidashi::card_operate(title = "Backward compatibility", method = "collapse")
 
     }, priority = 1001),
     ravedash::watch_data_loaded(),
@@ -142,35 +29,141 @@ module_server <- function(input, output, session, ...){
     ignoreInit = FALSE
   )
 
+  # Register event: validate subject
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      subject <- component_container$data$subject
+      version <- as.character(input$validation_version) %OF% c(2, 1)
+      mode <- input$validation_mode %OF% c("normal", "basic")
+
+      local_reactives$validation_results <- NULL
+
+      if(mode == "normal") {
+        dipsaus::shiny_alert2(
+          title = "Validation in progress...",
+          text = "Please wait...",
+          icon = "info",
+          auto_close = FALSE, buttons = FALSE
+        )
+        Sys.sleep(0.5)
+        on.exit({
+          dipsaus::close_alert2()
+        }, add = TRUE, after = FALSE)
+      }
+      validation_results <- raveio::validate_subject(
+        subject = subject$subject_id,
+        method = mode,
+        version = as.integer(version))
+
+      local_reactives$validation_results <- validation_results
+      return()
+
+    }),
+    server_tools$run_analysis_flag(),
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      tryCatch({
+        subject <- component_container$data$subject
+        if(!inherits(subject, "RAVESubject")) {
+          stop("Subject is invalid. Please validate the subject first")
+        }
+
+        dipsaus::shiny_alert2(
+          title = "Converting in progress",
+          text = "This step might take a while...",
+          buttons = FALSE, auto_close = FALSE,
+          icon = "info"
+        )
+        Sys.sleep(0.5)
+        raveio::rave_subject_format_conversion(subject = subject)
+
+        dipsaus::close_alert2()
+        dipsaus::shiny_alert2(
+          title = "Conversion done!",
+          icon = "success",
+          buttons = list("OK" = TRUE),
+          auto_close = TRUE,
+          text = "The subject data is ready for RAVE 1.0 modules."
+        )
+      }, error = function(e) {
+
+        dipsaus::close_alert2()
+        ravedash::logger_error_condition(e)
+        dipsaus::shiny_alert2(
+          title = "Conversion failed",
+          icon = "error",
+          buttons = list("I got it" = TRUE),
+          auto_close = FALSE,
+          text = sprintf("Found the following error: %s...\n\nPlease check the console for details", paste(e$message, collapse = ""))
+        )
+
+      })
 
 
+    }),
+    input$compatibility_do,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Data integrity check", method = "expand")
+      shidashi::card_operate(title = "Backward compatibility", method = "collapse")
+    }),
+    input$quickaccess_data_integrity,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
 
-  # Register outputs
-  output$collapse_over_trial <- shiny::renderPlot({
-    shiny::validate(
-      shiny::need(
-        length(local_reactives$update_outputs) &&
-          !isFALSE(local_reactives$update_outputs),
-        message = "Please run the module first"
-      )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Data integrity check", method = "collapse")
+      shidashi::card_operate(title = "Backward compatibility", method = "expand")
+    }),
+    input$quickaccess_compatibility,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  output$validation_check <- shiny::renderUI({
+    validation_results <- local_reactives$validation_results
+    if(is.null(validation_results)) { return(invisible()) }
+    keys <- c("paths", "preprocess", "meta", "voltage_data",
+              "power_phase_data", "epoch_tables", "reference_tables")
+    re <- list()
+    for(k in keys) {
+      items <- validation_results[[k]]
+      if(length(items)) {
+        re0 <- lapply(names(items), function(nm) {
+          item <- items[[nm]]
+          s <- utils::capture.output({
+            print(item, use_logger = FALSE)
+          })
+
+          if(isTRUE(item$valid)) {
+            cls <- "hljs-comment"
+          } else if(is.na(item$valid)) {
+            cls <- "hljs-literal"
+          } else {
+            if(identical(item$severity, "minor")) {
+              cls <- "hljs-literal"
+            } else {
+              cls <- "hljs-keyword"
+            }
+          }
+          shiny::tags$code(class = cls, paste(s, collapse = "\n"))
+        })
+        re <- c(re, re0)
+      }
+    }
+    re <- shiny::pre(
+      class = "pre-compact bg-gray-90",
+      re
     )
-    shiny::validate(
-      shiny::need(
-          isTRUE(local_data$results$valid),
-        message = "One or more errors while executing pipeline. Please check the notification."
-      )
-    )
-
-    collapsed_data <- pipeline$read(var_names = "collapsed_data")
-    repository <- pipeline$read(var_names = "repository")
-
-    time_points <- repository$time_points
-    frequencies <- repository$frequency
-
-    data <- collapsed_data[[1]]$collasped$range_1
-    image(t(data$freq_time), x = time_points[data$cube_index$Time], y = frequencies[data$cube_index$Frequency])
-
+    re
   })
 
 

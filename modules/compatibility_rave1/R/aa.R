@@ -19,8 +19,16 @@ debug <- TRUE
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-  # Always use loading screen
-  FALSE
+  if(first_time) { return(FALSE) }
+
+  subject <- component_container$data$subject
+  if(inherits(subject, "RAVESubject")) {
+    ravedash::fire_rave_event('loader_message', subject$subject_id)
+    return(TRUE)
+  }
+
+  ravedash::fire_rave_event('loader_message', NULL)
+  return(FALSE)
 }
 
 

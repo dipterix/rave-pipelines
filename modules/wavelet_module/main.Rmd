@@ -375,6 +375,12 @@ raveio::clear_cached_files(
   subject_code = subject$subject_code
 )
 
+# also remove the meta/time_points.csv
+tpfile <- file.path(subject$meta_path, "time_points.csv")
+if(file.exists(tpfile)) {
+  unlink(tpfile)
+}
+
 ```
 
 

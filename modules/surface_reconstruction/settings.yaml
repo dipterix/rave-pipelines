@@ -15,7 +15,7 @@ params:
 params_dcm2niix: ~
 path_ct: Harris_Ralph_Emanuel_CT
 path_mri: Harris_Ralph_Emanuel_MR
-project_name: congruency
+project_name: demo
 skip_coregistration: no
-skip_recon: no
+skip_recon: yes
 subject_code: YAB

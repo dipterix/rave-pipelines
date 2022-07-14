@@ -43,11 +43,12 @@ subject <- raveio::RAVESubject$new(
   strict = FALSE)
 ```
 
-Using `cue="always"` to never skip the target
 
-```{rave plot_data, language = "R", export = "plot_data", cue = "always"}
-plot_data <- Sys.time()
-plot(input_data, pch = pch, col = col)
+```{rave validate_subject, language = "R", export = "validate", cue = "always"}
+validate <- raveio::validate_subject(
+  subject = subject, 
+  method = validation$mode, 
+  version = validation$version)
 ```
 
 
