@@ -345,7 +345,7 @@ loader_server <- function(input, output, session, ...){
 
       # paths <- list.dirs(subject$preprocess_settings$raw_path, full.names = FALSE, recursive = TRUE)
       paths <- list.files(subject$preprocess_settings$raw_path, all.files = TRUE, full.names = FALSE, include.dirs = TRUE, no.. = TRUE, recursive = TRUE)
-      paths <- paths[dir.exists(file.path(subject$preprocess_settings$raw_path, paths)) | grepl("nii(^|\\.gz$)", x = paths, ignore.case = TRUE)]
+      paths <- paths[dir.exists(file.path(subject$preprocess_settings$raw_path, paths)) | grepl("nii($|\\.gz$)", x = paths, ignore.case = TRUE)]
       paths <- paths[!paths %in% c("", ".", "..", "/")]
 
       selected <- NULL
