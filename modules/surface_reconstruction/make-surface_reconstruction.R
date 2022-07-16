@@ -112,7 +112,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                     warns <- append(warns, "Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will be skipped")
                     skip_recon <- TRUE
                   } else {
-                    if (!isTRUE(dir.exists(mri))) {
+                    if (!isTRUE(file.exists(mri))) {
                       warns <- append(warns, "No MRI folder found, the reconstruction will be skipped")
                       skip_recon <- TRUE
                     }
@@ -133,7 +133,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                     warns <- append(warns, "Cannot find FreeSurfer reconstruction, nor at least one of the following commands exists: `dcm2niix`, `FreeSurfer`. The co-registration will be skipped anyway")
                     skip_coregistration <- TRUE
                   } else {
-                    if (!isTRUE(dir.exists(ct))) {
+                    if (!isTRUE(file.exists(ct))) {
                       warns <- append(warns, "No CT folder found, the co-registration will be skipped")
                       skip_coregistration <- TRUE
                     }
@@ -142,13 +142,13 @@ source("common.R", local = TRUE, chdir = TRUE)
                 if (!skip_recon) {
                   msgs <- append(msgs, sprintf("New FreeSurfer reconstruction will be created from %s",
                     mri))
-                  msgs <- append(msgs, sprintf("MRI default folder will be set: %s",
+                  msgs <- append(msgs, sprintf("MRI default DICOM folder/Nifti file is set: %s",
                     path_mri))
                 }
                 if (!skip_coregistration) {
                   msgs <- append(msgs, sprintf("CT will be co-registered to MRI for electrode localization; CT path: %s",
                     ct))
-                  msgs <- append(msgs, sprintf("CT default folder will be set: %s",
+                  msgs <- append(msgs, sprintf("CT default DICOM folder/Nifti file is set: %s",
                     path_ct))
                 }
                 path_temp <- file.path(subject$preprocess_settings$raw_path,
@@ -170,14 +170,14 @@ source("common.R", local = TRUE, chdir = TRUE)
         pattern = NULL, iteration = "list"), set_default_paths = targets::tar_target_raw(name = "default_paths",
         command = quote({
             {
-                if (isTRUE(dir.exists(check_result$path_mri))) {
-                  ravedash::logger("Setting default MRI folder: ",
+                if (isTRUE(file.exists(check_result$path_mri))) {
+                  ravedash::logger("Setting default MRI path: ",
                     path_mri, level = "info")
                   subject$set_default("raw_mri_path", path_mri,
                     namespace = "surface_reconstruction")
                 }
-                if (isTRUE(dir.exists(check_result$path_ct))) {
-                  ravedash::logger("Setting default CT folder: ",
+                if (isTRUE(file.exists(check_result$path_ct))) {
+                  ravedash::logger("Setting default CT path: ",
                     path_ct, level = "info")
                   subject$set_default("raw_ct_path", path_ct,
                     namespace = "surface_reconstruction")
@@ -243,7 +243,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                     x = indir_mri, ignore.case = TRUE)) {
                     error <- FALSE
                     cmdadd <- c(cmdadd, "# Copy MRI Nifti file to RAVE temporary directory",
-                      "cp -r \"$subj_mri_in\" \"$subj_mri_out")
+                      "cp -r \"$subj_mri_in\" \"$subj_mri_out\"")
                   } else {
                     cmdadd <- NULL
                   }
@@ -271,7 +271,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                   }
                   cmd <- c(cmd, cmdadd)
                 }
-                cmd <- c(cmd, "echo Done. >> \"$log_dir/$log_file\" && echo Done.")
+                cmd <- c(cmd, "echo Done. >> \"$log_dir/$log_file\" && echo Done.", "")
                 script_dcm2nii <- list(script = cmd, path_temp = path_temp,
                   error = error, log_file = normalizePath(file.path(path_log,
                     log_file), winslash = "/", mustWork = FALSE))
@@ -379,7 +379,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                               flag), "fi")
                         }
                       }))
-                    cmd <- c(cmd, "echo Done. >> \"$log_dir/$log_file\" && echo Done.")
+                    cmd <- c(cmd, "echo Done. >> \"$log_dir/$log_file\" && echo Done.", "")
                     script_recon <- list(script = cmd, path_temp = path_temp,
                       flag = flag, error = FALSE, log_file = normalizePath(file.path(path_log,
                         log_file), winslash = "/", mustWork = FALSE))
@@ -475,7 +475,7 @@ source("common.R", local = TRUE, chdir = TRUE)
                   "  -out \"$outdir/ct_in_t1.nii\" -omat \"$outdir/ct2t1.mat\" \\",
                   "  -interp trilinear -cost mutualinfo -dof 6 -searchcost mutualinfo \\",
                   "  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -v >> \"$log_dir/$log_file\" 2>&1",
-                  "echo Done. >> \"$log_dir/$log_file\" && echo Done.")
+                  "echo Done. >> \"$log_dir/$log_file\" && echo Done.", "")
                 script_coreg <- list(script = cmd, path_temp = check_result$path_temp,
                   error = FALSE, reason = list(message = paste(err_msg,
                     collapse = "; ")), log_file = normalizePath(file.path(path_log,

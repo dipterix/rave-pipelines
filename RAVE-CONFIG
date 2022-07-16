@@ -56,4 +56,5 @@ InteractiveModules:
     modules/reference_module,
     modules/surface_reconstruction,
     modules/electrode_localization,
-    modules/compatibility_rave1
+    modules/compatibility_rave1,
+    modules/standalone_viewer

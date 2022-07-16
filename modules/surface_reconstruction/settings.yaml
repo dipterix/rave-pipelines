@@ -1,5 +1,5 @@
 dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
-dryrun: no
+dryrun: yes
 freesurfer_path: ''
 fsl_path: ''
 params:
@@ -13,9 +13,9 @@ params:
     steps: -all
     fresh_start: no
 params_dcm2niix: ~
-path_ct: Harris_Ralph_Emanuel_CT
-path_mri: Harris_Ralph_Emanuel_MR
-project_name: demo
+path_ct: IMG/IMG/YCQ_CT.nii
+path_mri: IMG/IMG/YCQ_MRI.nii
+project_name: test3
 skip_coregistration: no
-skip_recon: yes
-subject_code: YAB
+skip_recon: no
+subject_code: YCQ
