@@ -52,32 +52,45 @@ lapply(sort(list.files(
         command = quote({
             {
                 dry_run <- raveio::is_dry_run() || isTRUE(dryrun)
+                default_dcm2niix_path <- raveio:::cmd_dcm2niix(error_on_missing = FALSE)
                 dcm2niix <- tryCatch({
                   dcm2niix <- raveio::normalize_commandline_path(path = dcm2niix_path, 
-                    unset = raveio:::cmd_dcm2niix(error_on_missing = FALSE))
-                  if (!isTRUE(file.exists(dcm2niix))) {
+                    unset = default_dcm2niix_path)
+                  if (length(dcm2niix) != 1 || is.na(dcm2niix) || 
+                    !isTRUE(file.exists(dcm2niix))) {
                     dcm2niix <- NULL
+                  } else if (!identical(default_dcm2niix_path, 
+                    dcm2niix)) {
+                    raveio::raveio_setopt("dcm2niix_path", dcm2niix)
                   }
                   dcm2niix
                 }, error = function(e) {
                   NULL
                 })
+                default_fs_path <- raveio:::cmd_freesurfer_home(error_on_missing = FALSE)
                 freesurfer <- tryCatch({
                   freesurfer <- raveio::normalize_commandline_path(path = freesurfer_path, 
-                    unset = raveio:::cmd_freesurfer_home(error_on_missing = FALSE), 
-                    type = "freesurfer")
-                  if (!isTRUE(dir.exists(freesurfer))) {
+                    unset = default_fs_path, type = "freesurfer")
+                  if (length(freesurfer) != 1 || is.na(freesurfer) || 
+                    !isTRUE(dir.exists(freesurfer))) {
                     freesurfer <- NULL
+                  } else if (!identical(default_fs_path, freesurfer)) {
+                    raveio::raveio_setopt("freesurfer_path", 
+                      freesurfer)
                   }
                   freesurfer
                 }, error = function(e) {
                   NULL
                 })
+                default_fsl_path <- raveio:::cmd_fsl_home(error_on_missing = FALSE)
                 flirt <- tryCatch({
                   fsl <- raveio::normalize_commandline_path(path = fsl_path, 
-                    type = "fsl", unset = raveio:::cmd_fsl_home(error_on_missing = FALSE))
+                    type = "fsl", unset = default_fsl_path)
                   flirt <- NULL
-                  if (isTRUE(dir.exists(fsl))) {
+                  if (length(fsl) == 1 && !is.na(fsl) && isTRUE(dir.exists(fsl))) {
+                    if (!identical(default_fsl_path, fsl)) {
+                      raveio::raveio_setopt("fsl_path", fsl)
+                    }
                     flirt <- file.path(fsl, "bin", "flirt")
                   }
                   flirt
@@ -350,7 +363,7 @@ lapply(sort(list.files(
                         which = "cache"), "FreeSurferSubjects")
                       raveio::dir_create2(symlink_root)
                       symlink_path <- file.path(symlink_root, 
-                        subject$subject_code)
+                        subject_code)
                       symlink_cmd1 <- c("", "# Orginal subject path contains spaces, FreeSurfer will fail", 
                         sprintf("symlink_path=%s", shQuote(symlink_path)), 
                         "if [ -d $symlink_path ]; then", "  rm \"$symlink_path\"", 
@@ -415,7 +428,7 @@ lapply(sort(list.files(
                 }
             }
             return(script_recon)
-        }), deps = c("cmd_tools", "check_result", "params", "subject"
+        }), deps = c("cmd_tools", "check_result", "params", "subject_code"
         ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), command_FreeSurfer_recon = targets::tar_target_raw(name = "fs_recon", 
         command = quote({

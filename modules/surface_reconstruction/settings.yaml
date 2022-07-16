@@ -1,10 +1,10 @@
 dcm2niix_path: /usr/bin/dcm2niix
-dryrun: yes
+dryrun: no
 freesurfer_path: /data/software/freesurfer
 fsl_path: ''
 params:
-  nii_t1: ''
-  nii_ct: ''
+  nii_t1: YCQ_MRI.nii
+  nii_ct: YCQ_CT.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
