@@ -358,10 +358,12 @@ lapply(sort(list.files(
                     script_recon <- list(error = TRUE, reason = list(message = "No MRI input specified"))
                   } else {
                     path_temp <- normalizePath(path_temp, mustWork = FALSE)
+                    path_temp2 <- path_temp
                     if (grepl(" ", path_temp)) {
                       symlink_root <- file.path(tools::R_user_dir("rave", 
                         which = "cache"), "FreeSurferSubjects", 
                         subject_code)
+                      unlink(symlink_root, recursive = TRUE)
                       raveio::dir_create2(symlink_root)
                       symlink_path <- symlink_root
                       symlink_cmd1 <- c("", "# Orginal subject path contains spaces, FreeSurfer will fail", 
@@ -373,7 +375,7 @@ lapply(sort(list.files(
                       symlink_cmd2 <- c("", "rm \"$symlink_path/rave-imaging\"", 
                         "# Try to remove temp path, but it is OK to fail here", 
                         "rm \"$symlink_path\"", "")
-                      path_temp <- file.path(symlink_path, "rave-imaging")
+                      path_temp2 <- file.path(symlink_path, "rave-imaging")
                     } else {
                       raveio::dir_create2(path_temp)
                       symlink_cmd1 <- NULL
@@ -391,7 +393,7 @@ lapply(sort(list.files(
                     cmd <- c("#!/usr/bin/env bash", "", "# Set FreeSurfer home directory & initialize", 
                       sprintf("FREESURFER_HOME=%s", shQuote(fs_home)), 
                       "source $FREESURFER_HOME/SetUpFreeSurfer.sh", 
-                      "", sprintf("SUBJECTS_DIR=%s", shQuote(path_temp)), 
+                      "", sprintf("SUBJECTS_DIR=%s", shQuote(path_temp2)), 
                       sprintf("mri_infile=\"$SUBJECTS_DIR/inputs/MRI/%s\"", 
                         infile), symlink_cmd1, "# Prepare log file", 
                       sprintf("log_dir=%s", shQuote(path_log)), 

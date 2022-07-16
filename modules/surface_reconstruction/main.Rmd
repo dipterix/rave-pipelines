@@ -388,6 +388,7 @@ if(isTRUE(check_result$skip_recon)) {
     
     # Need to check whether path_temp has space inside Freesurfer does not like spaces
     path_temp <- normalizePath(path_temp, mustWork = FALSE)
+    path_temp2 <- path_temp
     if(grepl(" ", path_temp)) {
       # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
       symlink_root <- file.path(
@@ -395,6 +396,7 @@ if(isTRUE(check_result$skip_recon)) {
         "FreeSurferSubjects",
         subject_code
       )
+      unlink(symlink_root, recursive = TRUE)
       raveio::dir_create2(symlink_root)
       symlink_path <- symlink_root
       
@@ -417,7 +419,7 @@ if(isTRUE(check_result$skip_recon)) {
         'rm "$symlink_path"',
         ''
       )
-      path_temp <- file.path(symlink_path, "rave-imaging")
+      path_temp2 <- file.path(symlink_path, "rave-imaging")
     } else {
       raveio::dir_create2(path_temp)
       symlink_cmd1 <- NULL
@@ -447,7 +449,7 @@ if(isTRUE(check_result$skip_recon)) {
       sprintf("FREESURFER_HOME=%s", shQuote(fs_home)),
       "source $FREESURFER_HOME/SetUpFreeSurfer.sh",
       "",
-      sprintf("SUBJECTS_DIR=%s", shQuote(path_temp)),
+      sprintf("SUBJECTS_DIR=%s", shQuote(path_temp2)),
       sprintf('mri_infile="$SUBJECTS_DIR/inputs/MRI/%s"', infile),
       # '[ -d "$SUBJECTS_DIR/fs" ] && rm -r "$SUBJECTS_DIR/fs"',
       symlink_cmd1,
