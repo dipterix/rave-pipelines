@@ -38,7 +38,8 @@ dcm2niix <- tryCatch({
 freesurfer <- tryCatch({
   freesurfer <- raveio::normalize_commandline_path(
     path = freesurfer_path, 
-    unset = raveio:::cmd_freesurfer_home(error_on_missing = FALSE)
+    unset = raveio:::cmd_freesurfer_home(error_on_missing = FALSE),
+    type = "freesurfer"
   )
   if(!isTRUE(dir.exists(freesurfer))) { freesurfer <- NULL }
   freesurfer
