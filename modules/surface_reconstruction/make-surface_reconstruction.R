@@ -316,100 +316,150 @@ source("common.R", local = TRUE, chdir = TRUE)
         }), deps = c("script_dcm2nii", "dryrun"), cue = targets::tar_cue("always"),
         pattern = NULL, iteration = "list"), command_FreeSurfer_recon_dryrun = targets::tar_target_raw(name = "script_recon",
         command = quote({
-            {
-                require(ravedash)
-                fs_home <- as.character(cmd_tools$freesurfer)
-                if (isTRUE(check_result$skip_recon)) {
-                  script_recon <- list(error = TRUE, reason = list(message = "FreeSurfer reconstruction is manually skipped"))
-                } else if (!isTRUE(dir.exists(fs_home))) {
-                  script_recon <- list(error = TRUE, reason = list(message = "Cannot find FreeSurfer home directory"))
+          {
+            require(ravedash)
+
+            fs_home <- as.character(cmd_tools$freesurfer)
+
+            if(isTRUE(check_result$skip_recon)) {
+              script_recon <- list(
+                error = TRUE,
+                reason = list(message = "FreeSurfer reconstruction is manually skipped")
+              )
+            } else if(!isTRUE(dir.exists(fs_home))) {
+              script_recon <- list(
+                error = TRUE,
+                reason = list(message = "Cannot find FreeSurfer home directory")
+              )
+            } else {
+
+              fs_home <- normalizePath(fs_home, winslash = "/")
+
+              # FREESURFER_HOME=$R_CACHE/freesurfer
+              # source $FREESURFER_HOME/SetUpFreeSurfer.sh
+
+              path_temp <- check_result$path_temp
+              fs_sdir <- normalizePath(file.path(check_result$fs_path, ".."), mustWork = FALSE)
+
+              infile <- params$nii_t1
+              infile_absolute <- file.path(path_temp, "inputs", "MRI", infile)
+              if(length(infile_absolute) != 1 || is.na(infile_absolute) ||
+                 !file.exists(infile_absolute)) {
+                script_recon <- list(
+                  error = TRUE,
+                  reason = list(message = "No MRI input specified")
+                )
+              } else {
+
+                # Need to check whether path_temp has space inside Freesurfer does not like spaces
+                path_temp <- normalizePath(path_temp, mustWork = FALSE)
+                if(grepl(" ", path_temp)) {
+                  # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
+                  symlink_root <- file.path(
+                    tools::R_user_dir('rave', which = "cache"),
+                    "FreeSurferSubjects"
+                  )
+                  raveio::dir_create2(symlink_root)
+                  symlink_path <- file.path(symlink_root, subject$subject_code)
+
+                  symlink_cmd1 <- c(
+                    "",
+                    "# Orginal subject path contains spaces, FreeSurfer will fail",
+                    sprintf("symlink_path=%s", shQuote(symlink_path)),
+                    "if [ -d $symlink_path ]; then",
+                    '  rm "$symlink_path"',
+                    "fi",
+                    # Re-link
+                    sprintf('ln -s "%s" "$symlink_path"', path_temp),
+                    ''
+                  )
+                  symlink_cmd2 <- c(
+                    "",
+                    'rm "$symlink_path"',
+                    ''
+                  )
+                  path_temp <- symlink_path
                 } else {
-                  fs_home <- normalizePath(fs_home, winslash = "/")
-                  path_temp <- check_result$path_temp
-                  fs_sdir <- normalizePath(file.path(check_result$fs_path,
-                    ".."), mustWork = FALSE)
-                  infile <- params$nii_t1
-                  infile <- file.path(path_temp, "inputs", "MRI",
-                    infile)
-                  if (length(infile) != 1 || is.na(infile) ||
-                    !file.exists(infile)) {
-                    script_recon <- list(error = TRUE, reason = list(message = "No MRI input specified"))
-                  } else {
-                    # Need to check whether path_temp has space inside Freesurfer does not like spaces
-                    path_temp <- normalizePath(path_temp, mustWork = FALSE)
-                    if(grepl(" ", path_temp)) {
-                      # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
-                      symlink_root <- tools::R_user_dir('rave', which = "cache")
-                      raveio::dir_create2(symlink_root)
-                      symlink_path <- file.path(symlink_root, "fstemp")
-                      if(file.exists(symlink_path)) {
-                        # remove this symlink
-                        unlink(symlink_path, recursive = FALSE)
-                      }
-                      # create symlink (it works on Linux, however it should be fine since FreeSurfer cannot run on Windows)
-                      suc <- file.symlink(path_temp, symlink_path)
-                      if(!isTRUE(suc)) {
-                        logger("Cannot create symlink from [", path_temp, "] to ",
-                               "symlink_path", level = "warning")
-                      } else {
-
-                        # redirect path_temp
-                        path_temp <- symlink_path
-
-                      }
-                    }
-                    infile <- normalizePath(infile, mustWork = TRUE,
-                      winslash = "/")
-                    autorecon_flags <- c("-all", "-autorecon1",
-                      "-autorecon2", "-autorecon3", "-autorecon2-cp",
-                      "-autorecon2-wm", "-autorecon2-pial")
-                    flag <- params$freesurfer$steps %OF% autorecon_flags
-                    path_log <- normalizePath(check_result$path_log,
-                      winslash = "/", mustWork = FALSE)
-                    log_file <- sprintf("log-fs-recon%s.log",
-                      flag)
-                    cmd_type <- "cmd"
-                    cmd <- c("#!/usr/bin/env bash", "", "# Set FreeSurfer home directory & initialize",
-                      sprintf("FREESURFER_HOME=%s", shQuote(fs_home)),
-                      "source $FREESURFER_HOME/SetUpFreeSurfer.sh",
-                      "", sprintf("SUBJECTS_DIR=%s", shQuote(path_temp)),
-                      sprintf("mri_infile=%s", shQuote(infile)),
-                      "mkdir -p \"$SUBJECTS_DIR\"", "# Prepare log file",
-                      sprintf("log_dir=%s", shQuote(path_log)),
-                      sprintf("log_file=%s", shQuote(log_file)),
-                      "mkdir -p \"$log_dir\" && touch \"$log_dir/$log_file\" && echo \"Started: $(date -u)\" > \"$log_dir/$log_file\"",
-                      "echo --------------------------------------------------------",
-                      "echo Log file: \"$log_dir/$log_file\"",
-                      "echo --------------------------------------------------------",
-                      local({
-                        if (isTRUE(params$freesurfer$fresh_start)) {
-                          c("# Force removing FreeSurfer path and re-run the reconstruction",
-                            "# You need original Nifti files to run",
-                            "if [ -d \"$SUBJECTS_DIR/fs\" ]; then",
-                            "  rm -r \"$SUBJECTS_DIR/fs\"", "fi",
-                            sprintf("recon-all -sd \"$SUBJECTS_DIR\" -sid fs -i \"$mri_infile\" %s >> \"$log_dir/$log_file\" 2>&1",
-                              flag))
-                        } else {
-                          c("if [ -d \"$SUBJECTS_DIR/fs/mri\" ]; then",
-                            "  # Use existing FreeSurfer directory to continue analysis",
-                            "  # You do not need original Nifti files to run",
-                            sprintf("  recon-all -sd \"$SUBJECTS_DIR\" -sid fs %s",
-                              flag), "else", "  # Remove invalid FreeSurfer path and re-run the reconstruction",
-                            "  # You need original Nifti files to run",
-                            "  if [ -d \"$SUBJECTS_DIR/fs\" ]; then",
-                            "    rm -r \"$SUBJECTS_DIR/fs\"",
-                            "  fi", sprintf("  recon-all -sd \"$SUBJECTS_DIR\" -sid fs -i \"$mri_infile\" %s >> \"$log_dir/$log_file\" 2>&1",
-                              flag), "fi")
-                        }
-                      }))
-                    cmd <- c(cmd, "echo Done. >> \"$log_dir/$log_file\" && echo Done.", "")
-                    script_recon <- list(script = cmd, path_temp = path_temp,
-                      flag = flag, error = FALSE, log_file = normalizePath(file.path(path_log,
-                        log_file), winslash = "/", mustWork = FALSE))
-                  }
+                  raveio::dir_create2(path_temp)
+                  symlink_cmd1 <- NULL
+                  symlink_cmd2 <- NULL
                 }
+
+
+                # infile <- normalizePath(infile, mustWork = TRUE, winslash = "/")
+                # infile <- file.path(path_temp, "inputs", "MRI", infile)
+
+
+
+                autorecon_flags <- c(
+                  "-all", "-autorecon1", "-autorecon2", "-autorecon3",
+                  "-autorecon2-cp", "-autorecon2-wm", "-autorecon2-pial"
+                )
+                flag <- params$freesurfer$steps %OF% autorecon_flags
+
+                path_log <- normalizePath(check_result$path_log, winslash = "/", mustWork = FALSE)
+                log_file <- sprintf("log-fs-recon%s.log", flag)
+
+                cmd_type <- "cmd"
+                cmd <- c(
+                  "#!/usr/bin/env bash",
+                  "",
+                  "# Set FreeSurfer home directory & initialize",
+                  sprintf("FREESURFER_HOME=%s", shQuote(fs_home)),
+                  "source $FREESURFER_HOME/SetUpFreeSurfer.sh",
+                  "",
+                  sprintf("SUBJECTS_DIR=%s", shQuote(path_temp)),
+                  sprintf('mri_infile="$SUBJECTS_DIR/inputs/MRI/%s"', infile),
+                  # '[ -d "$SUBJECTS_DIR/fs" ] && rm -r "$SUBJECTS_DIR/fs"',
+                  symlink_cmd1,
+                  "# Prepare log file",
+                  sprintf("log_dir=%s", shQuote(path_log)),
+                  sprintf("log_file=%s", shQuote(log_file)),
+                  'mkdir -p "$log_dir" && touch "$log_dir/$log_file" && echo "Started: $(date -u)" > "$log_dir/$log_file"',
+                  'echo --------------------------------------------------------',
+                  'echo Log file: "$log_dir/$log_file"',
+                  'echo --------------------------------------------------------',
+                  local({
+                    if(isTRUE( params$freesurfer$fresh_start)) {
+                      c(
+                        '# Force removing FreeSurfer path and re-run the reconstruction',
+                        '# You need original Nifti files to run',
+                        'if [ -d "$SUBJECTS_DIR/fs" ]; then',
+                        '  rm -r "$SUBJECTS_DIR/fs"',
+                        'fi',
+                        sprintf('recon-all -sd "$SUBJECTS_DIR" -sid fs -i "$mri_infile" %s >> "$log_dir/$log_file" 2>&1', flag)
+                      )
+                    } else {
+                      c(
+                        'if [ -d "$SUBJECTS_DIR/fs/mri" ]; then',
+                        '  # Use existing FreeSurfer directory to continue analysis',
+                        '  # You do not need original Nifti files to run',
+                        sprintf('  recon-all -sd "$SUBJECTS_DIR" -sid fs %s', flag),
+                        'else',
+                        '  # Remove invalid FreeSurfer path and re-run the reconstruction',
+                        '  # You need original Nifti files to run',
+                        '  if [ -d "$SUBJECTS_DIR/fs" ]; then',
+                        '    rm -r "$SUBJECTS_DIR/fs"',
+                        '  fi',
+                        sprintf('  recon-all -sd "$SUBJECTS_DIR" -sid fs -i "$mri_infile" %s >> "$log_dir/$log_file" 2>&1', flag),
+                        'fi'
+                      )
+                    }
+                  })
+                )
+
+                cmd <- c(cmd, symlink_cmd2, 'echo Done. >> "$log_dir/$log_file" && echo Done.', '')
+                script_recon <- list(
+                  script = cmd,
+                  path_temp = path_temp,
+                  flag = flag,
+                  error = FALSE,
+                  log_file = normalizePath(file.path(path_log, log_file), winslash = "/", mustWork = FALSE)
+                )
+              }
             }
-            return(script_recon)
+          }
+          return(script_recon)
         }), deps = c("cmd_tools", "check_result", "params"),
         cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"),
     command_FreeSurfer_recon = targets::tar_target_raw(name = "fs_recon",

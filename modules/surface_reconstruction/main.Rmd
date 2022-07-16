@@ -362,8 +362,9 @@ if(isTRUE(check_result$skip_recon)) {
   fs_sdir <- normalizePath(file.path(check_result$fs_path, ".."), mustWork = FALSE)
   
   infile <- params$nii_t1
-  infile <- file.path(path_temp, "inputs", "MRI", infile)
-  if(length(infile) != 1 || is.na(infile) || !file.exists(infile)) {
+  infile_absolute <- file.path(path_temp, "inputs", "MRI", infile)
+  if(length(infile_absolute) != 1 || is.na(infile_absolute) ||
+     !file.exists(infile_absolute)) {
     script_recon <- list(
       error = TRUE,
       reason = list(message = "No MRI input specified")
@@ -374,28 +375,39 @@ if(isTRUE(check_result$skip_recon)) {
     path_temp <- normalizePath(path_temp, mustWork = FALSE)
     if(grepl(" ", path_temp)) {
       # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
-      symlink_root <- tools::R_user_dir('rave', which = "cache")
+      symlink_root <- file.path(
+        tools::R_user_dir('rave', which = "cache"),
+        "FreeSurferSubjects"
+      )
       raveio::dir_create2(symlink_root)
-      symlink_path <- file.path(symlink_root, "fstemp")
-      if(file.exists(symlink_path)) {
-        # remove this symlink
-        unlink(symlink_path, recursive = FALSE)
-      }
-      # create symlink (it works on Linux, however it should be fine since FreeSurfer cannot run on Windows)
-      suc <- file.symlink(path_temp, symlink_path)
-      if(!isTRUE(suc)) {
-        logger("Cannot create symlink from [", path_temp, "] to ",
-               "symlink_path", level = "warning")
-      } else {
-        
-        # redirect path_temp
-        path_temp <- symlink_path
-        
-      }
+      symlink_path <- file.path(symlink_root, subject$subject_code)
+      
+      symlink_cmd1 <- c(
+        "",
+        "# Orginal subject path contains spaces, FreeSurfer will fail",
+        sprintf("symlink_path=%s", shQuote(symlink_path)),
+        "if [ -d $symlink_path ]; then",
+        '  rm "$symlink_path"',
+        "fi",
+        # Re-link
+        sprintf('ln -s "%s" "$symlink_path"', path_temp),
+        ''
+      )
+      symlink_cmd2 <- c(
+        "",
+        'rm "$symlink_path"',
+        ''
+      )
+      path_temp <- symlink_path
+    } else {
+      raveio::dir_create2(path_temp)
+      symlink_cmd1 <- NULL
+      symlink_cmd2 <- NULL
     }
     
     
-    infile <- normalizePath(infile, mustWork = TRUE, winslash = "/")
+    # infile <- normalizePath(infile, mustWork = TRUE, winslash = "/")
+    # infile <- file.path(path_temp, "inputs", "MRI", infile)
     
      
     
@@ -417,9 +429,9 @@ if(isTRUE(check_result$skip_recon)) {
       "source $FREESURFER_HOME/SetUpFreeSurfer.sh",
       "",
       sprintf("SUBJECTS_DIR=%s", shQuote(path_temp)),
-      sprintf('mri_infile=%s', shQuote(infile)),
+      sprintf('mri_infile="$SUBJECTS_DIR/inputs/MRI/%s"', infile),
       # '[ -d "$SUBJECTS_DIR/fs" ] && rm -r "$SUBJECTS_DIR/fs"',
-      'mkdir -p "$SUBJECTS_DIR"',
+      symlink_cmd1,
       "# Prepare log file",
       sprintf("log_dir=%s", shQuote(path_log)),
       sprintf("log_file=%s", shQuote(log_file)),
@@ -456,7 +468,7 @@ if(isTRUE(check_result$skip_recon)) {
       })
     )
     
-    cmd <- c(cmd, 'echo Done. >> "$log_dir/$log_file" && echo Done.', '')
+    cmd <- c(cmd, symlink_cmd2, 'echo Done. >> "$log_dir/$log_file" && echo Done.', '')
     script_recon <- list(
       script = cmd,
       path_temp = path_temp,
