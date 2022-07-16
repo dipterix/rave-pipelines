@@ -406,6 +406,7 @@ if(isTRUE(check_result$skip_recon)) {
         '  rm "$symlink_path/rave-imaging"',
         "fi",
         # Re-link
+        'mkdir -p "$symlink_path"',
         sprintf('ln -s "%s" "$symlink_path"', path_temp),
         ''
       )

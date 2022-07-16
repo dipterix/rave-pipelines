@@ -368,7 +368,7 @@ lapply(sort(list.files(
                         sprintf("symlink_path=%s", shQuote(symlink_path)), 
                         "if [ -d $symlink_path/rave-imaging ]; then", 
                         "  rm \"$symlink_path/rave-imaging\"", 
-                        "fi", sprintf("ln -s \"%s\" \"$symlink_path\"", 
+                        "fi", "mkdir -p \"$symlink_path\"", sprintf("ln -s \"%s\" \"$symlink_path\"", 
                           path_temp), "")
                       symlink_cmd2 <- c("", "rm \"$symlink_path/rave-imaging\"", 
                         "# Try to remove temp path, but it is OK to fail here", 
