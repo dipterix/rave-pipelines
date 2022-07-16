@@ -360,18 +360,20 @@ lapply(sort(list.files(
                     path_temp <- normalizePath(path_temp, mustWork = FALSE)
                     if (grepl(" ", path_temp)) {
                       symlink_root <- file.path(tools::R_user_dir("rave", 
-                        which = "cache"), "FreeSurferSubjects")
-                      raveio::dir_create2(symlink_root)
-                      symlink_path <- file.path(symlink_root, 
+                        which = "cache"), "FreeSurferSubjects", 
                         subject_code)
+                      raveio::dir_create2(symlink_root)
+                      symlink_path <- symlink_root
                       symlink_cmd1 <- c("", "# Orginal subject path contains spaces, FreeSurfer will fail", 
                         sprintf("symlink_path=%s", shQuote(symlink_path)), 
-                        "if [ -d $symlink_path ]; then", "  rm \"$symlink_path\"", 
+                        "if [ -d $symlink_path/rave-imaging ]; then", 
+                        "  rm \"$symlink_path/rave-imaging\"", 
                         "fi", sprintf("ln -s \"%s\" \"$symlink_path\"", 
                           path_temp), "")
-                      symlink_cmd2 <- c("", "rm \"$symlink_path\"", 
-                        "")
-                      path_temp <- symlink_path
+                      symlink_cmd2 <- c("", "rm \"$symlink_path/rave-imaging\"", 
+                        "# Try to remove temp path, but it is OK to fail here", 
+                        "rm \"$symlink_path\"", "")
+                      path_temp <- file.path(symlink_path, "rave-imaging")
                     } else {
                       raveio::dir_create2(path_temp)
                       symlink_cmd1 <- NULL

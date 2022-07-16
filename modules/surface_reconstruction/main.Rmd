@@ -392,17 +392,18 @@ if(isTRUE(check_result$skip_recon)) {
       # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
       symlink_root <- file.path(
         tools::R_user_dir('rave', which = "cache"),
-        "FreeSurferSubjects"
+        "FreeSurferSubjects",
+        subject_code
       )
       raveio::dir_create2(symlink_root)
-      symlink_path <- file.path(symlink_root, subject_code)
+      symlink_path <- symlink_root
       
       symlink_cmd1 <- c(
         "",
         "# Orginal subject path contains spaces, FreeSurfer will fail",
         sprintf("symlink_path=%s", shQuote(symlink_path)),
-        "if [ -d $symlink_path ]; then",
-        '  rm "$symlink_path"',
+        "if [ -d $symlink_path/rave-imaging ]; then",
+        '  rm "$symlink_path/rave-imaging"',
         "fi",
         # Re-link
         sprintf('ln -s "%s" "$symlink_path"', path_temp),
@@ -410,10 +411,12 @@ if(isTRUE(check_result$skip_recon)) {
       )
       symlink_cmd2 <- c(
         "",
+        'rm "$symlink_path/rave-imaging"',
+        '# Try to remove temp path, but it is OK to fail here',
         'rm "$symlink_path"',
         ''
       )
-      path_temp <- symlink_path
+      path_temp <- file.path(symlink_path, "rave-imaging")
     } else {
       raveio::dir_create2(path_temp)
       symlink_cmd1 <- NULL

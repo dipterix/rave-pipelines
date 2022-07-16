@@ -1,5 +1,5 @@
 dcm2niix_path: /usr/bin/dcm2niix
-dryrun: no
+dryrun: yes
 freesurfer_path: /data/software/freesurfer
 fsl_path: ''
 params:
