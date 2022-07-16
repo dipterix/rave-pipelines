@@ -335,6 +335,29 @@ source("common.R", local = TRUE, chdir = TRUE)
                     !file.exists(infile)) {
                     script_recon <- list(error = TRUE, reason = list(message = "No MRI input specified"))
                   } else {
+                    # Need to check whether path_temp has space inside Freesurfer does not like spaces
+                    path_temp <- normalizePath(path_temp, mustWork = FALSE)
+                    if(grepl(" ", path_temp)) {
+                      # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
+                      symlink_root <- tools::R_user_dir('rave', which = "cache")
+                      raveio::dir_create2(symlink_root)
+                      symlink_path <- file.path(symlink_root, "fstemp")
+                      if(file.exists(symlink_path)) {
+                        # remove this symlink
+                        unlink(symlink_path, recursive = FALSE)
+                      }
+                      # create symlink (it works on Linux, however it should be fine since FreeSurfer cannot run on Windows)
+                      suc <- file.symlink(path_temp, symlink_path)
+                      if(!isTRUE(suc)) {
+                        logger("Cannot create symlink from [", path_temp, "] to ",
+                               "symlink_path", level = "warning")
+                      } else {
+
+                        # redirect path_temp
+                        path_temp <- symlink_path
+
+                      }
+                    }
                     infile <- normalizePath(infile, mustWork = TRUE,
                       winslash = "/")
                     autorecon_flags <- c("-all", "-autorecon1",
