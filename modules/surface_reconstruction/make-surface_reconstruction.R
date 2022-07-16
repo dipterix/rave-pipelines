@@ -460,7 +460,7 @@ source("common.R", local = TRUE, chdir = TRUE)
             }
           }
           return(script_recon)
-        }), deps = c("cmd_tools", "check_result", "params"),
+        }), deps = c("cmd_tools", "check_result", "params", "subject"),
         cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"),
     command_FreeSurfer_recon = targets::tar_target_raw(name = "fs_recon",
         command = quote({
