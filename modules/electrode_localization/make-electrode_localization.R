@@ -1,26 +1,33 @@
 library(targets)
 library(raveio)
 source("common.R", local = TRUE, chdir = TRUE)
+lapply(sort(list.files(
+  "R/", ignore.case = TRUE,
+  pattern = "^shared-.*\\.R", 
+  full.names = TRUE
+)), function(f) {
+  source(f, local = FALSE, chdir = TRUE)
+})
 ...targets <- list(`__Check_settings_file` = targets::tar_target_raw("settings_path", 
     "settings.yaml", format = "file"), `__Load_settings` = targets::tar_target_raw("settings", 
     quote({
         load_yaml(settings_path)
     }), deps = "settings_path", cue = targets::tar_cue("always")), 
-    input_project_name = targets::tar_target_raw("project_name", 
+    input_path_ct_in_t1 = targets::tar_target_raw("path_ct_in_t1", 
         quote({
-            settings[["project_name"]]
-        }), deps = "settings"), input_localization_plan = targets::tar_target_raw("localization_plan", 
-        quote({
-            settings[["localization_plan"]]
-        }), deps = "settings"), input_localization_list = targets::tar_target_raw("localization_list", 
-        quote({
-            settings[["localization_list"]]
+            settings[["path_ct_in_t1"]]
         }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
         quote({
             settings[["subject_code"]]
-        }), deps = "settings"), input_path_ct_in_t1 = targets::tar_target_raw("path_ct_in_t1", 
+        }), deps = "settings"), input_localization_list = targets::tar_target_raw("localization_list", 
         quote({
-            settings[["path_ct_in_t1"]]
+            settings[["localization_list"]]
+        }), deps = "settings"), input_localization_plan = targets::tar_target_raw("localization_plan", 
+        quote({
+            settings[["localization_plan"]]
+        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
+        quote({
+            settings[["project_name"]]
         }), deps = "settings"), load_FreeSurfer_LUT = targets::tar_target_raw(name = "fslut", 
         command = quote({
             {
@@ -205,38 +212,10 @@ source("common.R", local = TRUE, chdir = TRUE)
         pattern = NULL, iteration = "list"), generate_localization_viewer = targets::tar_target_raw(name = "viewer", 
         command = quote({
             {
-                control_presets <- c("localization")
-                controllers <- list()
-                controllers[["Highlight Box"]] <- FALSE
-                controllers[["Overlay Coronal"]] <- TRUE
-                controllers[["Overlay Axial"]] <- TRUE
-                controllers[["Overlay Sagittal"]] <- TRUE
                 if (!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-                  ct <- ct_in_t1
-                  ct_shift <- ct$get_center_matrix()
-                  ct_qform <- ct$get_qform()
-                  matrix_world <- brain$Torig %*% solve(brain$Norig) %*% 
-                    ct_qform %*% ct_shift
-                  threeBrain::add_voxel_cube(brain, "CT", ct$get_data(), 
-                    size = ct$get_size(), matrix_world = matrix_world)
-                  key <- seq(0, max(ct$get_range()))
-                  cmap <- threeBrain::create_colormap(gtype = "volume", 
-                    dtype = "continuous", key = key, value = key, 
-                    color = c("white", "green", "darkgreen"))
-                  controllers[["Left Opacity"]] <- 0.4
-                  controllers[["Right Opacity"]] <- 0.4
-                  controllers[["Voxel Type"]] <- "CT"
-                  controllers[["Voxel Display"]] <- "normal"
-                  controllers[["Voxel Min"]] <- 3000
-                  controllers[["Edit Mode"]] <- "CT/volume"
-                  viewer <- brain$plot(control_presets = control_presets, 
-                    voxel_colormap = cmap, controllers = controllers)
+                  viewer <- brain$localize(coregistered_ct = ct_in_t1)
                 } else {
-                  controllers[["Edit Mode"]] <- "MRI slice"
-                  controllers[["Left Opacity"]] <- 0.1
-                  controllers[["Right Opacity"]] <- 0.1
-                  viewer <- brain$plot(control_presets = control_presets, 
-                    controllers = controllers)
+                  viewer <- brain$localize()
                 }
                 if (interactive()) {
                   print(viewer)

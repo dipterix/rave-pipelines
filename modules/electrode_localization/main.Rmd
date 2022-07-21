@@ -200,37 +200,10 @@ ct_exists <- isTRUE(!is.null(ct_in_t1) && is.list(ct_in_t1))
 
 ```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always"}
 
-control_presets <- c("localization")
-controllers <- list()
-controllers[["Highlight Box"]] <- FALSE
-controllers[["Overlay Coronal"]] <- TRUE
-controllers[["Overlay Axial"]] <- TRUE
-controllers[["Overlay Sagittal"]] <- TRUE
-
 if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-  ct <- ct_in_t1
-  ct_shift <- ct$get_center_matrix()
-  ct_qform <- ct$get_qform()
-  matrix_world <- brain$Torig %*% solve(brain$Norig) %*% ct_qform %*% ct_shift
-  threeBrain::add_voxel_cube(brain, "CT", ct$get_data(), size = ct$get_size(), matrix_world = matrix_world)
-  key <- seq(0, max(ct$get_range()))
-  cmap <- threeBrain::create_colormap(gtype = "volume", dtype = "continuous", 
-            key = key, value = key, color = c("white", "green", "darkgreen"))
-  controllers[["Left Opacity"]] <- 0.4
-  controllers[["Right Opacity"]] <- 0.4
-  controllers[["Voxel Type"]] <- "CT"
-  controllers[["Voxel Display"]] <- "normal"
-  controllers[["Voxel Min"]] <- 3000
-  controllers[["Edit Mode"]] <- "CT/volume"
-  
-  viewer <- brain$plot(control_presets = control_presets, voxel_colormap = cmap, 
-            controllers = controllers)
+  viewer <- brain$localize(coregistered_ct = ct_in_t1)
 } else {
-  controllers[["Edit Mode"]] <- "MRI slice"
-        
-  controllers[["Left Opacity"]] <- 0.1
-  controllers[["Right Opacity"]] <- 0.1
-  viewer <- brain$plot(control_presets = control_presets, controllers = controllers)
+  viewer <- brain$localize()
 }
 
 # If running in interactive mode
