@@ -188,6 +188,7 @@ repository
 requested_electrodes &lt;- requested_electrodes[requested_electrodes %in% repository$power$LFP$electrodes]
 if(!length(requested_electrodes)){ stop(&quot;No electrode selected&quot;) }</code></pre>
 <pre class="r"><code>library(rutabaga)
+#&gt; Warning: package &#39;rutabaga&#39; was built under R version 4.1.3
 analysis_ranges_index &lt;- lapply(analysis_ranges, function(x){
   x$frequency &lt;- unlist(x$frequency)
   x$time &lt;- unlist(x$time)
@@ -282,57 +283,92 @@ bl_power &lt;- repository$baselined$LFP</code></pre>
 <p>Once the pipeline script <code>make-power_explorer.R</code> is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use <code>r</code> block instead of <code>rave</code>. (This is because the code blocks are not part of pipeline targets.)</p>
 <pre class="r"><code>Sys.setenv(&quot;RAVE_PIPELINE&quot; = normalizePath(&quot;.&quot;))
 raveio::pipeline_run(type = &quot;vanilla&quot;)
-#&gt; ✓ skip target settings_path
+#&gt; Warning: package &#39;raveio&#39; was built under R version 4.1.3
+#&gt; • start target settings_path
+#&gt; • built target settings_path
 #&gt; • start target settings
 #&gt; • built target settings
-#&gt; ✓ skip target baseline__global_baseline_choice
-#&gt; ✓ skip target analysis_electrodes__category
-#&gt; ✓ skip target reference_name
-#&gt; ✓ skip target analysis_ranges__lock
-#&gt; ✓ skip target condition_groups
-#&gt; ✓ skip target project_name
-#&gt; ✓ skip target subject_code
-#&gt; ✓ skip target loaded_electrodes
-#&gt; ✓ skip target epoch_choice
-#&gt; ✓ skip target epoch_choice__trial_starts
-#&gt; ✓ skip target epoch_choice__trial_ends
-#&gt; ✓ skip target analysis_electrodes
-#&gt; ✓ skip target baseline__windows
-#&gt; ✓ skip target baseline__unit_of_analysis
-#&gt; ✓ skip target analysis_ranges
+#&gt; • start target loaded_electrodes
+#&gt; • built target loaded_electrodes
+#&gt; • start target analysis_ranges
+#&gt; • built target analysis_ranges
+#&gt; • start target baseline__global_baseline_choice
+#&gt; • built target baseline__global_baseline_choice
+#&gt; • start target baseline__unit_of_analysis
+#&gt; • built target baseline__unit_of_analysis
+#&gt; • start target baseline__windows
+#&gt; • built target baseline__windows
+#&gt; • start target epoch_name
+#&gt; • built target epoch_name
+#&gt; • start target baseline_windows
+#&gt; • built target baseline_windows
+#&gt; • start target analysis_electrodes
+#&gt; • built target analysis_electrodes
+#&gt; • start target condition_groups
+#&gt; • built target condition_groups
+#&gt; • start target analysis_ranges__lock
+#&gt; • built target analysis_ranges__lock
+#&gt; • start target subject_code
+#&gt; • built target subject_code
+#&gt; • start target epoch_choice
+#&gt; • built target epoch_choice
+#&gt; • start target reference_name
+#&gt; • built target reference_name
+#&gt; • start target project_name
+#&gt; • built target project_name
+#&gt; • start target unit_of_analysis
+#&gt; • built target unit_of_analysis
+#&gt; • start target trial_starts
+#&gt; • built target trial_starts
+#&gt; • start target global_baseline_choice
+#&gt; • built target global_baseline_choice
+#&gt; • start target analysis_electrodes__category
+#&gt; • built target analysis_electrodes__category
+#&gt; • start target electrode_category_selector
+#&gt; • built target electrode_category_selector
+#&gt; • start target epoch_choice__trial_starts
+#&gt; • built target epoch_choice__trial_starts
+#&gt; • start target epoch_choice__trial_ends
+#&gt; • built target epoch_choice__trial_ends
+#&gt; • start target analysis_lock
+#&gt; • built target analysis_lock
+#&gt; • start target trial_ends
+#&gt; • built target trial_ends
 #&gt; • start target repository
 #&gt; • built target repository
-#&gt; • start target cond_groups
-#&gt; • built target cond_groups
 #&gt; • start target requested_electrodes
 #&gt; • built target requested_electrodes
+#&gt; • start target cond_groups
+#&gt; • built target cond_groups
 #&gt; • start target analysis_ranges_index
 #&gt; • built target analysis_ranges_index
 #&gt; • start target bl_power
 #&gt; • built target bl_power
 #&gt; • start target collapsed_data
 #&gt; • built target collapsed_data
-#&gt; • end pipeline
+#&gt; • end pipeline: 0.718 seconds
 #&gt; &lt;Pipeline result container&gt; 
 #&gt; process: native
-#&gt; status: running (0 of 23)
+#&gt; status: running (0 of 31)
 raveio::pipeline_progress(method = &#39;details&#39;)
-#&gt; # A tibble: 23 × 2
+#&gt; # A tibble: 31 × 2
 #&gt;    name                             progress
 #&gt;    &lt;chr&gt;                            &lt;chr&gt;   
-#&gt;  1 settings_path                    skipped 
+#&gt;  1 settings_path                    built   
 #&gt;  2 settings                         built   
-#&gt;  3 baseline__global_baseline_choice skipped 
-#&gt;  4 analysis_electrodes__category    skipped 
-#&gt;  5 reference_name                   skipped 
-#&gt;  6 analysis_ranges__lock            skipped 
-#&gt;  7 condition_groups                 skipped 
-#&gt;  8 project_name                     skipped 
-#&gt;  9 subject_code                     skipped 
-#&gt; 10 loaded_electrodes                skipped 
-#&gt; # … with 13 more rows</code></pre>
-<div id="htmlwidget-a7ee9c8c5e249204523b" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-a7ee9c8c5e249204523b">{"x":{"nodes":{"name":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated"],"seconds":[0.001,0,0,0,0,0,0,0,0.002,0.025,0,0.001,0,0,0,0,0,0,0.129,0,0.002,0.001,0.001],"bytes":[53,62,134,61,384,88,67,119,99258,254527,646,216,63,49,49,80,57,60,290693,51,8366,896,55],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"id":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"label":["analysis_electrodes","analysis_electrodes__category","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","bl_power","collapsed_data","cond_groups","condition_groups","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code"],"level":[3,3,3,3,5,3,3,3,6,7,5,3,3,3,3,3,3,3,4,5,2,1,3],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5"],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","settings","settings","settings","project_name","subject_code","loaded_electrodes","epoch_choice","reference_name","epoch_choice__trial_starts","epoch_choice__trial_ends","condition_groups","repository","analysis_electrodes","repository","settings","settings","settings","baseline__global_baseline_choice","baseline__unit_of_analysis","repository","baseline__windows","requested_electrodes","analysis_ranges","repository","settings","cond_groups","analysis_ranges_index","bl_power","settings","settings","settings","settings","settings","settings_path","settings"],"to":["baseline__global_baseline_choice","analysis_electrodes__category","reference_name","analysis_ranges__lock","condition_groups","repository","repository","repository","repository","repository","repository","repository","cond_groups","cond_groups","requested_electrodes","requested_electrodes","epoch_choice__trial_starts","subject_code","baseline__windows","bl_power","bl_power","bl_power","bl_power","bl_power","analysis_ranges_index","analysis_ranges_index","baseline__unit_of_analysis","collapsed_data","collapsed_data","collapsed_data","epoch_choice","project_name","analysis_electrodes","epoch_choice__trial_ends","loaded_electrodes","settings","analysis_ranges"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true}},"evals":[],"jsHooks":[]}</script>
+#&gt;  3 loaded_electrodes                built   
+#&gt;  4 analysis_ranges                  built   
+#&gt;  5 baseline__global_baseline_choice built   
+#&gt;  6 baseline__unit_of_analysis       built   
+#&gt;  7 baseline__windows                built   
+#&gt;  8 epoch_name                       built   
+#&gt;  9 baseline_windows                 built   
+#&gt; 10 analysis_electrodes              built   
+#&gt; # … with 21 more rows</code></pre>
+<pre><code>#&gt; Warning message:
+#&gt; package ‘raveio’ was built under R version 4.1.3</code></pre>
+<div id="htmlwidget-f19a766730766509dfae" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-f19a766730766509dfae">{"x":{"nodes":{"name":["analysis_electrodes","analysis_electrodes__category","analysis_lock","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated"],"seconds":[0.001,0,0,0.001,0,0,0,0,0,0,0.003,0.034,0,0.001,0.001,0,0,0.001,0,0,0,0,0.001,0.202,0.001,0.001,0,0.001,0,0.001,0],"bytes":[56,62,61,129,61,650,88,60,123,65,99478,198992,343,152,62,67,49,49,63,88,61,57,60,246928,51,8367,925,64,49,49,66],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["analysis_electrodes","analysis_electrodes__category","analysis_lock","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["analysis_electrodes","analysis_electrodes__category","analysis_lock","analysis_ranges","analysis_ranges__lock","analysis_ranges_index","baseline__global_baseline_choice","baseline__unit_of_analysis","baseline__windows","baseline_windows","bl_power","collapsed_data","cond_groups","condition_groups","electrode_category_selector","epoch_choice","epoch_choice__trial_ends","epoch_choice__trial_starts","epoch_name","global_baseline_choice","loaded_electrodes","project_name","reference_name","repository","requested_electrodes","settings","settings_path","subject_code","trial_ends","trial_starts","unit_of_analysis"],"level":[3,3,3,3,3,5,3,3,3,3,6,7,5,3,3,3,3,3,3,3,3,3,3,4,5,2,1,3,3,3,3],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","settings","baseline__global_baseline_choice","baseline__unit_of_analysis","repository","baseline__windows","requested_electrodes","settings","settings","analysis_electrodes","repository","condition_groups","repository","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings","settings_path","cond_groups","analysis_ranges_index","bl_power","analysis_ranges","repository","settings","project_name","subject_code","loaded_electrodes","epoch_choice","reference_name","epoch_choice__trial_starts","epoch_choice__trial_ends","settings","settings"],"to":["loaded_electrodes","analysis_ranges","bl_power","bl_power","bl_power","bl_power","bl_power","epoch_name","baseline_windows","requested_electrodes","requested_electrodes","cond_groups","cond_groups","baseline__unit_of_analysis","baseline__global_baseline_choice","analysis_ranges__lock","subject_code","epoch_choice","reference_name","condition_groups","project_name","unit_of_analysis","trial_starts","global_baseline_choice","analysis_electrodes__category","analysis_electrodes","baseline__windows","electrode_category_selector","epoch_choice__trial_starts","settings","collapsed_data","collapsed_data","collapsed_data","analysis_ranges_index","analysis_ranges_index","epoch_choice__trial_ends","repository","repository","repository","repository","repository","repository","repository","analysis_lock","trial_ends"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

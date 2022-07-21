@@ -1,50 +1,81 @@
 library(targets)
 library(raveio)
 source("common.R", local = TRUE, chdir = TRUE)
+lapply(sort(list.files(
+  "R/", ignore.case = TRUE,
+  pattern = "^shared-.*\\.R", 
+  full.names = TRUE
+)), function(f) {
+  source(f, local = FALSE, chdir = TRUE)
+})
 ...targets <- list(`__Check_settings_file` = targets::tar_target_raw("settings_path", 
     "settings.yaml", format = "file"), `__Load_settings` = targets::tar_target_raw("settings", 
     quote({
         load_yaml(settings_path)
     }), deps = "settings_path", cue = targets::tar_cue("always")), 
-    input_analysis_electrodes = targets::tar_target_raw("analysis_electrodes", 
+    input_baseline_windows = targets::tar_target_raw("baseline_windows", 
+        quote({
+            settings[["baseline_windows"]]
+        }), deps = "settings"), input_unit_of_analysis = targets::tar_target_raw("unit_of_analysis", 
+        quote({
+            settings[["unit_of_analysis"]]
+        }), deps = "settings"), input_analysis_electrodes = targets::tar_target_raw("analysis_electrodes", 
         quote({
             settings[["analysis_electrodes"]]
         }), deps = "settings"), input_baseline__windows = targets::tar_target_raw("baseline__windows", 
         quote({
             settings[["baseline__windows"]]
+        }), deps = "settings"), input_trial_starts = targets::tar_target_raw("trial_starts", 
+        quote({
+            settings[["trial_starts"]]
         }), deps = "settings"), input_reference_name = targets::tar_target_raw("reference_name", 
         quote({
             settings[["reference_name"]]
         }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
         quote({
             settings[["project_name"]]
+        }), deps = "settings"), input_trial_ends = targets::tar_target_raw("trial_ends", 
+        quote({
+            settings[["trial_ends"]]
         }), deps = "settings"), input_analysis_electrodes__category = targets::tar_target_raw("analysis_electrodes__category", 
         quote({
             settings[["analysis_electrodes__category"]]
+        }), deps = "settings"), input_electrode_category_selector = targets::tar_target_raw("electrode_category_selector", 
+        quote({
+            settings[["electrode_category_selector"]]
         }), deps = "settings"), input_analysis_ranges = targets::tar_target_raw("analysis_ranges", 
         quote({
             settings[["analysis_ranges"]]
         }), deps = "settings"), input_epoch_choice = targets::tar_target_raw("epoch_choice", 
         quote({
             settings[["epoch_choice"]]
+        }), deps = "settings"), input_epoch_name = targets::tar_target_raw("epoch_name", 
+        quote({
+            settings[["epoch_name"]]
         }), deps = "settings"), input_baseline__global_baseline_choice = targets::tar_target_raw("baseline__global_baseline_choice", 
         quote({
             settings[["baseline__global_baseline_choice"]]
         }), deps = "settings"), input_baseline__unit_of_analysis = targets::tar_target_raw("baseline__unit_of_analysis", 
         quote({
             settings[["baseline__unit_of_analysis"]]
+        }), deps = "settings"), input_global_baseline_choice = targets::tar_target_raw("global_baseline_choice", 
+        quote({
+            settings[["global_baseline_choice"]]
         }), deps = "settings"), input_loaded_electrodes = targets::tar_target_raw("loaded_electrodes", 
         quote({
             settings[["loaded_electrodes"]]
-        }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
-        quote({
-            settings[["subject_code"]]
         }), deps = "settings"), input_analysis_ranges__lock = targets::tar_target_raw("analysis_ranges__lock", 
         quote({
             settings[["analysis_ranges__lock"]]
+        }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
+        quote({
+            settings[["subject_code"]]
         }), deps = "settings"), input_condition_groups = targets::tar_target_raw("condition_groups", 
         quote({
             settings[["condition_groups"]]
+        }), deps = "settings"), input_analysis_lock = targets::tar_target_raw("analysis_lock", 
+        quote({
+            settings[["analysis_lock"]]
         }), deps = "settings"), input_epoch_choice__trial_ends = targets::tar_target_raw("epoch_choice__trial_ends", 
         quote({
             settings[["epoch_choice__trial_ends"]]

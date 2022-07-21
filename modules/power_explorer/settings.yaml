@@ -1,4 +1,4 @@
-analysis_electrodes: '14'
+analysis_electrodes: '14 '
 analysis_electrodes__category: Electrode
 analysis_lock: Unlocked
 analysis_ranges:
@@ -24,10 +24,23 @@ condition_groups:
   '1':
     group_name: All Conditions
     group_conditions:
+    - AdriveVlast
+    - AknownVmeant
+    - AlastVknown
+    - AmeantVdrive
     - drive_a
-    - known_a
+    - drive_av
+    - drive_v
+    - known_v
+    - known_av
     - last_a
+    - last_av
+    - last_v
     - meant_a
+    - known_a
+    - meant_av
+    - meant_v
+    - press_AV
 electrode_category_selector: Electrode
 epoch_choice: auditory_onset
 epoch_choice__trial_ends: 2

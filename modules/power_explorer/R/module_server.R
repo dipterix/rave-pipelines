@@ -37,6 +37,8 @@ module_server <- function(input, output, session, ...){
         "electrode_text", "baseline_choices", "condition_groups", "analysis_ranges"
       ))
 
+      print(settings$condition_groups)
+
       pipeline$set_settings(.list = settings)
 
       #' Run pipeline without blocking the main session

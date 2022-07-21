@@ -13,10 +13,8 @@ editor_options:
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
 # build_pipeline(make_file = "make-power_explorer.R")
-if(FALSE){
-  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", 'power_explorer', "settings.yaml"))
-  list2env(as.list(settings), envir = environment())
-}
+.settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", 'power_explorer', "settings.yaml"))
+list2env(as.list(.settings), envir = environment())
 ```
 
 ```{rave check_load_power, language = "R", export = "repository", cue = "always"}
