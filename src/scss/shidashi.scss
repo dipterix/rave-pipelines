@@ -663,7 +663,7 @@ nav.main-header {
   background-position: left top;
   transition: margin-bottom .3s ease-in-out, opacity .3s ease-in-out, margin .3s ease-in-out !important;
 
-  pointer-events: none;
+  -webkit-app-region: drag;
   padding: 0 3rem 0 0!important;
 
   &.bg-blend-screen {
@@ -679,6 +679,7 @@ nav.main-header {
   & .nav-item {
     transition: background-color 0.2s ease-in-out;
     pointer-events: all;
+    -webkit-app-region: no-drag;
     &:hover {
       background-color: rgba(0, 0, 0, 0.3);
     }
