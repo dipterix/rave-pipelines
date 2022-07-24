@@ -12,17 +12,31 @@ editor_options:
 # Please do not remove me
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
-invisible(list2env(as.list(local({
-  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", 
-                                   "surface_reconstruction", "settings.yaml"))
-  print(names(settings))
-  settings
-})), envir = environment()))
+
+# For debug use, try to mimic the environment of pipeline
+# Load R scripts starting with `shared-` in R/ folder
+.project_path <- rstudioapi::getActiveProject()
+.module_id <- "surface_reconstruction"
+lapply(
+  list.files(
+    file.path(.project_path, "modules", .module_id, "R"),
+    pattern = "^shared-.*\\.R$",
+    ignore.case = TRUE,
+    full.names = TRUE
+  ), 
+  function(f){
+    source(f, local = FALSE, chdir = TRUE)
+    invisible()
+  })
+
+# Load variables in `settings.yaml` and expose them to the current environment
+.settings <- raveio::load_yaml(file.path(
+  .project_path, "modules", 
+  .module_id, "settings.yaml"))
+list2env(as.list(.settings), envir = environment())
 ```
 
 ```{rave check_commandline_tools, language = "R", export = "cmd_tools", cue = "always"}
-
-dry_run <- raveio::is_dry_run() || isTRUE(dryrun)
 
 default_dcm2niix_path <- raveio:::cmd_dcm2niix(error_on_missing = FALSE)
 dcm2niix <- tryCatch({
@@ -30,7 +44,7 @@ dcm2niix <- tryCatch({
     path = dcm2niix_path, 
     unset = default_dcm2niix_path
   )
-  if(length(dcm2niix) != 1 || is.na(dcm2niix) || !isTRUE(file.exists(dcm2niix))) {
+  if(!path_is_valid(dcm2niix)) {
     dcm2niix <- NULL 
   } else if (!identical(default_dcm2niix_path, dcm2niix)) {
     raveio::raveio_setopt("dcm2niix_path", dcm2niix)
@@ -45,7 +59,7 @@ freesurfer <- tryCatch({
     unset = default_fs_path,
     type = "freesurfer"
   )
-  if(length(freesurfer) != 1 || is.na(freesurfer) || !isTRUE(dir.exists(freesurfer))) {
+  if(!path_is_valid(freesurfer, dir_ok = TRUE)) {
     freesurfer <- NULL 
   } else if(!identical(default_fs_path, freesurfer)) {
     raveio::raveio_setopt("freesurfer_path", freesurfer)
@@ -62,7 +76,7 @@ flirt <- tryCatch({
     unset = default_fsl_path
   )
   flirt <- NULL
-  if(length(fsl) == 1 && !is.na(fsl) && isTRUE(dir.exists(fsl))) {
+  if(path_is_valid(fsl, dir_ok = TRUE)) {
     if(!identical(default_fsl_path, fsl)) {
       raveio::raveio_setopt('fsl_path', fsl)
     }
@@ -71,16 +85,32 @@ flirt <- tryCatch({
   flirt
 }, error = function(e){ NULL })
 
+default_afni_path <- raveio:::cmd_afni_home(error_on_missing = FALSE)
+afni_3dallineate <- tryCatch({
+  afni <- raveio::normalize_commandline_path(
+    path = afni_path,
+    type = "afni",
+    unset = default_afni_path
+  )
+  afni_3dallineate <- NULL
+  if(path_is_valid(afni, dir_ok = TRUE)) {
+    if(!identical(default_afni_path, afni)) {
+      raveio::raveio_setopt('afni_path', afni)
+    }
+    afni_3dallineate <- file.path(afni, "3dAllineate")
+  }
+  afni_3dallineate
+}, error = function(e){ NULL })
+
 cmd_tools <- list(
-  dry_run = dry_run,
   dcm2niix = dcm2niix,
   freesurfer = freesurfer,
-  flirt = flirt
+  flirt = flirt,
+  afni_3dallineate = afni_3dallineate
 )
 ```
 
 ```{rave load_subject, language = "R", export = "subject"}
-
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code,
@@ -90,12 +120,10 @@ print(subject)
 ```
 
 ```{rave check_subject_data, export = "check_result", cue = "always"}
-
 msgs <- character(0L)
 warns <- character(0L)
-
 fs_path <- subject$freesurfer_path
-if(!length(fs_path) || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
+if(!path_is_valid(fs_path, dir_ok = TRUE)) {
   fs_path <- file.path(subject$path, "fs")
   fs_reconstructed <- FALSE
 } else {
@@ -107,36 +135,25 @@ if(!length(fs_path) || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
   )
 }
 
-
 mri <- file.path(subject$preprocess_settings$raw_path, path_mri)
-if(!skip_recon) {
-  if(is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer)) {
-    warns <- append(warns, "Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will be skipped")
-    skip_recon <- TRUE
-  } else {
-    if(!isTRUE(file.exists(mri))) {
-      warns <- append(warns, "No MRI folder found, the reconstruction will be skipped")
-      skip_recon <- TRUE
-    }
+
+if(is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer)) {
+  warns <- append(warns, "Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will fail. Please make sure these programs paths are entered correctly.")
+} else {
+  if(!path_is_valid(mri, dir_ok = TRUE)) {
+    warns <- append(warns, "No MRI folder found, the reconstruction will result in errors")
   }
-  if(!skip_recon && fs_reconstructed) {
-    warns <- append(warns, sprintf("Found existing FreeSurfer reconstructed directory; this directory will be renamed: %s", fs_path))
-  }
+}
+if(!skip_recon && fs_reconstructed) {
+  warns <- append(warns, sprintf("Found existing FreeSurfer reconstructed directory. `recon-all` will ignore the imported T1 images. Instead, FreeSurfer will continue working on this directory unless you manually remove it: %s", fs_path))
 }
 
 ct <- file.path(subject$preprocess_settings$raw_path, path_ct)
-if(!skip_coregistration) {
-  if(is.null(cmd_tools$flirt)) {
-    warns <- append(warns, "Cannot find FSL-flirt; the co-registration will be skipped")
-    skip_coregistration <- TRUE
-  } else if( (!fs_reconstructed && (is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer))) ) {
-    warns <- append(warns, "Cannot find FreeSurfer reconstruction, nor at least one of the following commands exists: `dcm2niix`, `FreeSurfer`. The co-registration will be skipped anyway")
-    skip_coregistration <- TRUE
-  } else {
-    if(!isTRUE(file.exists(ct))) {
-      warns <- append(warns, "No CT folder found, the co-registration will be skipped")
-      skip_coregistration <- TRUE
-    }
+if(is.null(cmd_tools$afni_3dallineate) && is.null(cmd_tools$flirt)) {
+  warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+} else {
+  if(!path_is_valid(ct, dir_ok = TRUE)) {
+    warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
   }
 }
 
@@ -165,6 +182,7 @@ check_result <- list(
   has_dcm2niix = !is.null(cmd_tools$dcm2niix),
   has_freesurfer = !is.null(cmd_tools$freesurfer),
   has_flirt = !is.null(cmd_tools$flirt),
+  has_3dallineate = !is.null(cmd_tools$afni_3dallineate),
   
   path_mri = mri,
   path_ct = ct,
@@ -174,487 +192,213 @@ check_result <- list(
   messages = msgs,
   warnings = warns
 )
-
-
 ```
 
-```{rave set_default_paths, export = "default_paths", cue = "always"}
+### Generate command-line scripts
 
-if(isTRUE(file.exists(check_result$path_mri))) {
-  ravedash::logger("Setting default MRI path: ", path_mri, level = "info")
-  subject$set_default("raw_mri_path", path_mri, namespace = "surface_reconstruction")
-}
+Command-line script to import T1 MR images. If the images are `DICOM` slices, use `dcm2niix` command to import, otherwise the file must be in `Nifti` file format and we simply copy it.
 
-if(isTRUE(file.exists(check_result$path_ct))) {
-  ravedash::logger("Setting default CT path: ", path_ct, level = "info")
-  subject$set_default("raw_ct_path", path_ct, namespace = "surface_reconstruction")
-}
-
-default_paths <- subject$get_default(c("raw_mri_path", "raw_ct_path"), namespace = "surface_reconstruction")
-default_paths
-```
-
-```{rave convert_DICOM_to_Nifti_dryrun, export = "script_dcm2nii", cue = "always"}
-require(ravedash)
-
-dcm2niix <- as.character(cmd_tools$dcm2niix)
-if(!isTRUE(file.exists(dcm2niix))) {
-  dcm2niix <- "dcm2niix"
-}
-
-path_temp <- check_result$path_temp
-indir_mri <- check_result$path_mri
-indir_ct <- check_result$path_ct
-
-outdir_mri <- file.path(path_temp, "inputs", "MRI")
-outdir_ct <- file.path(path_temp, "inputs", "CT")
-
-
-merge <- params$dcm2niix$merge %OF% c("Auto", "No", "Yes")
-merge <- c("-m n ", "-m y ", "")[[which(c("No", "Yes", "Auto") == merge)]]
-
-float <- params$dcm2niix$float %OF% c("Yes", "No")
-float <- c('-p y ', '-p n ')[[which(c("Yes", "No") == float)]]
-
-crop <- params$dcm2niix$crop %OF% c("No", "Yes", "Ignore")
-crop <- c("-x n", "-x y", "-x i")[[which(c("No", "Yes", "Ignore") == crop)]]
-
-args <- paste0(merge, float, crop)
-
-path_log <- normalizePath(check_result$path_log, winslash = "/", mustWork = FALSE)
-log_file <- strftime(Sys.time(), "log-import-mri-ct.log")
-
-cmd_type <- "cmd"
-cmd <- c(
-  "#!/usr/bin/env sh",
-  "",
-  "# This is your dcm2niix binary path",
-  sprintf("cmd_dcm2niix=%s", dcm2niix),
-  "",
-  "# Prepare log file",
-  sprintf("log_dir=%s", shQuote(path_log)),
-  sprintf("log_file=%s", shQuote(log_file)),
-  'mkdir -p "$log_dir" && touch "$log_dir/$log_file" && echo "Started: $(date -u)" > "$log_dir/$log_file"',
-  'echo --------------------------------------------------------',
-  'echo Log file: "$log_dir/$log_file"',
-  'echo --------------------------------------------------------'
-)
-error <- TRUE
-if(length(indir_mri) == 1) {
-  cmdadd <- c(
-    "# ------------------- MRI ---------------------",
-    "# Assign MRI input & output folders",
-    sprintf("subj_mri_in=%s", shQuote(indir_mri, type = cmd_type)),
-    sprintf("subj_mri_out=%s", shQuote(outdir_mri, type = cmd_type)),
-    '[ -d "$subj_mri_out" ] && rm -r "$subj_mri_out"',
-    'mkdir -p "$subj_mri_out"',
-    ""
+```{rave import_T1_MRI, export = "import_T1", cue = "always", echo=FALSE}
+import_T1 <- tryCatch({
+  raveio::cmd_run_dcm2niix(
+    subject = subject$subject_id,
+    src_path = check_result$path_mri,
+    type = "MRI",
+    merge = params$dcm2niix$merge %OF% c("Auto", "No", "Yes"),
+    float = params$dcm2niix$float %OF% c("Yes", "No"),
+    crop = params$dcm2niix$crop %OF% c("No", "Yes", "Ignore"),
+    overwrite = TRUE,
+    verbose = FALSE,
+    dry_run = TRUE,
+    command_path = cmd_tools$dcm2niix
   )
-  if(dir.exists(indir_mri)) {
-    error <- FALSE
-    cmdadd <- c(
-      cmdadd,
-      "# Convert MRI (DICOM => Nifti)",
-      sprintf('$cmd_dcm2niix %s -o "$subj_mri_out" "$subj_mri_in" >> "$log_dir/$log_file" 2>&1', args)
-    )
-  } else if(grepl(pattern = "nii($|\\.gz$)", x = indir_mri, ignore.case = TRUE)){
-    error <- FALSE
-    cmdadd <- c(
-      cmdadd,
-      "# Copy MRI Nifti file to RAVE temporary directory",
-      'cp -r "$subj_mri_in" "$subj_mri_out"'
-    )
-  } else {
-    cmdadd <- NULL
-  }
-  cmd <- c(cmd, cmdadd)
-}
-
-if(length(indir_ct) == 1) {
-  cmdadd <- c(
-    "",
-    "# ------------------- CT ----------------------",
-    "# Assign CT input & output folders",
-    sprintf("subj_ct_in=%s", shQuote(indir_ct, type = cmd_type)),
-    sprintf("subj_ct_out=%s", shQuote(outdir_ct, type = cmd_type)),
-    '[ -d "$subj_ct_out" ] && rm -r "$subj_ct_out"',
-    'mkdir -p "$subj_ct_out"',
-    ""
-  )
-  if(dir.exists(indir_ct)) {
-    error <- FALSE
-    cmdadd <- c(
-      cmdadd,
-      "# Convert CT (DICOM => Nifti)",
-      sprintf('$cmd_dcm2niix %s -o "$subj_ct_out" "$subj_ct_in" >> "$log_dir/$log_file" 2>&1', args)
-    )
-    cmd <- c(cmd, cmdadd)
-  } else if(grepl(pattern = "nii($|\\.gz$)", x = indir_ct, ignore.case = TRUE)){
-    error <- FALSE
-    cmdadd <- c(
-      cmdadd,
-      "# Copy MRI Nifti file to RAVE temporary directory",
-      'cp -r "$subj_ct_in" "$subj_ct_out"'
-    )
-  } else {
-    cmdadd <- NULL
-  }
-  cmd <- c(cmd, cmdadd)
-}
-
-cmd <- c(cmd, 'echo Done. >> "$log_dir/$log_file" && echo Done.', "")
-
-script_dcm2nii <- list(
-  script = cmd,
-  path_temp = path_temp,
-  error = error,
-  log_file = normalizePath(file.path(path_log, log_file), winslash = "/", mustWork = FALSE)
-)
-
-```
-
-```{rave convert_DICOM_to_Nifti, export = "conversion_mri", cue = "always"}
-
-if(!isFALSE(script_dcm2nii$error)) {
-  stop("Cannot convert DICOM to Nifti, invalid MRI or CT files")
-}
-
-dry_run <- raveio::is_dry_run() || isTRUE(dryrun)
-
-path_temp <- script_dcm2nii$path_temp
-outdir_mri <- file.path(path_temp, "inputs", "MRI")
-outdir_ct <- file.path(path_temp, "inputs", "CT")
-script_path <- file.path(raveio::dir_create2(file.path(path_temp, "scripts")), "cmd-import-mri-ct.sh")
-
-backup_dir <- raveio::dir_create2(file.path(path_temp, "scripts", "backups"))
-backup_path <- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) && isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-
-# save script to path
-writeLines(script_dcm2nii$script, con = script_path)
-cmd <- sprintf("bash %s", shQuote(normalizePath(script_path, mustWork = TRUE)))
-
-if(!dry_run) {
-  unlink(script_dcm2nii$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_dcm2nii$log_file, remove = FALSE)
-}
-
-conversion_mri <- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)
-```
-
-```{rave command_FreeSurfer_recon_dryrun, export = "script_recon", cue = "always"}
-require(ravedash)
-
-fs_home <- as.character(cmd_tools$freesurfer)
-
-if(isTRUE(check_result$skip_recon)) {
-  script_recon <- list(
+}, error = function(e) {
+  list(
     error = TRUE,
-    reason = list(message = "FreeSurfer reconstruction is manually skipped")
+    condition = e
   )
-} else if(!isTRUE(dir.exists(fs_home))) {
-  script_recon <- list(
+})
+```
+
+<pre class="sh">
+<code class="hljs">
+```{r, results='asis', echo=FALSE}
+if(isTRUE(import_T1$error)) {
+  cat("Error: ", import_T1$condition$message, "\n")
+} else {
+  cat(import_T1$script, sep = "\n")
+}
+```
+</code>
+</pre>
+
+Command-line script to import CT images. If the images are `DICOM` slices, use `dcm2niix` command to import, otherwise the file must be in `Nifti` file format and we simply copy it.
+
+```{rave import_CT, export = "import_CT", cue = "always", echo=FALSE}
+import_CT <- tryCatch({
+  raveio::cmd_run_dcm2niix(
+    subject = subject$subject_id,
+    src_path = check_result$path_ct,
+    type = "CT",
+    merge = params$dcm2niix$merge %OF% c("Auto", "No", "Yes"),
+    float = params$dcm2niix$float %OF% c("Yes", "No"),
+    crop = params$dcm2niix$crop %OF% c("No", "Yes", "Ignore"),
+    overwrite = TRUE,
+    verbose = FALSE,
+    dry_run = TRUE,
+    command_path = cmd_tools$dcm2niix
+  )
+}, error = function(e) {
+  list(
     error = TRUE,
-    reason = list(message = "Cannot find FreeSurfer home directory")
+    condition = e
   )
+})
+```
+
+
+<pre class="sh">
+<code class="hljs">
+```{r, results='asis', echo=FALSE}
+cmd <- import_CT
+if(isTRUE(cmd$error)) {
+  cat("Error: ", cmd$condition$message, "\n")
 } else {
-  
-  fs_home <- normalizePath(fs_home, winslash = "/")
-  
-  # FREESURFER_HOME=$R_CACHE/freesurfer
-  # source $FREESURFER_HOME/SetUpFreeSurfer.sh
-  
-  path_temp <- check_result$path_temp
-  fs_sdir <- normalizePath(file.path(check_result$fs_path, ".."), mustWork = FALSE)
-  
-  infile <- params$nii_t1
-  infile_absolute <- file.path(path_temp, "inputs", "MRI", infile)
-  if(length(infile_absolute) != 1 || is.na(infile_absolute) ||
-     !file.exists(infile_absolute)) {
-    script_recon <- list(
-      error = TRUE,
-      reason = list(message = "No MRI input specified")
-    )
-  } else {
-    
-    # Need to check whether path_temp has space inside Freesurfer does not like spaces
-    path_temp <- normalizePath(path_temp, mustWork = FALSE)
-    path_temp2 <- path_temp
-    if(grepl(" ", path_temp)) {
-      # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
-      symlink_root <- file.path(
-        tools::R_user_dir('rave', which = "cache"),
-        "FreeSurferSubjects",
-        subject_code
-      )
-      unlink(symlink_root, recursive = TRUE)
-      raveio::dir_create2(symlink_root)
-      symlink_path <- symlink_root
-      
-      symlink_cmd1 <- c(
-        "",
-        "# Orginal subject path contains spaces, FreeSurfer will fail",
-        sprintf("symlink_path=%s", shQuote(symlink_path)),
-        "if [ -d $symlink_path/rave-imaging ]; then",
-        '  rm "$symlink_path/rave-imaging"',
-        "fi",
-        # Re-link
-        'mkdir -p "$symlink_path"',
-        sprintf('ln -s "%s" "$symlink_path"', path_temp),
-        ''
-      )
-      symlink_cmd2 <- c(
-        "",
-        'rm "$symlink_path/rave-imaging"',
-        '# Try to remove temp path, but it is OK to fail here',
-        'rm "$symlink_path"',
-        ''
-      )
-      path_temp2 <- file.path(symlink_path, "rave-imaging")
-    } else {
-      raveio::dir_create2(path_temp)
-      symlink_cmd1 <- NULL
-      symlink_cmd2 <- NULL
-    }
-    
-    
-    # infile <- normalizePath(infile, mustWork = TRUE, winslash = "/")
-    # infile <- file.path(path_temp, "inputs", "MRI", infile)
-    
-     
-    
-    autorecon_flags <- c(
-      "-all", "-autorecon1", "-autorecon2", "-autorecon3",
-      "-autorecon2-cp", "-autorecon2-wm", "-autorecon2-pial"
-    )
-    flag <- params$freesurfer$steps %OF% autorecon_flags
-    
-    path_log <- normalizePath(check_result$path_log, winslash = "/", mustWork = FALSE)
-    log_file <- sprintf("log-fs-recon%s.log", flag)
-    
-    cmd_type <- "cmd"
-    cmd <- c(
-      "#!/usr/bin/env bash",
-      "",
-      "# Set FreeSurfer home directory & initialize",
-      sprintf("FREESURFER_HOME=%s", shQuote(fs_home)),
-      "source $FREESURFER_HOME/SetUpFreeSurfer.sh",
-      "",
-      sprintf("SUBJECTS_DIR=%s", shQuote(path_temp2)),
-      sprintf('mri_infile="$SUBJECTS_DIR/inputs/MRI/%s"', infile),
-      # '[ -d "$SUBJECTS_DIR/fs" ] && rm -r "$SUBJECTS_DIR/fs"',
-      symlink_cmd1,
-      "# Prepare log file",
-      sprintf("log_dir=%s", shQuote(path_log)),
-      sprintf("log_file=%s", shQuote(log_file)),
-      'mkdir -p "$log_dir" && touch "$log_dir/$log_file" && echo "Started: $(date -u)" > "$log_dir/$log_file"',
-      'echo --------------------------------------------------------',
-      'echo Log file: "$log_dir/$log_file"',
-      'echo --------------------------------------------------------',
-      local({
-        if(isTRUE( params$freesurfer$fresh_start)) {
-          c(
-            '# Force removing FreeSurfer path and re-run the reconstruction',
-            '# You need original Nifti files to run',
-            'if [ -d "$SUBJECTS_DIR/fs" ]; then',
-            '  rm -r "$SUBJECTS_DIR/fs"',
-            'fi',
-            sprintf('recon-all -sd "$SUBJECTS_DIR" -sid fs -i "$mri_infile" %s >> "$log_dir/$log_file" 2>&1', flag)
-          ) 
-        } else {
-          c(
-            'if [ -d "$SUBJECTS_DIR/fs/mri" ]; then',
-            '  # Use existing FreeSurfer directory to continue analysis',
-            '  # You do not need original Nifti files to run',
-            sprintf('  recon-all -sd "$SUBJECTS_DIR" -sid fs %s', flag),
-            'else',
-            '  # Remove invalid FreeSurfer path and re-run the reconstruction',
-            '  # You need original Nifti files to run',
-            '  if [ -d "$SUBJECTS_DIR/fs" ]; then',
-            '    rm -r "$SUBJECTS_DIR/fs"',
-            '  fi',
-            sprintf('  recon-all -sd "$SUBJECTS_DIR" -sid fs -i "$mri_infile" %s >> "$log_dir/$log_file" 2>&1', flag),
-            'fi'
-          )
-        }
-      })
-    )
-    
-    cmd <- c(cmd, symlink_cmd2, 'echo Done. >> "$log_dir/$log_file" && echo Done.', '')
-    script_recon <- list(
-      script = cmd,
-      path_temp = path_temp,
-      flag = flag,
-      error = FALSE,
-      log_file = normalizePath(file.path(path_log, log_file), winslash = "/", mustWork = FALSE)
-    )
+  cat(cmd$script, sep = "\n")
+}
+```
+</code>
+</pre>
+
+Find imported volume (in `Nifti` format) under the following folder:
+
+* T1 MRI: `r file.path(check_result$path_temp, "inputs", "MRI")` 
+* CT: `r file.path(check_result$path_temp, "inputs", "CT")` 
+
+The imported MRI will be used to reconstruct `FreeSurfer` surface. Normally the entire process will take 6-12 hours. However, if you just want to localize electrodes, then choose the `flag` to be `-autorecon1`. This flag only normalize and skull-strip the MRI. This sub-procedure only takes 8-10 minutes.
+
+```{rave FreeSurfer_reconstruction, export = "fs_recon", cue = "always", echo=FALSE}
+fs_recon <- tryCatch({
+  mri_path <- params$nii_t1
+  mri_root <- file.path(check_result$path_temp, "inputs", "MRI")
+  mri_path <- file.path(mri_root, mri_path)
+  if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
+    stop("Please choose a Nifti file under ", mri_root)
   }
-}
-
+  
+  autorecon_flags <- c(
+    "-autorecon1", "-all", "-autorecon2", "-autorecon3",
+    "-autorecon2-cp", "-autorecon2-wm", "-autorecon2-pial"
+  )
+  flag <- params$freesurfer$flag %OF% autorecon_flags
+  raveio::cmd_run_recon_all(
+    subject = subject$subject_id,
+    mri_path = mri_path,
+    args = flag,
+    overwrite = params$freesurfer$fresh_start,
+    dry_run = TRUE,
+    verbose = FALSE,
+    command_path = cmd_tools$freesurfer
+  )
+}, error = function(e) {
+  list(
+    error = TRUE,
+    condition = e
+  )
+})
 ```
 
-```{rave command_FreeSurfer_recon, export = "fs_recon", cue = "always"}
 
-if(!isFALSE(script_recon$error)) {
-  stop(c(script_recon$reason$message, "Cannot run FreeSurfer commands")[[1]])
-}
-
-dry_run <- raveio::is_dry_run() || isTRUE(dryrun)
-
-path_temp <- script_recon$path_temp
-script_path <- file.path(raveio::dir_create2(file.path(path_temp, "scripts")), 
-                         sprintf("cmd-fs-recon%s.sh", script_recon$flag))
-
-# Back up existing script
-backup_dir <- raveio::dir_create2(file.path(path_temp, "scripts", "backups"))
-backup_path <- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) && isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-
-# save script to path
-writeLines(script_recon$script, con = script_path)
-cmd <- sprintf("bash %s", shQuote(normalizePath(script_path, mustWork = TRUE)))
-
-if(!dry_run) {
-  unlink(script_recon$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_recon$log_file, remove = FALSE)
-}
-
-ravedash::logger("Setting default T1 nii file: ", params$nii_t1, level = "info")
-subject$set_default("nii_t1", params$nii_t1, namespace = "surface_reconstruction")
-
-fs_recon <- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)
-```
-
-```{rave command_coreg_dryrun, export = "script_coreg", cue = "always"}
-require(ravedash)
-
-flirt <- as.character(cmd_tools$flirt)
-
-if(isTRUE(file.exists(flirt))) {
-  fsl_dir <- normalizePath(dirname(dirname(flirt)))
+<pre class="sh">
+<code class="hljs">
+```{r, results='asis', echo=FALSE}
+cmd <- fs_recon
+if(isTRUE(cmd$error)) {
+  cat("Error: ", cmd$condition$message, "\n")
 } else {
-  fsl_dir <- "/usr/local/fsl"
-  flirt <- "flirt"
+  cat(cmd$script, sep = "\n")
 }
+```
+</code>
+</pre>
 
-# Find the T1 generated by FreeSurfer, run FSL-FLIRT from CT to T1.mgz
+Align CT to T1 (co-registration). There are two options available: 
 
-nii_t1 <- file.path(check_result$path_temp, "inputs", "MRI", params$nii_t1)
-nii_ct <- file.path(check_result$path_temp, "inputs", "CT", params$nii_ct)
-outdir <- raveio::dir_create2(file.path(check_result$path_temp, "coregistration"))
+* FSL-flirt 
+* AFNI-3dAllineate
 
-error <- FALSE
-err_msg <- NULL
+The following bash script uses `flirt` command
 
-if(!isTRUE(file.exists(nii_t1))) {
-  error <- TRUE
-  err_msg <- "Cannot find T1 file"
+```{rave CT_MR_coregistration_via_FSL, export = "coreg_flirt", cue = "always", echo=FALSE}
+coreg_flirt <- tryCatch({
+  mri_path <- params$nii_t1
+  mri_root <- file.path(check_result$path_temp, "inputs", "MRI")
+  mri_path <- file.path(mri_root, mri_path)
+  if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
+    stop("Please choose a valid MRI Nifti file under ", mri_root)
+  }
+  ct_path <- params$nii_ct
+  ct_root <- file.path(check_result$path_temp, "inputs", "CT")
+  ct_path <- file.path(ct_root, ct_path)
+  if(!path_is_valid(ct_path) || dir.exists(ct_path)) {
+    stop("Please choose a valid CT Nifti file under ", ct_root)
+  }
+  
+  raveio::cmd_run_flirt(
+    subject = subject$subject_id,
+    mri_path = mri_path,
+    ct_path = ct_path,
+    overwrite = FALSE,
+    command_path = cmd_tools$flirt,
+    dry_run = TRUE,
+    verbose = FALSE
+  )
+  
+}, error = function(e) {
+  list(
+    error = TRUE,
+    condition = e
+  )
+})
+```
+
+
+<pre class="sh">
+<code class="hljs">
+```{r, results='asis', echo=FALSE}
+cmd <- coreg_flirt
+if(isTRUE(cmd$error)) {
+  cat("Error: ", cmd$condition$message, "\n")
+} else {
+  cat(cmd$script, sep = "\n")
 }
-if (!isTRUE(file.exists(nii_ct))) {
-  error <- TRUE
-  err_msg <- c(err_msg, "Cannot find CT file")
-}
+```
+</code>
+</pre>
 
-nii_t1 <- normalizePath(nii_t1, winslash = "/", mustWork = FALSE)
-nii_ct <- normalizePath(nii_ct, winslash = "/", mustWork = FALSE)
+The following bash script uses `3dAllineate` command
 
-path_log <- normalizePath(check_result$path_log, winslash = "/", mustWork = FALSE)
-log_file <- strftime(Sys.time(), "log-ct-coregistration-t1.log")
-
-cmd <- c(
-  "#!/usr/bin/env bash",
-  "",
-  "# FSL setup",
-  sprintf('export FSLDIR=%s', shQuote(fsl_dir)),
-  'source ${FSLDIR}/etc/fslconf/fsl.sh',
-  'PATH=${FSLDIR}/bin:${PATH}',
-  "",
-  "# Set input T1 & CT files",
-  sprintf("infile_ct=%s", shQuote(nii_ct)),
-  sprintf("infile_t1=%s", shQuote(nii_t1)),
-  sprintf("outdir=%s", shQuote(outdir)),
-  "",
-  "# Prepare log file",
-  sprintf("log_dir=%s", shQuote(path_log)),
-  sprintf("log_file=%s", shQuote(log_file)),
-  'mkdir -p "$log_dir" && touch "$log_dir/$log_file" && echo "Started: $(date -u)" > "$log_dir/$log_file"',
-  'echo --------------------------------------------------------',
-  'echo Log file: "$log_dir/$log_file"',
-  'echo --------------------------------------------------------',
-  "",
-  "# Run flirt",
-  'flirt -in "$infile_ct" -ref "$infile_t1" \\',
-  '  -out "$outdir/ct_in_t1.nii" -omat "$outdir/ct2t1.mat" \\',
-  '  -interp trilinear -cost mutualinfo -dof 6 -searchcost mutualinfo \\',
-  '  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -v >> "$log_dir/$log_file" 2>&1',
-  'echo Done. >> "$log_dir/$log_file" && echo Done.',
-  ''
-)
-    
-script_coreg <- list(
-  script = cmd,
-  path_temp = check_result$path_temp,
-  error = FALSE,
-  reason = list(message = paste(err_msg, collapse = "; ")),
-  log_file = normalizePath(file.path(path_log, log_file), winslash = "/", mustWork = FALSE)
+```{rave CT_MR_coregistration_via_AFNI, export = "coreg_3dallineate", cue = "always", echo=FALSE}
+coreg_3dallineate <- list(
+  error = TRUE,
+  condition = simpleError("Not yet implemented")
 )
 ```
 
-```{rave command_coreg, export = "coreg_results", cue = "always"}
-
-if(!isFALSE(script_coreg$error)) {
-  stop(c(script_coreg$reason$message, "Cannot run flirt commands")[[1]])
+<pre class="sh">
+<code class="hljs">
+```{r, results='asis', echo=FALSE}
+cmd <- coreg_3dallineate
+if(isTRUE(cmd$error)) {
+  cat("Error: ", cmd$condition$message, "\n")
+} else {
+  cat(cmd$script, sep = "\n")
 }
-
-dry_run <- raveio::is_dry_run() || isTRUE(dryrun)
-if(check_result$skip_coregistration) {
-  dry_run <- TRUE
-}
-
-path_temp <- script_coreg$path_temp
-script_path <- file.path(raveio::dir_create2(file.path(path_temp, "scripts")), 
-                         "cmd-ct2t1-flirt.sh")
-
-# Back up existing script
-backup_dir <- raveio::dir_create2(file.path(path_temp, "scripts", "backups"))
-backup_path <- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) && isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-
-# save script to path
-writeLines(script_coreg$script, con = script_path)
-cmd <- sprintf("bash %s", shQuote(normalizePath(script_path, mustWork = TRUE)))
-
-if(!dry_run) {
-  unlink(script_coreg$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_coreg$log_file, remove = FALSE)
-}
-
-ravedash::logger("Setting default CT nii file: ", params$nii_ct, level = "info")
-subject$set_default("nii_ct", params$nii_ct, namespace = "surface_reconstruction")
-
-coreg_results <- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)
 ```
+</code>
+</pre>
+
+
 
 ## Build, Visualize, & Run
 

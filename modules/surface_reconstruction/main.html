@@ -1693,18 +1693,13 @@ function resetOneNode(node, options, network){
 }
 
 // Global function to reset all node
-function resetAllNodes(nodes, update, options, network, all){
-  
-  if(all === false){
-      var nodesToReset = nodes.get({
-      filter: function (item) {
-        return item.isHardToRead === true;
-      },
-      returnType :'Array'
-    });
-  } else {
-      var nodesToReset = nodes.get({returnType :'Array'});
-  }
+function resetAllNodes(nodes, update, options, network){
+  var nodesToReset = nodes.get({
+    filter: function (item) {
+      return item.isHardToRead === true;
+    },
+    returnType :'Array'
+  });
   
   var have_cluster_nodes = false;
   var nodes_in_clusters;
@@ -3063,7 +3058,7 @@ if (HTMLWidgets.shinyMode){
 
             //reset nodes
             resetAllEdges(el.edges, el.highlightColor, el.byselectionColor, el.chart);
-            resetAllNodes(el.nodes, true, el.options, el.chart, false);
+            resetAllNodes(el.nodes, true, el.options, el.chart);
             
             if (main_el.selectActive === true){
               main_el.selectActive = false;
@@ -3148,7 +3143,7 @@ if (HTMLWidgets.shinyMode){
           // reset some parameters / date before
           if (main_el.selectActive === true | main_el.highlightActive === true) {
             //reset nodes
-            resetAllNodes(el.nodes, true, el.options, el.chart, false);
+            resetAllNodes(el.nodes, true, el.options, el.chart);
             
             if (main_el.selectActive === true){
               main_el.selectActive = false;
@@ -4461,7 +4456,7 @@ HTMLWidgets.widget({
       }
       else if (el_id.selectActive === true) {
         //reset nodes
-        resetAllNodes(nodes, update, options, instance.network, false)
+        resetAllNodes(nodes, update, options, instance.network)
         el_id.selectActive = false
       }
     } 
@@ -4875,7 +4870,7 @@ HTMLWidgets.widget({
             resetList("nodeSelect", el.id, 'selected');
           }
           //reset nodes
-          resetAllNodes(nodes, update, options, instance.network, false)
+          resetAllNodes(nodes, update, options, instance.network)
           el_id.highlightActive = false;
           is_clicked = false;
           
@@ -5208,15 +5203,13 @@ HTMLWidgets.widget({
     if(x.clusteringGroup || x.clusteringColor || x.clusteringOutliers || x.clusteringHubsize || x.clusteringConnection){
       // if we click on a node, we want to open it up!
       instance.network.on("doubleClick", function (params){
+        
         if (params.nodes.length === 1) {
           if (instance.network.isCluster(params.nodes[0]) === true) {
             is_clicked = false;
             instance.network.openCluster(params.nodes[0], {releaseFunction : function(clusterPosition, containedNodesPositions) {
               return containedNodesPositions;
             }});
-            // must be better...
-            resetAllEdges(edges, el_id.highlightColor, el_id.byselectionColor, instance.network);
-            resetAllNodes(nodes, true, options, instance.network, true);
           } else {
             if(x.clusteringGroup){
               var array_group = nodes.get({
@@ -5673,15 +5666,13 @@ pre code {
 
 
 <pre class="r"><code>
-dry_run &lt;- raveio::is_dry_run() || isTRUE(dryrun)
-
 default_dcm2niix_path &lt;- raveio:::cmd_dcm2niix(error_on_missing = FALSE)
 dcm2niix &lt;- tryCatch({
   dcm2niix &lt;- raveio::normalize_commandline_path(
     path = dcm2niix_path, 
     unset = default_dcm2niix_path
   )
-  if(length(dcm2niix) != 1 || is.na(dcm2niix) || !isTRUE(file.exists(dcm2niix))) {
+  if(!path_is_valid(dcm2niix)) {
     dcm2niix &lt;- NULL 
   } else if (!identical(default_dcm2niix_path, dcm2niix)) {
     raveio::raveio_setopt(&quot;dcm2niix_path&quot;, dcm2niix)
@@ -5696,7 +5687,7 @@ freesurfer &lt;- tryCatch({
     unset = default_fs_path,
     type = &quot;freesurfer&quot;
   )
-  if(length(freesurfer) != 1 || is.na(freesurfer) || !isTRUE(dir.exists(freesurfer))) {
+  if(!path_is_valid(freesurfer, dir_ok = TRUE)) {
     freesurfer &lt;- NULL 
   } else if(!identical(default_fs_path, freesurfer)) {
     raveio::raveio_setopt(&quot;freesurfer_path&quot;, freesurfer)
@@ -5713,7 +5704,7 @@ flirt &lt;- tryCatch({
     unset = default_fsl_path
   )
   flirt &lt;- NULL
-  if(length(fsl) == 1 &amp;&amp; !is.na(fsl) &amp;&amp; isTRUE(dir.exists(fsl))) {
+  if(path_is_valid(fsl, dir_ok = TRUE)) {
     if(!identical(default_fsl_path, fsl)) {
       raveio::raveio_setopt(&#39;fsl_path&#39;, fsl)
     }
@@ -5722,26 +5713,40 @@ flirt &lt;- tryCatch({
   flirt
 }, error = function(e){ NULL })
 
+default_afni_path &lt;- raveio:::cmd_afni_home(error_on_missing = FALSE)
+afni_3dallineate &lt;- tryCatch({
+  afni &lt;- raveio::normalize_commandline_path(
+    path = afni_path,
+    type = &quot;afni&quot;,
+    unset = default_afni_path
+  )
+  afni_3dallineate &lt;- NULL
+  if(path_is_valid(afni, dir_ok = TRUE)) {
+    if(!identical(default_afni_path, afni)) {
+      raveio::raveio_setopt(&#39;afni_path&#39;, afni)
+    }
+    afni_3dallineate &lt;- file.path(afni, &quot;3dAllineate&quot;)
+  }
+  afni_3dallineate
+}, error = function(e){ NULL })
+
 cmd_tools &lt;- list(
-  dry_run = dry_run,
   dcm2niix = dcm2niix,
   freesurfer = freesurfer,
-  flirt = flirt
+  flirt = flirt,
+  afni_3dallineate = afni_3dallineate
 )</code></pre>
-<pre class="r"><code>
-subject &lt;- raveio::RAVESubject$new(
+<pre class="r"><code>subject &lt;- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code,
   strict = FALSE
 )
 print(subject)
 #&gt; RAVE subject &lt;devel/YCQ&gt;</code></pre>
-<pre class="r"><code>
-msgs &lt;- character(0L)
+<pre class="r"><code>msgs &lt;- character(0L)
 warns &lt;- character(0L)
-
 fs_path &lt;- subject$freesurfer_path
-if(!length(fs_path) || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
+if(!path_is_valid(fs_path, dir_ok = TRUE)) {
   fs_path &lt;- file.path(subject$path, &quot;fs&quot;)
   fs_reconstructed &lt;- FALSE
 } else {
@@ -5753,36 +5758,25 @@ if(!length(fs_path) || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
   )
 }
 
-
 mri &lt;- file.path(subject$preprocess_settings$raw_path, path_mri)
-if(!skip_recon) {
-  if(is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer)) {
-    warns &lt;- append(warns, &quot;Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will be skipped&quot;)
-    skip_recon &lt;- TRUE
-  } else {
-    if(!isTRUE(file.exists(mri))) {
-      warns &lt;- append(warns, &quot;No MRI folder found, the reconstruction will be skipped&quot;)
-      skip_recon &lt;- TRUE
-    }
+
+if(is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer)) {
+  warns &lt;- append(warns, &quot;Cannot find command-line `dcm2niix` and/or `FreeSurfer`: the reconstruction will fail. Please make sure these programs paths are entered correctly.&quot;)
+} else {
+  if(!path_is_valid(mri, dir_ok = TRUE)) {
+    warns &lt;- append(warns, &quot;No MRI folder found, the reconstruction will result in errors&quot;)
   }
-  if(!skip_recon &amp;&amp; fs_reconstructed) {
-    warns &lt;- append(warns, sprintf(&quot;Found existing FreeSurfer reconstructed directory; this directory will be renamed: %s&quot;, fs_path))
-  }
+}
+if(!skip_recon &amp;&amp; fs_reconstructed) {
+  warns &lt;- append(warns, sprintf(&quot;Found existing FreeSurfer reconstructed directory. `recon-all` will ignore the imported T1 images. Instead, FreeSurfer will continue working on this directory unless you manually remove it: %s&quot;, fs_path))
 }
 
 ct &lt;- file.path(subject$preprocess_settings$raw_path, path_ct)
-if(!skip_coregistration) {
-  if(is.null(cmd_tools$flirt)) {
-    warns &lt;- append(warns, &quot;Cannot find FSL-flirt; the co-registration will be skipped&quot;)
-    skip_coregistration &lt;- TRUE
-  } else if( (!fs_reconstructed &amp;&amp; (is.null(cmd_tools$dcm2niix) || is.null(cmd_tools$freesurfer))) ) {
-    warns &lt;- append(warns, &quot;Cannot find FreeSurfer reconstruction, nor at least one of the following commands exists: `dcm2niix`, `FreeSurfer`. The co-registration will be skipped anyway&quot;)
-    skip_coregistration &lt;- TRUE
-  } else {
-    if(!isTRUE(file.exists(ct))) {
-      warns &lt;- append(warns, &quot;No CT folder found, the co-registration will be skipped&quot;)
-      skip_coregistration &lt;- TRUE
-    }
+if(is.null(cmd_tools$afni_3dallineate) &amp;&amp; is.null(cmd_tools$flirt)) {
+  warns &lt;- append(warns, &quot;Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.&quot;)
+} else {
+  if(!path_is_valid(ct, dir_ok = TRUE)) {
+    warns &lt;- append(warns, &quot;The CT path is invalid: co-registration will result in errors.&quot;)
   }
 }
 
@@ -5811,6 +5805,7 @@ check_result &lt;- list(
   has_dcm2niix = !is.null(cmd_tools$dcm2niix),
   has_freesurfer = !is.null(cmd_tools$freesurfer),
   has_flirt = !is.null(cmd_tools$flirt),
+  has_3dallineate = !is.null(cmd_tools$afni_3dallineate),
   
   path_mri = mri,
   path_ct = ct,
@@ -5819,470 +5814,284 @@ check_result &lt;- list(
   
   messages = msgs,
   warnings = warns
-)
-</code></pre>
-<pre class="r"><code>
-if(isTRUE(file.exists(check_result$path_mri))) {
-  ravedash::logger(&quot;Setting default MRI path: &quot;, path_mri, level = &quot;info&quot;)
-  subject$set_default(&quot;raw_mri_path&quot;, path_mri, namespace = &quot;surface_reconstruction&quot;)
-}
-
-if(isTRUE(file.exists(check_result$path_ct))) {
-  ravedash::logger(&quot;Setting default CT path: &quot;, path_ct, level = &quot;info&quot;)
-  subject$set_default(&quot;raw_ct_path&quot;, path_ct, namespace = &quot;surface_reconstruction&quot;)
-}
-
-default_paths &lt;- subject$get_default(c(&quot;raw_mri_path&quot;, &quot;raw_ct_path&quot;), namespace = &quot;surface_reconstruction&quot;)
-default_paths
-#&gt; $raw_mri_path
-#&gt; [1] &quot;IMG/YCQ_MRI.nii&quot;
-#&gt; 
-#&gt; $raw_ct_path
-#&gt; [1] &quot;IMG/YCQ_CT.nii&quot;</code></pre>
-<pre class="r"><code>require(ravedash)
-#&gt; Loading required package: ravedash
-
-dcm2niix &lt;- as.character(cmd_tools$dcm2niix)
-if(!isTRUE(file.exists(dcm2niix))) {
-  dcm2niix &lt;- &quot;dcm2niix&quot;
-}
-
-path_temp &lt;- check_result$path_temp
-indir_mri &lt;- check_result$path_mri
-indir_ct &lt;- check_result$path_ct
-
-outdir_mri &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;MRI&quot;)
-outdir_ct &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;CT&quot;)
-
-
-merge &lt;- params$dcm2niix$merge %OF% c(&quot;Auto&quot;, &quot;No&quot;, &quot;Yes&quot;)
-merge &lt;- c(&quot;-m n &quot;, &quot;-m y &quot;, &quot;&quot;)[[which(c(&quot;No&quot;, &quot;Yes&quot;, &quot;Auto&quot;) == merge)]]
-
-float &lt;- params$dcm2niix$float %OF% c(&quot;Yes&quot;, &quot;No&quot;)
-float &lt;- c(&#39;-p y &#39;, &#39;-p n &#39;)[[which(c(&quot;Yes&quot;, &quot;No&quot;) == float)]]
-
-crop &lt;- params$dcm2niix$crop %OF% c(&quot;No&quot;, &quot;Yes&quot;, &quot;Ignore&quot;)
-crop &lt;- c(&quot;-x n&quot;, &quot;-x y&quot;, &quot;-x i&quot;)[[which(c(&quot;No&quot;, &quot;Yes&quot;, &quot;Ignore&quot;) == crop)]]
-
-args &lt;- paste0(merge, float, crop)
-
-path_log &lt;- normalizePath(check_result$path_log, winslash = &quot;/&quot;, mustWork = FALSE)
-log_file &lt;- strftime(Sys.time(), &quot;log-import-mri-ct.log&quot;)
-
-cmd_type &lt;- &quot;cmd&quot;
-cmd &lt;- c(
-  &quot;#!/usr/bin/env sh&quot;,
-  &quot;&quot;,
-  &quot;# This is your dcm2niix binary path&quot;,
-  sprintf(&quot;cmd_dcm2niix=%s&quot;, dcm2niix),
-  &quot;&quot;,
-  &quot;# Prepare log file&quot;,
-  sprintf(&quot;log_dir=%s&quot;, shQuote(path_log)),
-  sprintf(&quot;log_file=%s&quot;, shQuote(log_file)),
-  &#39;mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt; &quot;$log_dir/$log_file&quot;&#39;,
-  &#39;echo --------------------------------------------------------&#39;,
-  &#39;echo Log file: &quot;$log_dir/$log_file&quot;&#39;,
-  &#39;echo --------------------------------------------------------&#39;
-)
-error &lt;- TRUE
-if(length(indir_mri) == 1) {
-  cmdadd &lt;- c(
-    &quot;# ------------------- MRI ---------------------&quot;,
-    &quot;# Assign MRI input &amp; output folders&quot;,
-    sprintf(&quot;subj_mri_in=%s&quot;, shQuote(indir_mri, type = cmd_type)),
-    sprintf(&quot;subj_mri_out=%s&quot;, shQuote(outdir_mri, type = cmd_type)),
-    &#39;[ -d &quot;$subj_mri_out&quot; ] &amp;&amp; rm -r &quot;$subj_mri_out&quot;&#39;,
-    &#39;mkdir -p &quot;$subj_mri_out&quot;&#39;,
-    &quot;&quot;
-  )
-  if(dir.exists(indir_mri)) {
-    error &lt;- FALSE
-    cmdadd &lt;- c(
-      cmdadd,
-      &quot;# Convert MRI (DICOM =&gt; Nifti)&quot;,
-      sprintf(&#39;$cmd_dcm2niix %s -o &quot;$subj_mri_out&quot; &quot;$subj_mri_in&quot; &gt;&gt; &quot;$log_dir/$log_file&quot; 2&gt;&amp;1&#39;, args)
-    )
-  } else if(grepl(pattern = &quot;nii($|\\.gz$)&quot;, x = indir_mri, ignore.case = TRUE)){
-    error &lt;- FALSE
-    cmdadd &lt;- c(
-      cmdadd,
-      &quot;# Copy MRI Nifti file to RAVE temporary directory&quot;,
-      &#39;cp -r &quot;$subj_mri_in&quot; &quot;$subj_mri_out&quot;&#39;
-    )
-  } else {
-    cmdadd &lt;- NULL
-  }
-  cmd &lt;- c(cmd, cmdadd)
-}
-
-if(length(indir_ct) == 1) {
-  cmdadd &lt;- c(
-    &quot;&quot;,
-    &quot;# ------------------- CT ----------------------&quot;,
-    &quot;# Assign CT input &amp; output folders&quot;,
-    sprintf(&quot;subj_ct_in=%s&quot;, shQuote(indir_ct, type = cmd_type)),
-    sprintf(&quot;subj_ct_out=%s&quot;, shQuote(outdir_ct, type = cmd_type)),
-    &#39;[ -d &quot;$subj_ct_out&quot; ] &amp;&amp; rm -r &quot;$subj_ct_out&quot;&#39;,
-    &#39;mkdir -p &quot;$subj_ct_out&quot;&#39;,
-    &quot;&quot;
-  )
-  if(dir.exists(indir_ct)) {
-    error &lt;- FALSE
-    cmdadd &lt;- c(
-      cmdadd,
-      &quot;# Convert CT (DICOM =&gt; Nifti)&quot;,
-      sprintf(&#39;$cmd_dcm2niix %s -o &quot;$subj_ct_out&quot; &quot;$subj_ct_in&quot; &gt;&gt; &quot;$log_dir/$log_file&quot; 2&gt;&amp;1&#39;, args)
-    )
-    cmd &lt;- c(cmd, cmdadd)
-  } else if(grepl(pattern = &quot;nii($|\\.gz$)&quot;, x = indir_ct, ignore.case = TRUE)){
-    error &lt;- FALSE
-    cmdadd &lt;- c(
-      cmdadd,
-      &quot;# Copy MRI Nifti file to RAVE temporary directory&quot;,
-      &#39;cp -r &quot;$subj_ct_in&quot; &quot;$subj_ct_out&quot;&#39;
-    )
-  } else {
-    cmdadd &lt;- NULL
-  }
-  cmd &lt;- c(cmd, cmdadd)
-}
-
-cmd &lt;- c(cmd, &#39;echo Done. &gt;&gt; &quot;$log_dir/$log_file&quot; &amp;&amp; echo Done.&#39;, &quot;&quot;)
-
-script_dcm2nii &lt;- list(
-  script = cmd,
-  path_temp = path_temp,
-  error = error,
-  log_file = normalizePath(file.path(path_log, log_file), winslash = &quot;/&quot;, mustWork = FALSE)
 )</code></pre>
-<pre class="r"><code>
-if(!isFALSE(script_dcm2nii$error)) {
-  stop(&quot;Cannot convert DICOM to Nifti, invalid MRI or CT files&quot;)
-}
+<div id="generate-command-line-scripts" class="section level3">
+<h3>Generate command-line scripts</h3>
+<p>Command-line script to import T1 MR images. If the images are
+<code>DICOM</code> slices, use <code>dcm2niix</code> command to import,
+otherwise the file must be in <code>Nifti</code> file format and we
+simply copy it.</p>
+<pre class="sh">
+<code class="hljs">
+#!/usr/bin/env bash
 
-dry_run &lt;- raveio::is_dry_run() || isTRUE(dryrun)
+set -e
 
-path_temp &lt;- script_dcm2nii$path_temp
-outdir_mri &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;MRI&quot;)
-outdir_ct &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;CT&quot;)
-script_path &lt;- file.path(raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;)), &quot;cmd-import-mri-ct.sh&quot;)
+# This is your dcm2niix binary path
+cmd_dcm2niix=&quot;/opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix&quot;
 
-backup_dir &lt;- raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;, &quot;backups&quot;))
-backup_path &lt;- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) &amp;&amp; isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-#&gt; [1] TRUE
+# MRI/CT settings
+src_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/IMG/YCQ_MRI.nii&quot;
+dest_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/MRI&quot;
 
-# save script to path
-writeLines(script_dcm2nii$script, con = script_path)
-cmd &lt;- sprintf(&quot;bash %s&quot;, shQuote(normalizePath(script_path, mustWork = TRUE)))
+if [ -z &quot;$src_path&quot; ]; then
+  echo &quot;Cannot run dcm2niix: Invalid source path&quot; &gt;&amp;2
+  exit -1;
+fi
 
-if(!dry_run) {
-  unlink(script_dcm2nii$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_dcm2nii$log_file, remove = FALSE)
-}
+# check if source imaging is already in NifTi format
+is_nifti=1
+if [[ -L &quot;$src_path&quot; &amp;&amp; -d &quot;$src_path&quot; ]]; then
+  echo &quot;Source is a symlink to a directory&quot;
+  is_nifti=0
+elif [[ -d &quot;$src_path&quot; ]]; then
+  is_nifti=0
+elif [[ ! &quot;$src_path&quot; =~ \.[nN][iI][iI]($|\.[gG][zZ]$) ]]; then
+  echo &quot;Cannot run dcm2niix: Invalid source path: not a directory nor a NifTi file&quot; &gt;&amp;2
+  exit -1;
+fi
 
-conversion_mri &lt;- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)</code></pre>
-<pre class="r"><code>require(ravedash)
+# Prepare log file
+log_file=&quot;log-dcm2niix-220724-162836.log&quot;
+if [[ ! -z &quot;$log_file&quot; ]]; then
+  log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
+  mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+  echo &quot;Log file: $log_dir/$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+fi
 
-fs_home &lt;- as.character(cmd_tools$freesurfer)
 
-if(isTRUE(check_result$skip_recon)) {
-  script_recon &lt;- list(
-    error = TRUE,
-    reason = list(message = &quot;FreeSurfer reconstruction is manually skipped&quot;)
-  )
-} else if(!isTRUE(dir.exists(fs_home))) {
-  script_recon &lt;- list(
-    error = TRUE,
-    reason = list(message = &quot;Cannot find FreeSurfer home directory&quot;)
-  )
-} else {
-  
-  fs_home &lt;- normalizePath(fs_home, winslash = &quot;/&quot;)
-  
-  # FREESURFER_HOME=$R_CACHE/freesurfer
-  # source $FREESURFER_HOME/SetUpFreeSurfer.sh
-  
-  path_temp &lt;- check_result$path_temp
-  fs_sdir &lt;- normalizePath(file.path(check_result$fs_path, &quot;..&quot;), mustWork = FALSE)
-  
-  infile &lt;- params$nii_t1
-  infile_absolute &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;MRI&quot;, infile)
-  if(length(infile_absolute) != 1 || is.na(infile_absolute) ||
-     !file.exists(infile_absolute)) {
-    script_recon &lt;- list(
-      error = TRUE,
-      reason = list(message = &quot;No MRI input specified&quot;)
-    )
-  } else {
-    
-    # Need to check whether path_temp has space inside Freesurfer does not like spaces
-    path_temp &lt;- normalizePath(path_temp, mustWork = FALSE)
-    path_temp2 &lt;- path_temp
-    if(grepl(&quot; &quot;, path_temp)) {
-      # Freesurfer setenv does not quote properly, hence make a symlink without quote, and use that symlink
-      symlink_root &lt;- file.path(
-        tools::R_user_dir(&#39;rave&#39;, which = &quot;cache&quot;),
-        &quot;FreeSurferSubjects&quot;,
-        subject_code
-      )
-      unlink(symlink_root, recursive = TRUE)
-      raveio::dir_create2(symlink_root)
-      symlink_path &lt;- symlink_root
-      
-      symlink_cmd1 &lt;- c(
-        &quot;&quot;,
-        &quot;# Orginal subject path contains spaces, FreeSurfer will fail&quot;,
-        sprintf(&quot;symlink_path=%s&quot;, shQuote(symlink_path)),
-        &quot;if [ -d $symlink_path/rave-imaging ]; then&quot;,
-        &#39;  rm &quot;$symlink_path/rave-imaging&quot;&#39;,
-        &quot;fi&quot;,
-        # Re-link
-        &#39;mkdir -p &quot;$symlink_path&quot;&#39;,
-        sprintf(&#39;ln -s &quot;%s&quot; &quot;$symlink_path&quot;&#39;, path_temp),
-        &#39;&#39;
-      )
-      symlink_cmd2 &lt;- c(
-        &quot;&quot;,
-        &#39;rm &quot;$symlink_path/rave-imaging&quot;&#39;,
-        &#39;# Try to remove temp path, but it is OK to fail here&#39;,
-        &#39;rm &quot;$symlink_path&quot;&#39;,
-        &#39;&#39;
-      )
-      path_temp2 &lt;- file.path(symlink_path, &quot;rave-imaging&quot;)
-    } else {
-      raveio::dir_create2(path_temp)
-      symlink_cmd1 &lt;- NULL
-      symlink_cmd2 &lt;- NULL
-    }
-    
-    
-    # infile &lt;- normalizePath(infile, mustWork = TRUE, winslash = &quot;/&quot;)
-    # infile &lt;- file.path(path_temp, &quot;inputs&quot;, &quot;MRI&quot;, infile)
-    
-     
-    
-    autorecon_flags &lt;- c(
-      &quot;-all&quot;, &quot;-autorecon1&quot;, &quot;-autorecon2&quot;, &quot;-autorecon3&quot;,
-      &quot;-autorecon2-cp&quot;, &quot;-autorecon2-wm&quot;, &quot;-autorecon2-pial&quot;
-    )
-    flag &lt;- params$freesurfer$steps %OF% autorecon_flags
-    
-    path_log &lt;- normalizePath(check_result$path_log, winslash = &quot;/&quot;, mustWork = FALSE)
-    log_file &lt;- sprintf(&quot;log-fs-recon%s.log&quot;, flag)
-    
-    cmd_type &lt;- &quot;cmd&quot;
-    cmd &lt;- c(
-      &quot;#!/usr/bin/env bash&quot;,
-      &quot;&quot;,
-      &quot;# Set FreeSurfer home directory &amp; initialize&quot;,
-      sprintf(&quot;FREESURFER_HOME=%s&quot;, shQuote(fs_home)),
-      &quot;source $FREESURFER_HOME/SetUpFreeSurfer.sh&quot;,
-      &quot;&quot;,
-      sprintf(&quot;SUBJECTS_DIR=%s&quot;, shQuote(path_temp2)),
-      sprintf(&#39;mri_infile=&quot;$SUBJECTS_DIR/inputs/MRI/%s&quot;&#39;, infile),
-      # &#39;[ -d &quot;$SUBJECTS_DIR/fs&quot; ] &amp;&amp; rm -r &quot;$SUBJECTS_DIR/fs&quot;&#39;,
-      symlink_cmd1,
-      &quot;# Prepare log file&quot;,
-      sprintf(&quot;log_dir=%s&quot;, shQuote(path_log)),
-      sprintf(&quot;log_file=%s&quot;, shQuote(log_file)),
-      &#39;mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt; &quot;$log_dir/$log_file&quot;&#39;,
-      &#39;echo --------------------------------------------------------&#39;,
-      &#39;echo Log file: &quot;$log_dir/$log_file&quot;&#39;,
-      &#39;echo --------------------------------------------------------&#39;,
-      local({
-        if(isTRUE( params$freesurfer$fresh_start)) {
-          c(
-            &#39;# Force removing FreeSurfer path and re-run the reconstruction&#39;,
-            &#39;# You need original Nifti files to run&#39;,
-            &#39;if [ -d &quot;$SUBJECTS_DIR/fs&quot; ]; then&#39;,
-            &#39;  rm -r &quot;$SUBJECTS_DIR/fs&quot;&#39;,
-            &#39;fi&#39;,
-            sprintf(&#39;recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -i &quot;$mri_infile&quot; %s &gt;&gt; &quot;$log_dir/$log_file&quot; 2&gt;&amp;1&#39;, flag)
-          ) 
-        } else {
-          c(
-            &#39;if [ -d &quot;$SUBJECTS_DIR/fs/mri&quot; ]; then&#39;,
-            &#39;  # Use existing FreeSurfer directory to continue analysis&#39;,
-            &#39;  # You do not need original Nifti files to run&#39;,
-            sprintf(&#39;  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs %s&#39;, flag),
-            &#39;else&#39;,
-            &#39;  # Remove invalid FreeSurfer path and re-run the reconstruction&#39;,
-            &#39;  # You need original Nifti files to run&#39;,
-            &#39;  if [ -d &quot;$SUBJECTS_DIR/fs&quot; ]; then&#39;,
-            &#39;    rm -r &quot;$SUBJECTS_DIR/fs&quot;&#39;,
-            &#39;  fi&#39;,
-            sprintf(&#39;  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -i &quot;$mri_infile&quot; %s &gt;&gt; &quot;$log_dir/$log_file&quot; 2&gt;&amp;1&#39;, flag),
-            &#39;fi&#39;
-          )
-        }
-      })
-    )
-    
-    cmd &lt;- c(cmd, symlink_cmd2, &#39;echo Done. &gt;&gt; &quot;$log_dir/$log_file&quot; &amp;&amp; echo Done.&#39;, &#39;&#39;)
-    script_recon &lt;- list(
-      script = cmd,
-      path_temp = path_temp,
-      flag = flag,
-      error = FALSE,
-      log_file = normalizePath(file.path(path_log, log_file), winslash = &quot;/&quot;, mustWork = FALSE)
-    )
-  }
-}</code></pre>
-<pre class="r"><code>
-if(!isFALSE(script_recon$error)) {
-  stop(c(script_recon$reason$message, &quot;Cannot run FreeSurfer commands&quot;)[[1]])
-}
+# Convert/copy MRI
+# dest_path must be a directory
+[ -d &quot;$dest_path&quot; ] &amp;&amp; rm -r &quot;$dest_path&quot;
+mkdir -p &quot;$dest_path&quot;
 
-dry_run &lt;- raveio::is_dry_run() || isTRUE(dryrun)
+if [[ $is_nifti -eq 0 ]]; then
+  # Convert MRI (DICOM =&gt; Nifti)
+  echo &quot;Converting DICOM to NifTi:&quot;
+  if [[ ! -z &quot;$log_file&quot; ]]; then
+    $cmd_dcm2niix -p y -x n -o &quot;$dest_path&quot; &quot;$src_path&quot; 2&gt;&amp;1 | tee -a &quot;$log_dir/$log_file&quot;
+    echo &quot;Done. Please check log file&quot; | tee -a &quot;$log_dir/$log_file&quot;
+  else
+    $cmd_dcm2niix -p y -x n -o &quot;$dest_path&quot; &quot;$src_path&quot;
+    echo &quot;Done. Please check printed messages.&quot;
+  fi
+else
+  # Direct copy NifTi files
+  cp -r &quot;$src_path&quot; &quot;$dest_path&quot;
+  echo &quot;Done. Please check printed messages.&quot;
+fi
 
-path_temp &lt;- script_recon$path_temp
-script_path &lt;- file.path(raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;)), 
-                         sprintf(&quot;cmd-fs-recon%s.sh&quot;, script_recon$flag))
 
-# Back up existing script
-backup_dir &lt;- raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;, &quot;backups&quot;))
-backup_path &lt;- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) &amp;&amp; isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-#&gt; [1] TRUE
+## END OF RAVE Script: dcm2niix DICOM to NifTi, or copy existing NifTi file ##
+</code>
+</pre>
+<p>Command-line script to import CT images. If the images are
+<code>DICOM</code> slices, use <code>dcm2niix</code> command to import,
+otherwise the file must be in <code>Nifti</code> file format and we
+simply copy it.</p>
+<pre class="sh">
+<code class="hljs">
+#!/usr/bin/env bash
 
-# save script to path
-writeLines(script_recon$script, con = script_path)
-cmd &lt;- sprintf(&quot;bash %s&quot;, shQuote(normalizePath(script_path, mustWork = TRUE)))
+set -e
 
-if(!dry_run) {
-  unlink(script_recon$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_recon$log_file, remove = FALSE)
-}
+# This is your dcm2niix binary path
+cmd_dcm2niix=&quot;/opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix&quot;
 
-ravedash::logger(&quot;Setting default T1 nii file: &quot;, params$nii_t1, level = &quot;info&quot;)
-subject$set_default(&quot;nii_t1&quot;, params$nii_t1, namespace = &quot;surface_reconstruction&quot;)
+# MRI/CT settings
+src_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/IMG/YCQ_CT.nii&quot;
+dest_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/CT&quot;
 
-fs_recon &lt;- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)</code></pre>
-<pre class="r"><code>require(ravedash)
+if [ -z &quot;$src_path&quot; ]; then
+  echo &quot;Cannot run dcm2niix: Invalid source path&quot; &gt;&amp;2
+  exit -1;
+fi
 
-flirt &lt;- as.character(cmd_tools$flirt)
+# check if source imaging is already in NifTi format
+is_nifti=1
+if [[ -L &quot;$src_path&quot; &amp;&amp; -d &quot;$src_path&quot; ]]; then
+  echo &quot;Source is a symlink to a directory&quot;
+  is_nifti=0
+elif [[ -d &quot;$src_path&quot; ]]; then
+  is_nifti=0
+elif [[ ! &quot;$src_path&quot; =~ \.[nN][iI][iI]($|\.[gG][zZ]$) ]]; then
+  echo &quot;Cannot run dcm2niix: Invalid source path: not a directory nor a NifTi file&quot; &gt;&amp;2
+  exit -1;
+fi
 
-if(isTRUE(file.exists(flirt))) {
-  fsl_dir &lt;- normalizePath(dirname(dirname(flirt)))
-} else {
-  fsl_dir &lt;- &quot;/usr/local/fsl&quot;
-  flirt &lt;- &quot;flirt&quot;
-}
+# Prepare log file
+log_file=&quot;log-dcm2niix-220724-162836.log&quot;
+if [[ ! -z &quot;$log_file&quot; ]]; then
+  log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
+  mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+  echo &quot;Log file: $log_dir/$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+fi
 
-nii_t1 &lt;- file.path(check_result$path_temp, &quot;inputs&quot;, &quot;MRI&quot;, params$nii_t1)
-nii_ct &lt;- file.path(check_result$path_temp, &quot;inputs&quot;, &quot;CT&quot;, params$nii_ct)
-outdir &lt;- raveio::dir_create2(file.path(check_result$path_temp, &quot;coregistration&quot;))
 
-error &lt;- FALSE
-err_msg &lt;- NULL
+# Convert/copy MRI
+# dest_path must be a directory
+[ -d &quot;$dest_path&quot; ] &amp;&amp; rm -r &quot;$dest_path&quot;
+mkdir -p &quot;$dest_path&quot;
 
-if(!isTRUE(file.exists(nii_t1))) {
-  error &lt;- TRUE
-  err_msg &lt;- &quot;Cannot find T1 file&quot;
-}
-if (!isTRUE(file.exists(nii_ct))) {
-  error &lt;- TRUE
-  err_msg &lt;- c(err_msg, &quot;Cannot find CT file&quot;)
-}
+if [[ $is_nifti -eq 0 ]]; then
+  # Convert MRI (DICOM =&gt; Nifti)
+  echo &quot;Converting DICOM to NifTi:&quot;
+  if [[ ! -z &quot;$log_file&quot; ]]; then
+    $cmd_dcm2niix -p y -x n -o &quot;$dest_path&quot; &quot;$src_path&quot; 2&gt;&amp;1 | tee -a &quot;$log_dir/$log_file&quot;
+    echo &quot;Done. Please check log file&quot; | tee -a &quot;$log_dir/$log_file&quot;
+  else
+    $cmd_dcm2niix -p y -x n -o &quot;$dest_path&quot; &quot;$src_path&quot;
+    echo &quot;Done. Please check printed messages.&quot;
+  fi
+else
+  # Direct copy NifTi files
+  cp -r &quot;$src_path&quot; &quot;$dest_path&quot;
+  echo &quot;Done. Please check printed messages.&quot;
+fi
 
-nii_t1 &lt;- normalizePath(nii_t1, winslash = &quot;/&quot;, mustWork = FALSE)
-nii_ct &lt;- normalizePath(nii_ct, winslash = &quot;/&quot;, mustWork = FALSE)
 
-path_log &lt;- normalizePath(check_result$path_log, winslash = &quot;/&quot;, mustWork = FALSE)
-log_file &lt;- strftime(Sys.time(), &quot;log-ct-coregistration-t1.log&quot;)
+## END OF RAVE Script: dcm2niix DICOM to NifTi, or copy existing NifTi file ##
+</code>
+</pre>
+<p>Find imported volume (in <code>Nifti</code> format) under the
+following folder:</p>
+<ul>
+<li>T1 MRI:
+/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/MRI</li>
+<li>CT:
+/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/CT</li>
+</ul>
+<p>The imported MRI will be used to reconstruct <code>FreeSurfer</code>
+surface. Normally the entire process will take 6-12 hours. However, if
+you just want to localize electrodes, then choose the <code>flag</code>
+to be <code>-autorecon1</code>. This flag only normalize and skull-strip
+the MRI. This sub-procedure only takes 8-10 minutes.</p>
+<pre class="sh">
+<code class="hljs">
+#!/usr/bin/env bash
 
-cmd &lt;- c(
-  &quot;#!/usr/bin/env bash&quot;,
-  &quot;&quot;,
-  &quot;# FSL setup&quot;,
-  sprintf(&#39;export FSLDIR=%s&#39;, shQuote(fsl_dir)),
-  &#39;source ${FSLDIR}/etc/fslconf/fsl.sh&#39;,
-  &#39;PATH=${FSLDIR}/bin:${PATH}&#39;,
-  &quot;&quot;,
-  &quot;# Set input T1 &amp; CT files&quot;,
-  sprintf(&quot;infile_ct=%s&quot;, shQuote(nii_ct)),
-  sprintf(&quot;infile_t1=%s&quot;, shQuote(nii_t1)),
-  sprintf(&quot;outdir=%s&quot;, shQuote(outdir)),
-  &quot;&quot;,
-  &quot;# Prepare log file&quot;,
-  sprintf(&quot;log_dir=%s&quot;, shQuote(path_log)),
-  sprintf(&quot;log_file=%s&quot;, shQuote(log_file)),
-  &#39;mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt; &quot;$log_dir/$log_file&quot;&#39;,
-  &#39;echo --------------------------------------------------------&#39;,
-  &#39;echo Log file: &quot;$log_dir/$log_file&quot;&#39;,
-  &#39;echo --------------------------------------------------------&#39;,
-  &quot;&quot;,
-  &quot;# Run flirt&quot;,
-  &#39;flirt -in &quot;$infile_ct&quot; -ref &quot;$infile_t1&quot; \\&#39;,
-  &#39;  -out &quot;$outdir/ct_in_t1.nii&quot; -omat &quot;$outdir/ct2t1.mat&quot; \\&#39;,
-  &#39;  -interp trilinear -cost mutualinfo -dof 6 -searchcost mutualinfo \\&#39;,
-  &#39;  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -v &gt;&gt; &quot;$log_dir/$log_file&quot; 2&gt;&amp;1&#39;,
-  &#39;echo Done. &gt;&gt; &quot;$log_dir/$log_file&quot; &amp;&amp; echo Done.&#39;,
-  &#39;&#39;
-)
-    
-script_coreg &lt;- list(
-  script = cmd,
-  path_temp = check_result$path_temp,
-  error = FALSE,
-  reason = list(message = paste(err_msg, collapse = &quot;; &quot;)),
-  log_file = normalizePath(file.path(path_log, log_file), winslash = &quot;/&quot;, mustWork = FALSE)
-)</code></pre>
-<pre class="r"><code>
-if(!isFALSE(script_coreg$error)) {
-  stop(c(script_coreg$reason$message, &quot;Cannot run flirt commands&quot;)[[1]])
-}
+set -e
 
-dry_run &lt;- raveio::is_dry_run() || isTRUE(dryrun)
-if(check_result$skip_coregistration) {
-  dry_run &lt;- TRUE
-}
+# Prepare log file
+log_file=&quot;log-recon-all-220724-162836.log&quot;
+if [[ ! -z &quot;$log_file&quot; ]]; then
+  log_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
+  log_file=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log/$log_file&quot;
+  mkdir -p &quot;$log_path&quot; &amp;&amp; touch &quot;$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt; &quot;$log_file&quot;
+  echo --------------------------------------------------------
+  echo Log file: &quot;$log_file&quot;
+  echo --------------------------------------------------------
+else
+  log_file=&quot;/dev/null&quot;
+fi
 
-path_temp &lt;- script_coreg$path_temp
-script_path &lt;- file.path(raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;)), 
-                         &quot;cmd-ct2t1-flirt.sh&quot;)
+# Prepare working directory: FreeSurfer does not like it when
+# directories contain spaces
+wdir_actual=&quot;/Users/dipterix/rave_data/raw_dir/YCQ&quot;
+wdir_fs=&quot;/Users/dipterix/Library/Caches/org.R-project.R/R/raveio/FreeSurfer/YCQ&quot;
+mri_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/MRI/YCQ_MRI.nii&quot;
+input_name=&quot;MRI.nii&quot;
 
-# Back up existing script
-backup_dir &lt;- raveio::dir_create2(file.path(path_temp, &quot;scripts&quot;, &quot;backups&quot;))
-backup_path &lt;- raveio::backup_file(script_path, remove = TRUE)
-if(!isFALSE(backup_path) &amp;&amp; isTRUE(file.exists(backup_path))) {
-  file.rename(backup_path, file.path(backup_dir, basename(backup_path)))
-}
-#&gt; [1] TRUE
+# Make sure the actual working directory exists
+fresh_start=0
+if [[ &quot;$fresh_start&quot; -eq 1 &amp;&amp; -d &quot;$wdir_actual/rave-imaging/fs&quot; ]]; then
+  rm -r &quot;$wdir_actual/rave-imaging/fs&quot;
+fi
+mkdir -p &quot;$wdir_actual/rave-imaging&quot;
 
-# save script to path
-writeLines(script_coreg$script, con = script_path)
-cmd &lt;- sprintf(&quot;bash %s&quot;, shQuote(normalizePath(script_path, mustWork = TRUE)))
+# Make sure the symlink is done properly
+if [[ -d &quot;$wdir_fs&quot; ]]; then
+  rm -r &quot;$wdir_fs&quot;
+fi
+mkdir -p &quot;$wdir_fs&quot;
+ln -s &quot;$wdir_actual/rave-imaging&quot; &quot;$wdir_fs&quot;
 
-if(!dry_run) {
-  unlink(script_coreg$log_file)
-  system(cmd, wait = TRUE)
-  raveio::backup_file(script_coreg$log_file, remove = FALSE)
-}
+# Set FreeSurfer home directory &amp; initialize
+SUBJECTS_DIR=&quot;$wdir_fs/rave-imaging&quot;
 
-ravedash::logger(&quot;Setting default CT nii file: &quot;, params$nii_ct, level = &quot;info&quot;)
-subject$set_default(&quot;nii_ct&quot;, params$nii_ct, namespace = &quot;surface_reconstruction&quot;)
 
-coreg_results &lt;- list(
-  command = cmd,
-  dry_run = dry_run,
-  script_path = script_path
-)</code></pre>
+if [ -d &quot;$SUBJECTS_DIR/fs/mri&quot; ]; then
+  # Use existing FreeSurfer directory to continue analysis
+  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -all | tee -a &quot;$log_file&quot;
+else
+  # Copy Nifti input
+  cp &quot;$mri_path&quot; &quot;$wdir_fs/$input_name&quot;
+  if [ -d &quot;$SUBJECTS_DIR/fs&quot; ]; then
+    rm -r &quot;$SUBJECTS_DIR/fs&quot;
+  fi
+  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -i &quot;$wdir_fs/$input_name&quot; -all | tee -a &quot;$log_file&quot;
+fi
+
+echo &quot;Done.&quot; | tee -a &quot;$log_file&quot;
+
+## END OF RAVE Script: FreeSurfer recon-all with flags: -all  ##
+</code>
+</pre>
+<p>Align CT to T1 (co-registration). There are two options
+available:</p>
+<ul>
+<li>FSL-flirt</li>
+<li>AFNI-3dAllineate</li>
+</ul>
+<p>The following bash script uses <code>flirt</code> command</p>
+<pre class="sh">
+<code class="hljs">
+#!/usr/bin/env bash
+
+set -e
+
+# Set input T1 &amp; CT files
+mri_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/MRI/YCQ_MRI.nii&quot;
+ct_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/CT/YCQ_CT.nii&quot;
+dest_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/coregistration&quot;
+
+if [[ -z &quot;$mri_path&quot; || -z &quot;$ct_path&quot; ]]; then
+  echo &quot;Cannot run FST-FLIRT: Invalid source path&quot; &gt;&amp;2
+  exit -1;
+fi
+
+# FSL setup
+
+source ${FSLDIR}/etc/fslconf/fsl.sh
+PATH=${FSLDIR}/bin:${PATH}
+
+# Prepare log file
+log_file=&quot;log-flirt-220724-162836.log&quot;
+if [[ ! -z &quot;$log_file&quot; ]]; then
+  log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
+  log_file=&quot;$log_dir/$log_file&quot;
+  mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+  echo &quot;Log file: $log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+else
+  log_file=&quot;/dev/null&quot;
+fi
+
+mkdir -p &quot;$dest_path&quot;
+
+# Run flirt
+flirt -in &quot;$ct_path&quot; -ref &quot;$mri_path&quot; \
+  -out &quot;$dest_path/ct_in_t1.nii&quot; -omat &quot;$dest_path/ct2t1.mat&quot; \
+  -interp trilinear -cost mutualinfo -dof 6 -searchcost mutualinfo \
+  -searchrx -180 180 -searchry -180 180 -searchrz -180 180 -v | tee -a &quot;$log_file&quot;
+
+echo &quot;Done.&quot; | tee -a &quot;$log_file&quot;
+
+## END OF RAVE Script: FSL-flirt coregistration ##
+</code>
+</pre>
+<p>The following bash script uses <code>3dAllineate</code> command</p>
+<pre class="sh">
+<code class="hljs">
+Error:  Not yet implemented 
+</code>
+</pre>
+</div>
 <div id="build-visualize-run" class="section level2">
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your
@@ -6296,8 +6105,8 @@ is built, you can visualize and execute the pipeline without the need of
 re-knit this document. Notice we use <code>r</code> block instead of
 <code>rave</code>. (This is because the code blocks are not part of
 pipeline targets.)</p>
-<div id="htmlwidget-136a97f9a3e015ddb29d" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-136a97f9a3e015ddb29d">{"x":{"nodes":{"name":["check_result","cmd_tools","dcm2niix_path","default_paths","dryrun","freesurfer_path","fsl_path","params","path_ct","path_mri","project_name","script_coreg","script_dcm2nii","script_recon","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code","fs_recon","conversion_mri","coreg_results","params_dcm2niix"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","started","outdated","outdated","outdated"],"seconds":[0.008,0.051,0,0.088,0,0.001,0,0,0,0,0,0.001,0,0.083,0.002,0,0,0,0.018,0,null,null,null,null],"bytes":[421,154,69,122,47,77,51,213,66,67,56,637,581,666,8151,407,47,47,38162,54,null,null,null,null],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["check_result","cmd_tools","dcm2niix_path","default_paths","dryrun","freesurfer_path","fsl_path","params","path_ct","path_mri","project_name","script_coreg","script_dcm2nii","script_recon","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code","fs_recon","conversion_mri","coreg_results","params_dcm2niix"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#DC863B","#78B7C5","#78B7C5","#78B7C5"],"id":["check_result","cmd_tools","dcm2niix_path","default_paths","dryrun","freesurfer_path","fsl_path","params","path_ct","path_mri","project_name","script_coreg","script_dcm2nii","script_recon","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code","fs_recon","conversion_mri","coreg_results","params_dcm2niix"],"level":[5,4,3,6,3,3,3,3,3,3,3,6,6,6,2,1,3,3,4,3,7,7,7,3],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["script_coreg","dryrun","check_result","params","subject","settings","settings","settings","check_result","path_mri","subject","path_ct","cmd_tools","check_result","params","subject_code","settings","settings","settings","script_dcm2nii","dryrun","cmd_tools","check_result","params","dryrun","dcm2niix_path","freesurfer_path","fsl_path","settings","settings","script_recon","dryrun","params","subject","subject","path_mri","skip_recon","cmd_tools","path_ct","skip_coregistration","cmd_tools","check_result","params","settings","project_name","subject_code","settings","settings","settings","settings_path"],"to":["coreg_results","coreg_results","coreg_results","coreg_results","coreg_results","skip_coregistration","dcm2niix_path","skip_recon","default_paths","default_paths","default_paths","default_paths","script_recon","script_recon","script_recon","script_recon","subject_code","params","freesurfer_path","conversion_mri","conversion_mri","script_coreg","script_coreg","script_coreg","cmd_tools","cmd_tools","cmd_tools","cmd_tools","path_mri","dryrun","fs_recon","fs_recon","fs_recon","fs_recon","check_result","check_result","check_result","check_result","check_result","check_result","script_dcm2nii","script_dcm2nii","script_dcm2nii","project_name","subject","subject","fsl_path","params_dcm2niix","path_ct","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Started","Stem"],"color":["#78B7C5","#DC863B","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-49e30319aa1be595b2da" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-49e30319aa1be595b2da">{"x":{"nodes":{"name":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated"],"seconds":[0,0.003,0.018,0,0.009,0,0,0.005,0,0.03,0.016,0,0,0,0,0,0,0,0,0.003,0],"bytes":[72,644,190,160,532704,100,51,264378,51,264142,264265,213,66,67,56,14690,407,47,47,262041,54],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"level":[3,5,4,0,6,3,3,6,3,6,6,3,3,3,3,2,1,3,3,4,3],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","check_result","params","cmd_tools","settings","settings","settings","settings","settings","settings","params","check_result","subject","cmd_tools","dcm2niix_path","freesurfer_path","fsl_path","afni_path","settings","params","check_result","subject","cmd_tools","subject","path_mri","cmd_tools","skip_recon","path_ct","skip_coregistration","settings","project_name","subject_code","settings","settings","settings_path","subject","check_result","params","cmd_tools"],"to":["skip_coregistration","import_CT","import_CT","import_CT","import_CT","skip_recon","dcm2niix_path","subject_code","freesurfer_path","params","afni_path","coreg_flirt","coreg_flirt","coreg_flirt","coreg_flirt","cmd_tools","cmd_tools","cmd_tools","cmd_tools","path_mri","fs_recon","fs_recon","fs_recon","fs_recon","check_result","check_result","check_result","check_result","check_result","check_result","project_name","subject","subject","fsl_path","path_ct","settings","import_T1","import_T1","import_T1","import_T1"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Stem"],"color":["#78B7C5","#899DA4"],"shape":["dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

@@ -12,18 +12,18 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
           shiny::p(
             shiny::tags$small(
-              "This module imports raw MR & CT images into Nifti format using ",
-              "dcm2niix, re-constructs ",
-              "surface using FreeSurfer, and co-registers CT to MRI via ",
-              "FSL-FLIRT. Please note that this module is experimental and ",
-              "simply wraps bundles of command-lines. ",
-              "Some of these commands (e.g. FreeSurfer) might not work properly under Windows.",
+              "This module provides terminal scripts to ",
+              "imports the raw MR & CT images into RAVE, reconstruct ",
+              "surface using FreeSurfer, and co-register CT to MRI via ",
+              "AFNI-3dAllineate or FSL-FLIRT. ",
               shiny::br(),
-              "Although this module can invoke system command, it is Highly Recommended that you run ",
-              "these command by yourself. The module will provide dry-run code. ",
+              "This module requires installation of `dcm2niix`, `FreeSurfer`, `AFNI` (or `FSL`). ",
+              "Some of these commands (e.g. FreeSurfer) might not work properly under Windows. ",
+              "It is Highly Recommended that you run ",
+              "these command in the terminal by yourself once the bash scripts are generated. ",
+              shiny::br(),
               "Please use bash terminal to run the code on Linux or MacOS. ",
-              "It has not been tested on Windows. If you do want to use Window, ",
-              "please install its Linux sub-system first."
+              "The script has not been fully tested on Windows yet."
             )
           ),
 
@@ -49,15 +49,15 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
                     label = "Raw MRI (DICOM folder or Nifti file)",
                     choices = character(0L)
                   )
-                ),
-                shidashi::flex_break(),
-                shidashi::flex_item(
-                  shiny::checkboxInput(
-                    inputId = ns("skip_recon"),
-                    label = "Skip the FreeSurfer reconstruction",
-                    value = FALSE
-                  )
                 )
+                # shidashi::flex_break(),
+                # shidashi::flex_item(
+                #   shiny::checkboxInput(
+                #     inputId = ns("skip_recon"),
+                #     label = "Skip the FreeSurfer reconstruction",
+                #     value = FALSE
+                #   )
+                # )
               )
             ),
             shiny::column(
@@ -70,15 +70,15 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
                     label = "Raw CT DICOM folder",
                     choices = character(0L)
                   )
-                ),
-                shidashi::flex_break(),
-                shidashi::flex_item(
-                  shiny::checkboxInput(
-                    inputId = ns("skip_coregistration"),
-                    label = "Skip the CT co-registration",
-                    value = FALSE
-                  )
                 )
+                # shidashi::flex_break(),
+                # shidashi::flex_item(
+                #   shiny::checkboxInput(
+                #     inputId = ns("skip_coregistration"),
+                #     label = "Skip the CT co-registration",
+                #     value = FALSE
+                #   )
+                # )
               )
             )
           ),
@@ -125,6 +125,14 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
                 label = "FSL home (`FSLDIR`, needed for co-registration)",
                 value = raveio::cmd_fsl_home(error_on_missing = FALSE, unset = "")
               )
+            ),
+            shidashi::flex_break(),
+            shidashi::flex_item(
+              shiny::textInput(
+                inputId = ns("cmd_afni_path"),
+                label = "AFNI home (needed for co-registration if `FSL` is not installed)",
+                value = raveio::cmd_afni_home(error_on_missing = FALSE, unset = "")
+              )
             )
           ),
 
@@ -165,19 +173,20 @@ loader_server <- function(input, output, session, ...){
       pipeline$set_settings(
         path_mri = input$mri_path,
         path_ct = input$ct_path,
-        skip_recon = input$skip_recon,
-        skip_coregistration = input$skip_coregistration,
+        skip_recon = FALSE,
+        skip_coregistration = FALSE,
         dcm2niix_path = input$cmd_dcm2niix_path,
         freesurfer_path = input$cmd_fs_path,
         fsl_path = input$cmd_fsl_path,
-        dryrun = FALSE,
+        afni_path = input$cmd_afni_path,
         .list = settings
       )
 
       res <- pipeline$run(
         as_promise = TRUE,
         names = "check_result",
-        type = "vanilla", scheduler = "none"
+        type = "vanilla",
+        scheduler = "none"
       )
 
       res$promise$then(
@@ -212,17 +221,9 @@ loader_server <- function(input, output, session, ...){
             shiny::tags$ul(
               shiny::tags$li(shiny::strong("dcm2niix"), ": ", paste(cmd_tools$dcm2niix, collapse = "")),
               shiny::tags$li(shiny::strong("FreeSurfer"), ": ", paste(cmd_tools$freesurfer, collapse = "")),
-              shiny::tags$li(shiny::strong("FSL-flirt"), ": ", paste(cmd_tools$flirt, collapse = ""))
-            ),
-            local({
-              if(cmd_tools$dry_run) {
-                shiny::p(shiny::tags$small(
-                  "* Security-mode is ON, ",
-                  "no system command will be invoked in this module. ",
-                  "You will have to enter the command-lines by yourself."
-                ))
-              } else { NULL }
-            })
+              shiny::tags$li(shiny::strong("FSL-flirt"), ": ", paste(cmd_tools$flirt, collapse = "")),
+              shiny::tags$li(shiny::strong("AFNI-3dAllineate"), ": ", paste(cmd_tools$afni_3dallineate, collapse = ""))
+            )
           )
 
           dipsaus::close_alert2()
@@ -230,10 +231,10 @@ loader_server <- function(input, output, session, ...){
           shiny::showModal(shiny::modalDialog(
             title = "Confirmation",
             size = "l",
-            shiny::p("Please confirm the to-do list and potential warnings. ",
-                     "The warnings can be ignored ",
-                     "if you are going to enter the commands ",
-                     "in the terminals by yourself."),
+            shiny::p("Please confirm the to-do list and carefully read warnings. ",
+                     "Please do NOT ignore warnings ",
+                     "that have statements such as ",
+                     '"the script will fail/error".'),
             msg_ui,
             warn_ui,
             cmd_ui,
@@ -256,7 +257,7 @@ loader_server <- function(input, output, session, ...){
           dipsaus::shiny_alert2(
             title = "Errors",
             text = paste(
-              "Found an error while loading the power data:\n\n",
+              "Found an error while checking the path/data:\n\n",
               paste(e$message, collapse = "\n")
             ),
             icon = "error",
@@ -271,21 +272,6 @@ loader_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = "default_paths",
-        type = "vanilla",
-        scheduler = "none"
-      )
-
-      # local({
-      #   raveio:::activate_pipeline(pipeline_path)
-      #   targets::tar_make(names = "default_paths",
-      #                     shortcut = TRUE)
-      # })
-
-
       shiny::removeModal()
       # Let the module know the data has been changed
       ravedash::fire_rave_event('data_changed', Sys.time())

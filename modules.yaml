@@ -29,7 +29,7 @@ modules:
     label: Reference Channels
     order: 6
   surface_reconstruction:
-    label: Surface & Registration
+    label: Reconstruction & Coregistration
     group: Surface & Electrodes
     order: 7.1
   electrode_localization:

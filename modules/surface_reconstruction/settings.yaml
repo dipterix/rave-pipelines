@@ -1,21 +1,20 @@
+afni_path: /Users/dipterix/abin
 dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
-dryrun: yes
-freesurfer_path: /Applications/freesurfer/7.2.0
-fsl_path: /usr/local/fsl
+freesurfer_path: ''
+fsl_path: ''
 params:
-  nii_t1: ''
-  nii_ct: ''
+  nii_t1: YCQ_MRI.nii
+  nii_ct: YCQ_CT.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
     crop: 'No'
   freesurfer:
-    steps: -all
+    flag: -autorecon1
     fresh_start: no
-params_dcm2niix: ~
-path_ct: IMG/CT-MRI
-path_mri: IMG/CT-MRI
+path_ct: IMG/YCQ_CT.nii
+path_mri: IMG/YCQ_MRI.nii
 project_name: devel
 skip_coregistration: no
 skip_recon: no
-subject_code: YDS
+subject_code: YCQ

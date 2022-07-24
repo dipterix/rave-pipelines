@@ -2,10 +2,12 @@
 module_server <- function(input, output, session, ...){
 
   error_notification <- function(e) {
+    shidashi::clear_notifications(class = ns("error_notif"))
     if(!inherits(e, "condition")) {
       e <- simpleError(message = e$message)
     }
     ravedash::logger_error_condition(e)
+    Sys.sleep(0.1)
     shidashi::show_notification(
       message = e$message,
       title = "Error found!",
@@ -261,6 +263,7 @@ module_server <- function(input, output, session, ...){
       if(!length(msg) || isTRUE(msg == "")) {
         msg <- "Waiting for outputs..."
       }
+      later::later(watch_log, delay = 0.5)
     }
     msg <- paste(msg, collapse = "\n")
 
@@ -287,158 +290,240 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
-  run_command_pipeline <- function(
-    script_name = "script_dcm2nii",
-    execute_name = "conversion_mri",
-    title = "Running dcm2niix",
-    dryrun = TRUE, ...
-  ) {
-    dryrun <- raveio::is_dry_run() || dryrun
-    pipeline$set_settings(
-      dryrun = dryrun
-    )
+  run_command_pipeline <- function(cmd, wait = TRUE, title = "Running Terminal Command") {
 
-    res <- pipeline$run(
-      as_promise = TRUE,
-      names = script_name,
-      scheduler = "none",
-      type = "vanilla",
-      async = FALSE
-    )
-    script_details <- pipeline$read(script_name)
-    local_data$log_file <- script_details$log_file
+    shidashi::clear_notifications(class = ns("error_notif"))
 
-    if(dryrun) {
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = execute_name,
-        scheduler = "none",
-        type = "vanilla"
-      )
+    shiny::showModal(shiny::modalDialog(
+      title = title,
+      size = "l", easyClose = FALSE,
+      shidashi::flex_container(
+        class = "fill-width max-height-500 overflow-y-auto",
+        style = "flex-direction: column-reverse",
+        shidashi::flex_item(
+          shiny::verbatimTextOutput(ns("verbatim_log"), placeholder = TRUE)
+        )
+      ),
+      footer = dipsaus::actionButtonStyled(ns("dismiss_modal"), "Running...", disabled = "")
+    ))
 
-    } else {
+    cmd$execute(dry_run = TRUE, backup = FALSE)
 
-      ravedash::logger("Running system command with log file: ", local_data$log_file, level = "info")
-
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = execute_name,
-        scheduler = "none",
-        type = "vanilla",
-        async = TRUE,
-        check_interval = 1,
-        progress_quiet = TRUE
-      )
-      res$async_callback <- watch_log
-      shiny::showModal(shiny::modalDialog(
-        title = title,
-        size = "l", easyClose = FALSE,
-        shidashi::flex_container(
-          class = "fill-width max-height-500 overflow-y-auto",
-          style = "flex-direction: column-reverse",
-          shidashi::flex_item(
-            shiny::verbatimTextOutput(ns("verbatim_log"), placeholder = TRUE)
+    renderMsg <- function(msg) {
+      msg <- paste(msg, collapse = "\n")
+      session$sendCustomMessage(
+        "shidashi.set_html",
+        list(
+          selector = sprintf("pre#%s", ns("verbatim_log")),
+          content = paste0(
+            '<code class="hljs-literal" style="word-wrap:break-word;width: 100%;white-space: pre-wrap;">',
+            msg,
+            '</code>'
           )
+        )
+      )
+    }
+    check <- dipsaus::rs_exec(bquote({
+      script <- .(cmd$script)
+      script_path <- .(cmd$script_path)
+      log_path <- .(cmd$log_file)
+      writeLines(c(
+        "=================== Start: shell script ===================",
+        script,
+        paste("=================== Log:", Sys.time(), "===================")
+      ), con = log_path)
+      if(.(!wait)) {
+        cat(script)
+      }
+      Sys.sleep(0.5)
+      raveio::cmd_execute(script = script, script_path = script_path, stderr = log_path)
+    }), wait = wait, quoted = TRUE, name = title)
+
+    final <- function(has_error = FALSE) {
+      dipsaus::updateActionButtonStyled(
+        session = session, inputId = 'dismiss_modal', disabled = FALSE,
+        label = ifelse(has_error, "Gotcha", "Done"))
+      shidashi::show_notification(
+        message = shiny::div(
+          "Done executing conmmand. ",
+          "Please check the ",
+          shiny::a("log file", target="_blank",
+                   href=sprintf("file://%s", cmd$log_file)),
+          "(this link only works when you run RAVE locally. Try right-click and open) ",
+          "to see ", ifelse(has_error, "the error information.", "the full log")
         ),
-        footer = dipsaus::actionButtonStyled(ns("dismiss_modal"), "Running...", disabled = "")
-      ))
+        title = ifelse(has_error, "Error!", "Finished!"),
+        autohide = FALSE, close = TRUE, type = "dark",
+        icon = ravedash::shiny_icons$terminal,
+        class = "dismissible"
+      )
     }
 
-    res$promise$then(
-      onFulfilled = function(...) {
-
-        watch_log()
-        dipsaus::updateActionButtonStyled(session = session, inputId = 'dismiss_modal', disabled = FALSE, label = "Finished")
-
-        conv <- pipeline$read(execute_name)
-        if(conv$dry_run) {
-          shidashi::show_notification(
-            message = shiny::div(
-              paste0("Shell script saved to [", conv$script_path,
-                     "]! Please open your terminal, ",
-                     "paste the command below:"),
-              shiny::hr(),
-              shiny::pre(
-                class='pre-compact bg-gray-90 clipboard-btn shidashi-clipboard-output',
-                `data-dismiss`="toast",
-                type = "button",
-                `aria-label`="Close",
-                `data-clipboard-text` = conv$command,
-                shiny::code( conv$command )
-              )
-            ),
-            title = "Saved!", autohide = FALSE, close = TRUE,
-            class = "dismissible",
-            icon = ravedash::shiny_icons$terminal
-          )
+    promise <- promises::promise(function(resolve, reject) {
+      listener <- function() {
+        if(is.function(check)) {
+          code <- check()
         } else {
-          dipsaus::updateActionButtonStyled(session = session, inputId = 'dismiss_modal', disabled = FALSE, label = "Finished")
-          shidashi::show_notification(
-            message = shiny::div(
-              "Done executing conmmand. ",
-              "The shell command has been saved to: [", conv$script_path,
-              "], and log file has been saved to: [",
-              shiny::a(script_details$log_file, target="_blank",
-                       href=sprintf("file://%s", script_details$log_file)),
-              "(this link only works when you run RAVE locally)]. ",
-              "RAVE does know if any error occurs in the command script. ",
-              "Please read the log file by yourself."
-            ),
-            title = "Finished!",
-            autohide = FALSE, close = TRUE, type = "dark",
-            icon = ravedash::shiny_icons$terminal,
-            class = "dismissible"
-          )
+          code <- check
         }
-      },
-      onRejected = function(e){
-        try({
-          if( length(script_details$log_file ) && file.exists(script_details$log_file)) {
-            writeLines(c(
-              readLines(script_details$log_file),
-              "Found Errors... Please check the log file: ",
-              e$message
-            ), con = script_details$log_file)
+        path <- cmd$log_file
+        if(length(path) != 1 || is.na(path) || !file.exists(path) || path == '') {
+          msg <- NULL
+        } else {
+          suppressWarnings({
+            msg <- readLines(path)
+          })
+          if(!length(msg) || isTRUE(msg == "")) {
+            msg <- "Waiting for outputs..."
           }
-          watch_log()
-        }, silent = TRUE)
-        error_notification(e)
+        }
+
+        if(code == 0) {
+          renderMsg(c(msg, "Finished."))
+          resolve(attr(code, "rs_exec_result"))
+        } else if(code < 0) {
+          renderMsg(c(msg, "An error is detected."))
+          reject(1)
+        } else {
+          renderMsg(msg)
+          later::later(listener, delay = 0.5)
+        }
+      }
+      listener()
+    })
+
+    promises::then(
+      promise,
+      onFulfilled = function(...) {
+        final(has_error = FALSE)
+      },
+      onRejected = function(...) {
+        final(has_error = TRUE)
       }
     )
   }
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      run_command_pipeline(dryrun = TRUE, title = "Running dcm2niix",
-                           script_name = "script_dcm2nii", execute_name = "conversion_mri")
+      # cmd1 <- res$import_T1
+      # cmd2 <- res$import_CT
+      cmd1 <- local_reactives$bash_scripts$import_T1
+      cmd2 <- local_reactives$bash_scripts$import_CT
+      if(isTRUE(cmd1$error)) {
+        error_notification(cmd1$condition)
+        return()
+      }
+      if(isTRUE(cmd2$error)) {
+        error_notification(cmd2$condition)
+        return()
+      }
+
+      script1 <- cmd1$execute(dry_run = TRUE, backup = FALSE)
+      script2 <- cmd2$execute(dry_run = TRUE, backup = FALSE)
+
+      script <- paste(script1, script2, sep = "\n")
+
+      shidashi::show_notification(
+        message = shiny::div(
+          paste0("Shell script saved to [", dirname(cmd1$script_path),
+                 "]! Please open your terminal, ",
+                 "paste the command below:"),
+          shiny::hr(),
+          shiny::pre(
+            class='pre-compact bg-gray-90 clipboard-btn shidashi-clipboard-output',
+            `data-dismiss`="toast",
+            type = "button",
+            `aria-label`="Close",
+            `data-clipboard-text` = script,
+            shiny::code( script )
+          )
+        ),
+        title = "Saved!", autohide = FALSE, close = TRUE,
+        class = "dismissible",
+        icon = ravedash::shiny_icons$terminal
+      )
+
     }),
     input$btn_dcm2niix_copy,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
   shiny::bindEvent(
     ravedash::safe_observe({
-      ravedash::logger("Running dcm2niix from console", level = "info")
-      run_command_pipeline(dryrun = FALSE, title = "Running dcm2niix",
-                           script_name = "script_dcm2nii", execute_name = "conversion_mri")
+      # cmd1 <- res$import_T1
+      cmd <- local_reactives$bash_scripts$import_T1
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+      ravedash::logger("Running dcm2niix from console - Importing T1 MRI", level = "info")
+
+      run_command_pipeline(cmd = cmd, wait = FALSE, title = "Importing T1")
     }),
-    input$btn_dcm2niix_run,
+    input$btn_dcm2niix_run_t1,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      # cmd1 <- res$import_T1
+      cmd <- local_reactives$bash_scripts$import_CT
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+      ravedash::logger("Running dcm2niix from console - Importing CT", level = "info")
+
+      run_command_pipeline(cmd = cmd, wait = FALSE, title = "Importing CT")
+    }),
+    input$btn_dcm2niix_run_ct,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      run_command_pipeline(dryrun = TRUE, title = "Running FreeSurfer `recon-all`",
-                           script_name = "script_recon", execute_name = "fs_recon")
+      # cmd <- res$fs_recon
+      # cmd2 <- res$import_CT
+      cmd <- local_reactives$bash_scripts$fs_recon
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+
+      script <- cmd$execute(dry_run = TRUE, backup = FALSE)
+
+      shidashi::show_notification(
+        message = shiny::div(
+          paste0("Shell script saved to [", cmd$script_path,
+                 "]! Please open your terminal, ",
+                 "paste the command below:"),
+          shiny::hr(),
+          shiny::pre(
+            class='pre-compact bg-gray-90 clipboard-btn shidashi-clipboard-output',
+            `data-dismiss`="toast",
+            type = "button",
+            `aria-label`="Close",
+            `data-clipboard-text` = script,
+            shiny::code( script )
+          )
+        ),
+        title = "Saved!", autohide = FALSE, close = TRUE,
+        class = "dismissible",
+        icon = ravedash::shiny_icons$terminal
+      )
+
     }),
     input$btn_recon_copy,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
   shiny::bindEvent(
     ravedash::safe_observe({
-      ravedash::logger("Running fs recon-all from console", level = "info")
-      run_command_pipeline(dryrun = FALSE, title = "Running FreeSurfer `recon-all`",
-                           script_name = "script_recon", execute_name = "fs_recon")
+      cmd <- local_reactives$bash_scripts$fs_recon
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+      ravedash::logger("Running FreeSurfer recon-all from console", level = "info")
+      run_command_pipeline(cmd = cmd, wait = FALSE, title = "FreeSurfer recon-all")
     }),
     input$btn_recon_run,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -446,8 +531,39 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      run_command_pipeline(dryrun = TRUE, title = "Running FSL-flirt to co-registrate CT to T1",
-                           script_name = "script_coreg", execute_name = "coreg_results")
+      # cmd <- res$coreg_flirt
+      if(identical(input$coreg_ct_program, "AFNI")) {
+        cmd <- local_reactives$bash_scripts$coreg_3dallineate
+      } else {
+        cmd <- local_reactives$bash_scripts$coreg_flirt
+      }
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+
+      script <- cmd$execute(dry_run = TRUE, backup = FALSE)
+
+      shidashi::show_notification(
+        message = shiny::div(
+          paste0("Shell script saved to [", cmd$script_path,
+                 "]! Please open your terminal, ",
+                 "paste the command below:"),
+          shiny::hr(),
+          shiny::pre(
+            class='pre-compact bg-gray-90 clipboard-btn shidashi-clipboard-output',
+            `data-dismiss`="toast",
+            type = "button",
+            `aria-label`="Close",
+            `data-clipboard-text` = script,
+            shiny::code( script )
+          )
+        ),
+        title = "Saved!", autohide = FALSE, close = TRUE,
+        class = "dismissible",
+        icon = ravedash::shiny_icons$terminal
+      )
+
     }),
     input$btn_coreg_copy,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -455,8 +571,20 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      run_command_pipeline(dryrun = FALSE, title = "Running FSL-flirt to co-registrate CT to T1",
-                           script_name = "script_coreg", execute_name = "coreg_results")
+      # cmd <- res$coreg_flirt
+      if(identical(input$coreg_ct_program, "AFNI")) {
+        bin <- "AFNI/3dAllineate"
+        cmd <- local_reactives$bash_scripts$coreg_3dallineate
+      } else {
+        bin <- "FSL/flirt"
+        cmd <- local_reactives$bash_scripts$coreg_flirt
+      }
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+      ravedash::logger("Running {bin} from console", level = "info", use_glue = TRUE)
+      run_command_pipeline(cmd = cmd, wait = FALSE, title = bin)
     }),
     input$btn_coreg_run,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -473,7 +601,7 @@ module_server <- function(input, output, session, ...){
         crop = input$param_dcm2niix_crop
       ),
       freesurfer = list(
-        steps = input$param_fs_steps,
+        flag = input$param_fs_steps,
         fresh_start = isTRUE(input$param_fs_fresh_start)
       )
     )
@@ -484,76 +612,25 @@ module_server <- function(input, output, session, ...){
   shiny::bindEvent(
     shiny::observe({
       params <- input_params()
-      print(params)
       # save parameters
       pipeline$set_settings(
         params = params
       )
+      shidashi::clear_notifications(class = ns("error_notif"))
 
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = c("settings", "params", "script_dcm2nii"),
-        type = "vanilla",
-        scheduler = "none",
-        shortcut = TRUE
-      )
-
-      res$promise$then(
-        onFulfilled = function(...){
-          script_dcm2nii <- pipeline$read(var_names = "script_dcm2nii")
-          local_reactives$script_dcm2nii <- script_dcm2nii
-        },
-        onRejected = function(e) {
-          local_reactives$script_dcm2nii <- list(
-            error = TRUE,
-            reason = e
-          )
-        }
-      )
-
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = "script_recon",
-        type = "vanilla",
-        scheduler = "none",
-        shortcut = TRUE
-      )
-
-      res$promise$then(
-        onFulfilled = function(...){
-          script_recon <- pipeline$read(var_names = "script_recon")
-          local_reactives$script_recon <- script_recon
-        },
-        onRejected = function(e) {
-          local_reactives$script_recon <- list(
-            error = TRUE,
-            reason = e
-          )
-        }
-      )
-
-
-      res <- pipeline$run(
-        as_promise = TRUE,
-        names = "script_coreg",
-        type = "vanilla",
-        scheduler = "none",
-        shortcut = TRUE
-      )
-
-      res$promise$then(
-        onFulfilled = function(...){
-          script_coreg <- pipeline$read(var_names = "script_coreg")
-          local_reactives$script_coreg <- script_coreg
-        },
-        onRejected = function(e) {
-          local_reactives$script_coreg <- list(
-            error = TRUE,
-            reason = e
-          )
-        }
-      )
-
+      tryCatch({
+        res <- pipeline$run(
+          as_promise = FALSE,
+          names = c("settings", 'subject', "params", "import_T1", "import_CT",
+                    "fs_recon", "coreg_flirt", "coreg_3dallineate"),
+          type = "vanilla",
+          scheduler = "none",
+          shortcut = TRUE
+        )
+        local_reactives$bash_scripts <- res
+      }, error = function(e) {
+        error_notification(e)
+      })
 
     }),
     local_reactives$build_command,
@@ -562,6 +639,8 @@ module_server <- function(input, output, session, ...){
   )
 
   render_shell <- function(cmd){
+    cmd <- paste(cmd, collapse = "\n")
+    cmd <- unlist(strsplit(cmd, "\n"))
     shiny::div(
       # class = "clipboard-btn shidashi-clipboard-output",
       shiny::pre(
@@ -587,62 +666,45 @@ module_server <- function(input, output, session, ...){
     )
   }
 
-  output$panel_import_dicom <- shiny::renderUI({
+  output$panel_import_T1 <- shiny::renderUI({
+    cmd <- local_reactives$bash_scripts$import_T1
+    shiny::validate(
+      shiny::need(!isTRUE(cmd$error),
+                  message = cmd$condition$message)
+    )
+    render_shell(cmd$script)
+  })
 
-    script_dcm2nii <- as.list(local_reactives$script_dcm2nii)
-
-    shiny::validate(shiny::need(
-      isFALSE(script_dcm2nii$error),
-      message = local({
-        if(length(script_dcm2nii$reason)) {
-          paste(script_dcm2nii$reason$message, collapse = " ")
-        } else {
-          "Cannot find valid MRI/CT"
-        }
-      })
-    ))
-
-    cmd <- script_dcm2nii$script
-
-    render_shell(cmd)
+  output$panel_import_CT <- shiny::renderUI({
+    cmd <- local_reactives$bash_scripts$import_CT
+    shiny::validate(
+      shiny::need(!isTRUE(cmd$error),
+                  message = cmd$condition$message)
+    )
+    render_shell(cmd$script)
   })
 
   output$panel_fs_recon <- shiny::renderUI({
-
-    script_recon <- as.list(local_reactives$script_recon)
-
-    shiny::validate(shiny::need(
-      isFALSE(script_recon$error),
-      message = local({
-        if(length(script_recon$reason)) {
-          paste(script_recon$reason$message, collapse = " ")
-        } else {
-          "Cannot run FreeSurfer recon-all"
-        }
-      })
-    ))
-
-    cmd <- script_recon$script
-    render_shell(cmd)
+    cmd <- local_reactives$bash_scripts$fs_recon
+    shiny::validate(
+      shiny::need(!isTRUE(cmd$error),
+                  message = cmd$condition$message)
+    )
+    render_shell(cmd$script)
   })
 
   output$panel_coreg <- shiny::renderUI({
+    if(identical(input$coreg_ct_program, "AFNI")) {
+      cmd <- local_reactives$bash_scripts$coreg_3dallineate
+    } else {
+      cmd <- local_reactives$bash_scripts$coreg_flirt
+    }
 
-    script_coreg <- as.list(local_reactives$script_coreg)
-
-    shiny::validate(shiny::need(
-      isFALSE(script_coreg$error),
-      message = local({
-        if(length(script_coreg$reason)) {
-          paste(script_coreg$reason$message, collapse = " ")
-        } else {
-          "Cannot run FreeSurfer recon-all"
-        }
-      })
-    ))
-
-    cmd <- script_coreg$script
-    render_shell(cmd)
+    shiny::validate(
+      shiny::need(!isTRUE(cmd$error),
+                  message = cmd$condition$message)
+    )
+    render_shell(cmd$script)
   })
 
 

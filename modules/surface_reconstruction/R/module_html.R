@@ -42,16 +42,25 @@ module_html <- function(){
               tools = list(
                 shidashi::as_badge("requires `dcm2niix`|bg-yellow")
               ),
-              class_foot = "no-padding",
+              # class_foot = "no-padding",
               append_tools = FALSE,
-              footer = shiny::uiOutput(ns("panel_import_dicom")),
+              footer = shiny::tagList(
+                shiny::tags$details(
+                  shiny::tags$summary("Terminal script - Import T1 MRI"),
+                  shiny::uiOutput(ns("panel_import_T1"), container = shiny::p)
+                ),
+                shiny::tags$details(
+                  shiny::tags$summary("Terminal script - Import CT"),
+                  shiny::uiOutput(ns("panel_import_CT"), container = shiny::p)
+                )
+              ),
               shiny::div(
                 "The following script uses ", shiny::pre(class="pre-compact no-padding display-inline", "dcm2niix"),
                 " external library to convert DICOM images to Nifti format for later purposes. ",
                 shiny::br(),
                 "* The script requires Unix ",
-                shiny::pre(class="pre-compact no-padding display-inline", "sh"),
-                " terminal. If you are using Windows, please install and use Linux sub-system.",
+                shiny::pre(class="pre-compact no-padding display-inline", "bash"),
+                " terminal. If you are using Windows, please use Window sub-Linux system (WSL2).",
 
                 shiny::hr(),
 
@@ -99,7 +108,10 @@ module_html <- function(){
                       if(dry_run) {
                         NULL
                       } else {
-                        shiny::actionButton(ns("btn_dcm2niix_run"), "Run from RAVE")
+                        shiny::tagList(
+                          shiny::actionButton(ns("btn_dcm2niix_run_t1"), "Run from RAVE (T1 MRI)"),
+                          shiny::actionButton(ns("btn_dcm2niix_run_ct"), "Run from RAVE (CT)")
+                        )
                       }
                     }),
                     dipsaus::actionButtonStyled(ns("btn_dcm2niix_copy"), "Save & run by yourself")
@@ -115,19 +127,19 @@ module_html <- function(){
                 shidashi::as_badge("requires `FreeSurfer`|bg-yellow")
               ),
               append_tools = FALSE,
-              class_foot = "no-padding",
-              footer = shiny::uiOutput(ns("panel_fs_recon")),
+              # class_foot = "no-padding",
+              footer = shiny::tags$details(
+                shiny::tags$summary("Terminal script - FreeSurfer recon-all"),
+                shiny::uiOutput(ns("panel_fs_recon"), container = shiny::p)
+              ),
               shiny::div(
                 "RAVE electrode localization depend on the ",
                 shiny::pre(class="pre-compact no-padding display-inline", "FreeSurfer"),
-                " outputs. ",
-                "If you do not wish to reconstruct the surface files, which takes hours to run, ",
-                "please select ",
+                " outputs. The whole complete reconstruction will take several hours to run. ",
+                "If you want to save time, please select flag: ",
                 shiny::pre(class="pre-compact no-padding display-inline", "-autorecon1"),
-                " in the ",
-                shiny::pre(class="pre-compact no-padding display-inline", "Recon flag"),
-                " drop-down menu. It usually takes around 10 minutes to run with this flag, ",
-                "and several hours to run the rests. ",
+                "This procedure only normalizes MRI and strips skulls, ",
+                "hence only takes around 10 minutes. ",
                 "For detailed documentation, please check the ",
                 shiny::a(href = "https://surfer.nmr.mgh.harvard.edu/fswiki/recon-all",
                          target="_blank", "FreeSurfer website"), ".",
@@ -135,7 +147,7 @@ module_html <- function(){
                 "* The script requires Unix ",
                 shiny::pre(class="pre-compact no-padding display-inline", "bash"),
                 " terminals. If you are using Windows, ",
-                "please install and use the Linux sub-system.",
+                "please use Window sub-system for Linux [WSL2].",
 
                 shiny::hr(),
 
@@ -161,7 +173,7 @@ module_html <- function(){
                       inputId = ns("param_fs_steps"),
                       label = "Recon flag",
                       choices = autorecon_flags,
-                      selected = "-all"
+                      selected = autorecon_flags[[1]]
                     ),
                     shiny::checkboxInput(
                       inputId = ns("param_fs_fresh_start"),
@@ -193,16 +205,19 @@ module_html <- function(){
               title = "Co-registration CT to T1",
               start_collapsed = TRUE,
               tools = list(
-                shidashi::as_badge("requires `FSL-flirt`|bg-yellow")
+                shidashi::as_badge("requires `AFNI or FSL`|bg-yellow")
               ),
               append_tools = FALSE,
-              class_foot = "no-padding",
-              footer = shiny::uiOutput(ns("panel_coreg")),
+              # class_foot = "no-padding",
+              footer = shiny::tags$details(
+                shiny::tags$summary("Terminal script - CT MRI co-registration"),
+                shiny::uiOutput(ns("panel_coreg"), container = shiny::p)
+              ),
               shiny::div(
                 "* The script requires Unix ",
                 shiny::pre(class="pre-compact no-padding display-inline", "bash"),
                 " terminals. If you are using Windows, ",
-                "please install and use the Linux sub-system.",
+                "please use the Windows sub-system for Linux (WSL2).",
 
                 shiny::hr(),
 
@@ -219,6 +234,17 @@ module_html <- function(){
                       shiny::actionLink(
                         inputId = ns("param_coreg_refresh"),
                         label = "Refresh"
+                      )
+                    )
+                  ),
+
+                  shiny::column(
+                    width = 5L,
+                    shiny::div(
+                      shiny::selectInput(
+                        inputId = ns("coreg_ct_program"),
+                        label = "Program",
+                        choices = c("AFNI", "FSL")
                       )
                     )
                   )
