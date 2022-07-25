@@ -1790,14 +1790,14 @@ localization_list:
 localization_plan:
   '1':
     label: G
-    dimension: '4'
+    dimension: '64'
     type: iEEG
     info: ~
   '2':
-    label: G
-    dimension: '1'
+    label: S
+    dimension: '28'
     type: iEEG
     info: ~
 path_ct_in_t1: ~
-project_name: Reliability
-subject_code: YAB
+project_name: devel
+subject_code: YCQ

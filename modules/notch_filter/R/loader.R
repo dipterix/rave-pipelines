@@ -88,7 +88,7 @@ loader_server <- function(input, output, session, ...){
           dipsaus::shiny_alert2(
             title = "Errors",
             text = paste(
-              "Found an error while loading the power data:\n\n",
+              "Found an error while trying to find imported electrodes:\n\n",
               paste(e$message, collapse = "\n")
             ),
             icon = "error",

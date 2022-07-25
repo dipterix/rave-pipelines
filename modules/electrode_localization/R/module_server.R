@@ -339,36 +339,26 @@ module_server <- function(input, output, session, ...){
     }, add = TRUE)
 
     if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-      ct <- ct_in_t1
-      ct_shift <- ct$get_center_matrix()
-      ct_qform <- ct$get_qform()
-      matrix_world <- brain$Torig %*% solve(brain$Norig) %*% ct_qform %*% ct_shift
-      threeBrain::add_voxel_cube(brain, "CT", ct$get_data(), size = ct$get_size(), matrix_world = matrix_world)
-      key <- seq(0, max(ct$get_range()))
-      cmap <- threeBrain::create_colormap(gtype = "volume", dtype = "continuous",
-                                          key = key, value = key, color = c("white", "green", "darkgreen"))
-      controllers[["Left Opacity"]] <- 0.4
-      controllers[["Right Opacity"]] <- 0.4
-      controllers[["Voxel Type"]] <- "CT"
-      controllers[["Voxel Display"]] <- "normal"
-      controllers[["Voxel Min"]] <- 3000
-      controllers[["Edit Mode"]] <- "CT/volume"
-
-      viewer <- brain$plot(control_presets = control_presets, voxel_colormap = cmap,
-                           controllers = controllers, show_modal = FALSE,
-                           background = dipsaus::col2hexStr(theme$background),
-                           timestamp = FALSE,
-                           custom_javascript = "canvas.controls.noPan=true;")
+      class(ct_in_t1) <- "threeBrain.nii"
+      viewer <- brain$localize(
+        ct_in_t1, show_modal = FALSE,
+        controllers = list(
+          `Overlay Coronal` = TRUE,
+          `Overlay Axial` = TRUE,
+          `Overlay Sagittal` = TRUE,
+          `Edit Mode` = "disabled",
+          `Show Panels` = FALSE
+        ))
     } else {
-      controllers[["Edit Mode"]] <- "MRI slice"
-
-      controllers[["Left Opacity"]] <- 0.1
-      controllers[["Right Opacity"]] <- 0.1
-      viewer <- brain$plot(control_presets = control_presets,
-                           controllers = controllers, show_modal = FALSE,
-                           background = dipsaus::col2hexStr(theme$background),
-                           timestamp = FALSE,
-                           custom_javascript = "canvas.controls.noPan=true;")
+      viewer <- brain$localize(
+        show_modal = FALSE,
+        controllers = list(
+          `Overlay Coronal` = TRUE,
+          `Overlay Axial` = TRUE,
+          `Overlay Sagittal` = TRUE,
+          `Edit Mode` = "disabled",
+          `Show Panels` = FALSE
+        ))
     }
 
     viewer
