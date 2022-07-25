@@ -93,22 +93,22 @@ lapply(sort(list.files(
                   NULL
                 })
                 default_afni_path <- raveio:::cmd_afni_home(error_on_missing = FALSE)
-                afni_3dallineate <- tryCatch({
+                afni <- tryCatch({
                   afni <- raveio::normalize_commandline_path(path = afni_path, 
                     type = "afni", unset = default_afni_path)
-                  afni_3dallineate <- NULL
                   if (path_is_valid(afni, dir_ok = TRUE)) {
                     if (!identical(default_afni_path, afni)) {
                       raveio::raveio_setopt("afni_path", afni)
                     }
-                    afni_3dallineate <- file.path(afni, "3dAllineate")
+                  } else {
+                    afni
                   }
-                  afni_3dallineate
+                  afni
                 }, error = function(e) {
                   NULL
                 })
                 cmd_tools <- list(dcm2niix = dcm2niix, freesurfer = freesurfer, 
-                  flirt = flirt, afni_3dallineate = afni_3dallineate)
+                  flirt = flirt, afni = afni)
             }
             return(cmd_tools)
         }), deps = c("dcm2niix_path", "freesurfer_path", "fsl_path", 
@@ -151,7 +151,7 @@ lapply(sort(list.files(
                 }
                 ct <- file.path(subject$preprocess_settings$raw_path, 
                   path_ct)
-                if (is.null(cmd_tools$afni_3dallineate) && is.null(cmd_tools$flirt)) {
+                if (is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
                   warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
                 } else {
                   if (!path_is_valid(ct, dir_ok = TRUE)) {
@@ -179,7 +179,7 @@ lapply(sort(list.files(
                   skip_coregistration = skip_coregistration, 
                   has_dcm2niix = !is.null(cmd_tools$dcm2niix), 
                   has_freesurfer = !is.null(cmd_tools$freesurfer), 
-                  has_flirt = !is.null(cmd_tools$flirt), has_3dallineate = !is.null(cmd_tools$afni_3dallineate), 
+                  has_flirt = !is.null(cmd_tools$flirt), has_3dallineate = !is.null(cmd_tools$afni), 
                   path_mri = mri, path_ct = ct, path_temp = path_temp, 
                   path_log = path_log, messages = msgs, warnings = warns)
             }
@@ -190,7 +190,7 @@ lapply(sort(list.files(
         command = quote({
             {
                 import_T1 <- tryCatch({
-                  raveio::cmd_run_dcm2niix(subject = subject$subject_id, 
+                  raveio::cmd_run_dcm2niix(subject = subject, 
                     src_path = check_result$path_mri, type = "MRI", 
                     merge = params$dcm2niix$merge %OF% c("Auto", 
                       "No", "Yes"), float = params$dcm2niix$float %OF% 
@@ -208,7 +208,7 @@ lapply(sort(list.files(
         command = quote({
             {
                 import_CT <- tryCatch({
-                  raveio::cmd_run_dcm2niix(subject = subject$subject_id, 
+                  raveio::cmd_run_dcm2niix(subject = subject, 
                     src_path = check_result$path_ct, type = "CT", 
                     merge = params$dcm2niix$merge %OF% c("Auto", 
                       "No", "Yes"), float = params$dcm2niix$float %OF% 
@@ -237,8 +237,8 @@ lapply(sort(list.files(
                   autorecon_flags <- c("-autorecon1", "-all", 
                     "-autorecon2", "-autorecon3", "-autorecon2-cp", 
                     "-autorecon2-wm", "-autorecon2-pial")
-                  flag <- params$freesurfer$steps %OF% autorecon_flags
-                  raveio::cmd_run_recon_all(subject = subject$subject_id, 
+                  flag <- params$freesurfer$flag %OF% autorecon_flags
+                  raveio::cmd_run_recon_all(subject = subject, 
                     mri_path = mri_path, args = flag, overwrite = params$freesurfer$fresh_start, 
                     dry_run = TRUE, verbose = FALSE, command_path = cmd_tools$freesurfer)
                 }, error = function(e) {
@@ -268,10 +268,9 @@ lapply(sort(list.files(
                     stop("Please choose a valid CT Nifti file under ", 
                       ct_root)
                   }
-                  raveio::cmd_run_flirt(subject = subject$subject_id, 
-                    mri_path = mri_path, ct_path = ct_path, overwrite = FALSE, 
-                    command_path = cmd_tools$flirt, dry_run = TRUE, 
-                    verbose = FALSE)
+                  raveio::cmd_run_flirt(subject = subject, mri_path = mri_path, 
+                    ct_path = ct_path, overwrite = FALSE, command_path = cmd_tools$flirt, 
+                    dry_run = TRUE, verbose = FALSE)
                 }, error = function(e) {
                   list(error = TRUE, condition = e)
                 })
@@ -282,8 +281,32 @@ lapply(sort(list.files(
         iteration = "list"), CT_MR_coregistration_via_AFNI = targets::tar_target_raw(name = "coreg_3dallineate", 
         command = quote({
             {
-                coreg_3dallineate <- list(error = TRUE, condition = simpleError("Not yet implemented"))
+                coreg_3dallineate <- tryCatch({
+                  mri_path <- params$nii_t1
+                  mri_root <- file.path(check_result$path_temp, 
+                    "inputs", "MRI")
+                  mri_path <- file.path(mri_root, mri_path)
+                  if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                    stop("Please choose a valid MRI Nifti file under ", 
+                      mri_root)
+                  }
+                  ct_path <- params$nii_ct
+                  ct_root <- file.path(check_result$path_temp, 
+                    "inputs", "CT")
+                  ct_path <- file.path(ct_root, ct_path)
+                  if (!path_is_valid(ct_path) || dir.exists(ct_path)) {
+                    stop("Please choose a valid CT Nifti file under ", 
+                      ct_root)
+                  }
+                  raveio::cmd_run_3dAllineate(subject = subject, 
+                    mri_path = mri_path, ct_path = ct_path, overwrite = FALSE, 
+                    command_path = cmd_tools$afni, dry_run = TRUE, 
+                    verbose = FALSE)
+                }, error = function(e) {
+                  list(error = TRUE, condition = e)
+                })
             }
             return(coreg_3dallineate)
-        }), deps = character(0), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"))
+        }), deps = c("params", "check_result", "subject", "cmd_tools"
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"))

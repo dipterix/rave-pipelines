@@ -5714,27 +5714,27 @@ flirt &lt;- tryCatch({
 }, error = function(e){ NULL })
 
 default_afni_path &lt;- raveio:::cmd_afni_home(error_on_missing = FALSE)
-afni_3dallineate &lt;- tryCatch({
+afni &lt;- tryCatch({
   afni &lt;- raveio::normalize_commandline_path(
     path = afni_path,
     type = &quot;afni&quot;,
     unset = default_afni_path
   )
-  afni_3dallineate &lt;- NULL
   if(path_is_valid(afni, dir_ok = TRUE)) {
     if(!identical(default_afni_path, afni)) {
       raveio::raveio_setopt(&#39;afni_path&#39;, afni)
     }
-    afni_3dallineate &lt;- file.path(afni, &quot;3dAllineate&quot;)
+  } else {
+    afni
   }
-  afni_3dallineate
+  afni
 }, error = function(e){ NULL })
 
 cmd_tools &lt;- list(
   dcm2niix = dcm2niix,
   freesurfer = freesurfer,
   flirt = flirt,
-  afni_3dallineate = afni_3dallineate
+  afni = afni
 )</code></pre>
 <pre class="r"><code>subject &lt;- raveio::RAVESubject$new(
   project_name = project_name, 
@@ -5772,7 +5772,7 @@ if(!skip_recon &amp;&amp; fs_reconstructed) {
 }
 
 ct &lt;- file.path(subject$preprocess_settings$raw_path, path_ct)
-if(is.null(cmd_tools$afni_3dallineate) &amp;&amp; is.null(cmd_tools$flirt)) {
+if(is.null(cmd_tools$afni) &amp;&amp; is.null(cmd_tools$flirt)) {
   warns &lt;- append(warns, &quot;Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.&quot;)
 } else {
   if(!path_is_valid(ct, dir_ok = TRUE)) {
@@ -5805,7 +5805,7 @@ check_result &lt;- list(
   has_dcm2niix = !is.null(cmd_tools$dcm2niix),
   has_freesurfer = !is.null(cmd_tools$freesurfer),
   has_flirt = !is.null(cmd_tools$flirt),
-  has_3dallineate = !is.null(cmd_tools$afni_3dallineate),
+  has_3dallineate = !is.null(cmd_tools$afni),
   
   path_mri = mri,
   path_ct = ct,
@@ -5852,7 +5852,7 @@ elif [[ ! &quot;$src_path&quot; =~ \.[nN][iI][iI]($|\.[gG][zZ]$) ]]; then
 fi
 
 # Prepare log file
-log_file=&quot;log-dcm2niix-220724-162836.log&quot;
+log_file=&quot;log-dcm2niix-220724-203635.log&quot;
 if [[ ! -z &quot;$log_file&quot; ]]; then
   log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
   mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot;
@@ -5922,7 +5922,7 @@ elif [[ ! &quot;$src_path&quot; =~ \.[nN][iI][iI]($|\.[gG][zZ]$) ]]; then
 fi
 
 # Prepare log file
-log_file=&quot;log-dcm2niix-220724-162836.log&quot;
+log_file=&quot;log-dcm2niix-220724-203635.log&quot;
 if [[ ! -z &quot;$log_file&quot; ]]; then
   log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
   mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_dir/$log_file&quot;
@@ -5977,11 +5977,11 @@ the MRI. This sub-procedure only takes 8-10 minutes.</p>
 set -e
 
 # Prepare log file
-log_file=&quot;log-recon-all-220724-162836.log&quot;
+log_file=&quot;log-recon-all-220724-203635.log&quot;
 if [[ ! -z &quot;$log_file&quot; ]]; then
   log_path=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
   log_file=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log/$log_file&quot;
-  mkdir -p &quot;$log_path&quot; &amp;&amp; touch &quot;$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt; &quot;$log_file&quot;
+  mkdir -p &quot;$log_path&quot; &amp;&amp; touch &quot;$log_file&quot; &amp;&amp; echo &quot;Started: $(date -u)&quot; &gt;&gt; &quot;$log_file&quot;
   echo --------------------------------------------------------
   echo Log file: &quot;$log_file&quot;
   echo --------------------------------------------------------
@@ -6016,19 +6016,19 @@ SUBJECTS_DIR=&quot;$wdir_fs/rave-imaging&quot;
 
 if [ -d &quot;$SUBJECTS_DIR/fs/mri&quot; ]; then
   # Use existing FreeSurfer directory to continue analysis
-  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -all | tee -a &quot;$log_file&quot;
+  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -autorecon1 | tee -a &quot;$log_file&quot;
 else
   # Copy Nifti input
   cp &quot;$mri_path&quot; &quot;$wdir_fs/$input_name&quot;
   if [ -d &quot;$SUBJECTS_DIR/fs&quot; ]; then
     rm -r &quot;$SUBJECTS_DIR/fs&quot;
   fi
-  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -i &quot;$wdir_fs/$input_name&quot; -all | tee -a &quot;$log_file&quot;
+  recon-all -sd &quot;$SUBJECTS_DIR&quot; -sid fs -i &quot;$wdir_fs/$input_name&quot; -autorecon1 | tee -a &quot;$log_file&quot;
 fi
 
 echo &quot;Done.&quot; | tee -a &quot;$log_file&quot;
 
-## END OF RAVE Script: FreeSurfer recon-all with flags: -all  ##
+## END OF RAVE Script: FreeSurfer recon-all with flags: -autorecon1  ##
 </code>
 </pre>
 <p>Align CT to T1 (co-registration). There are two options
@@ -6060,7 +6060,7 @@ source ${FSLDIR}/etc/fslconf/fsl.sh
 PATH=${FSLDIR}/bin:${PATH}
 
 # Prepare log file
-log_file=&quot;log-flirt-220724-162836.log&quot;
+log_file=&quot;log-flirt-220724-203635.log&quot;
 if [[ ! -z &quot;$log_file&quot; ]]; then
   log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
   log_file=&quot;$log_dir/$log_file&quot;
@@ -6088,7 +6088,62 @@ echo &quot;Done.&quot; | tee -a &quot;$log_file&quot;
 <p>The following bash script uses <code>3dAllineate</code> command</p>
 <pre class="sh">
 <code class="hljs">
-Error:  Not yet implemented 
+#!/usr/bin/env bash
+
+set -e
+
+AFNI_HOME=&quot;/Users/dipterix/abin&quot;
+DYLD_PATH=&quot;/opt/X11/lib/flat_namespace&quot;
+
+#~/rave_data/raw_dir/YCQ/rave-imaging/coregistration
+# t1=&quot;../../inputs/MRI/YCQ_MRI.nii&quot;
+# ct=&quot;../../inputs/CT/YCQ_CT.nii&quot;
+workdir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/coregistration&quot;
+t1=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/MRI/YCQ_MRI.nii&quot;
+ct=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/inputs/CT/YCQ_CT.nii&quot;
+
+# Load AFNI
+if [[ ! -z &quot;$AFNI_HOME&quot; ]]; then
+  export PATH=&quot;$PATH:$AFNI_HOME&quot;
+fi
+
+if [[ -d &quot;$DYLD_PATH&quot; ]]; then
+  export DYLD_LIBRARY_PATH=&quot;${DYLD_LIBRARY_PATH}:$DYLD_PATH&quot;
+fi
+
+# Prepare log file
+log_file=&quot;log-3dAllineate-220724-203635.log&quot;
+if [[ ! -z &quot;$log_file&quot; ]]; then
+  log_dir=&quot;/Users/dipterix/rave_data/raw_dir/YCQ/rave-imaging/log&quot;
+  log_file=&quot;$log_dir/$log_file&quot;
+  mkdir -p &quot;$log_dir&quot; &amp;&amp; touch &quot;$log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+  echo &quot;Log file: $log_file&quot;
+  echo &#39;--------------------------------------------------------&#39;
+else
+  log_file=&quot;/dev/null&quot;
+fi
+
+# Prepare working directory
+echo &quot;Set working directory: $workdir/afni_3dAllineate&quot; &gt;&gt; &quot;$log_file&quot;
+mkdir -p &quot;$workdir/afni_3dAllineate&quot; &amp;&amp; cd &quot;$workdir/afni_3dAllineate&quot;
+cp -f &quot;$t1&quot; T1.nii
+cp -f &quot;$ct&quot; CT.nii
+
+@Align_Centers -base T1.nii -dset CT.nii 2&gt;&amp;1 | tee -a &quot;$log_file&quot;
+3dresample -input CT_shft.nii -prefix CT_RAI_res_shft.nii  -master T1.nii  -dxyz 1 1 1 -rmode NN 2&gt;&amp;1 | tee -a &quot;$log_file&quot;
+
+# Check if python is available. On my OSX M1, python is missing and python3 is available
+python_bin=$(which python | which python2 | which python3)
+&quot;$python_bin&quot; &quot;$(which align_epi_anat.py)&quot; -dset1 T1.nii -dset2  CT_RAI_res_shft.nii -dset1_strip None -dset2_strip None -dset2to1 -suffix _al -feature_size 1 -cost nmi -giant_move -rigid_body 2&gt;&amp;1 | tee -a &quot;$log_file&quot;
+
+3dcopy  CT_RAI_res_shft_al+orig CT_RAI_res_shft_al.nii 2&gt;&amp;1 | tee -a &quot;$log_file&quot;
+
+cp -f CT_RAI_res_shft_al.nii &quot;$workdir/ct_in_t1.nii&quot;
+
+echo &quot;Done.&quot; | tee -a &quot;$log_file&quot;
+
+## END OF RAVE Script: AFNI-3dAllineate coregistration ##
 </code>
 </pre>
 </div>
@@ -6105,8 +6160,8 @@ is built, you can visualize and execute the pipeline without the need of
 re-knit this document. Notice we use <code>r</code> block instead of
 <code>rave</code>. (This is because the code blocks are not part of
 pipeline targets.)</p>
-<div id="htmlwidget-49e30319aa1be595b2da" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-49e30319aa1be595b2da">{"x":{"nodes":{"name":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated"],"seconds":[0,0.003,0.018,0,0.009,0,0,0.005,0,0.03,0.016,0,0,0,0,0,0,0,0,0.003,0],"bytes":[72,644,190,160,532704,100,51,264378,51,264142,264265,213,66,67,56,14690,407,47,47,262041,54],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"level":[3,5,4,0,6,3,3,6,3,6,6,3,3,3,3,2,1,3,3,4,3],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","check_result","params","cmd_tools","settings","settings","settings","settings","settings","settings","params","check_result","subject","cmd_tools","dcm2niix_path","freesurfer_path","fsl_path","afni_path","settings","params","check_result","subject","cmd_tools","subject","path_mri","cmd_tools","skip_recon","path_ct","skip_coregistration","settings","project_name","subject_code","settings","settings","settings_path","subject","check_result","params","cmd_tools"],"to":["skip_coregistration","import_CT","import_CT","import_CT","import_CT","skip_recon","dcm2niix_path","subject_code","freesurfer_path","params","afni_path","coreg_flirt","coreg_flirt","coreg_flirt","coreg_flirt","cmd_tools","cmd_tools","cmd_tools","cmd_tools","path_mri","fs_recon","fs_recon","fs_recon","fs_recon","check_result","check_result","check_result","check_result","check_result","check_result","project_name","subject","subject","fsl_path","path_ct","settings","import_T1","import_T1","import_T1","import_T1"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Stem"],"color":["#78B7C5","#899DA4"],"shape":["dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-1b7ff9f85971f6150795" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1b7ff9f85971f6150795">{"x":{"nodes":{"name":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated"],"seconds":[0,0.003,0.017,0,0.01,0,0,0.004,0.001,0.015,0.016,0,0,0,0.001,0.002,0,0,0,0.003,0],"bytes":[72,644,190,160,532510,100,51,264398,51,264283,264285,218,66,67,56,14718,413,47,47,262041,54],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["afni_path","check_result","cmd_tools","coreg_3dallineate","coreg_flirt","dcm2niix_path","freesurfer_path","fs_recon","fsl_path","import_CT","import_T1","params","path_ct","path_mri","project_name","settings","settings_path","skip_coregistration","skip_recon","subject","subject_code"],"level":[3,5,4,6,6,3,3,6,3,6,6,3,3,3,3,2,1,3,3,4,3],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","params","check_result","subject","cmd_tools","subject","check_result","params","cmd_tools","settings","settings","settings","settings","settings","settings","params","check_result","subject","cmd_tools","dcm2niix_path","freesurfer_path","fsl_path","afni_path","settings","params","check_result","subject","cmd_tools","subject","path_mri","cmd_tools","skip_recon","path_ct","skip_coregistration","settings","project_name","subject_code","settings","settings","settings_path","subject","check_result","params","cmd_tools"],"to":["skip_coregistration","coreg_3dallineate","coreg_3dallineate","coreg_3dallineate","coreg_3dallineate","import_CT","import_CT","import_CT","import_CT","skip_recon","dcm2niix_path","subject_code","freesurfer_path","params","afni_path","coreg_flirt","coreg_flirt","coreg_flirt","coreg_flirt","cmd_tools","cmd_tools","cmd_tools","cmd_tools","path_mri","fs_recon","fs_recon","fs_recon","fs_recon","check_result","check_result","check_result","check_result","check_result","check_result","project_name","subject","subject","fsl_path","path_ct","settings","import_T1","import_T1","import_T1","import_T1"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Stem"],"color":["#78B7C5","#899DA4"],"shape":["dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

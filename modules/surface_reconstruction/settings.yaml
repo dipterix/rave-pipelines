@@ -4,11 +4,11 @@ freesurfer_path: ''
 fsl_path: ''
 params:
   nii_t1: YCQ_MRI.nii
-  nii_ct: YCQ_CT.nii
+  nii_ct: YCQ_CT_shft.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
-    crop: 'No'
+    crop: 'Yes'
   freesurfer:
     flag: -autorecon1
     fresh_start: no
