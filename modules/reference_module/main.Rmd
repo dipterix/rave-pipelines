@@ -48,12 +48,53 @@ if(isTRUE(reference_name %in% subject$reference_names)) {
   })
   
 } else {
-  reference_table_initial <- data.frame(
-    Electrode = subject$electrodes,
-    Group = "Default",
-    Reference = "noref",
-    Type = "No Reference"
-  )
+  # get electrode file
+  electrode_table <- subject$get_electrode_table(reference_name = reference_name)
+  
+  # group by Label prefix
+  str_electrode_group <- gsub("[0-9]+$", "", electrode_table$Label)
+  electrode_table$Group <- trimws(str_electrode_group)
+  
+  if(!"LocationType" %in% names(electrode_table)) {
+    electrode_table$LocationType <- "iEEG"
+  } else {
+    electrode_table$LocationType[!electrode_table$LocationType %in% raveio::LOCATION_TYPES] <- "iEEG"
+  }
+  if(length(subject$electrode_types) == nrow(electrode_table)) {
+    electrode_table$SignalType <- subject$electrode_types
+  } else if(!"SignalType" %in% names(electrode_table)) {
+    electrode_table$SignalType <- "LFP"
+  } else {
+    electrode_table$SignalType[!electrode_table$SignalType %in% raveio::SIGNAL_TYPES] <- "LFP"
+  }
+  
+  splits <- split(electrode_table, electrode_table$Group)
+  
+  
+  subs <- lapply(splits, function(sub) {
+    ltype <- sub$LocationType
+    refs <- rep("noref", nrow(sub))
+    ref_type <- rep("No Reference", nrow(sub))
+    seeg <- which(ltype == 'sEEG')
+    if(length(seeg) >= 2) {
+      last_idx <- seeg[[length(seeg)]]
+      refs[seeg[-length(seeg)]] <- sprintf("ref_%d", sub$Electrode[seeg[-1]])
+      ref_type[seeg[-length(seeg)]] <- "Bipolar Reference"
+      refs[[last_idx]] <- "noref"
+      sub$Group[[last_idx]] <- "Bipolar-last-electrode"
+    }
+    sub$Reference <- refs
+    sub$Type <- ref_type
+    sub[, c("Electrode", "Group", "Reference", "Type")]
+  })
+  reference_table_initial <- do.call("rbind", unname(subs))
+  
+  # reference_table_initial <- data.frame(
+  #   Electrode = subject$electrodes,
+  #   Group = "Default",
+  #   Reference = "noref",
+  #   Type = "No Reference"
+  # )
 }
 # save to subject's meta folder with reference name "_unsaved"
 unsaved_meta <- file.path(subject$meta_path, "reference__unsaved.csv")
