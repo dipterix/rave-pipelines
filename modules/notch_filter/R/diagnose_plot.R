@@ -38,7 +38,6 @@ diagnose_notch_filters <- function(
   )
   on.exit({
     do.call(graphics::par, old_theme)
-    progress$inc(sprintf("Electrode %s (end)", electrodes[[ii]]))
   }, add = TRUE)
 
   FUN <- function(ii) {
@@ -110,6 +109,7 @@ diagnose_notch_filters <- function(
       }
     }
 
+    progress$inc(sprintf("Electrode %s (end)", electrodes[[ii]]))
 
   }
 
