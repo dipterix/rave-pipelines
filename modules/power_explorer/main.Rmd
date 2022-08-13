@@ -1,5 +1,7 @@
 ---
 title: "RAVE Pipeline Markdown Template"
+format: html
+editor: visual
 output:
   html_document: default
   pdf_document: default
@@ -134,8 +136,6 @@ collapsed_data <- lapply(cond_groups, function(g){
 })
 ```
 
-
-
 ## Build, Visualize, & Run
 
 Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-power_explorer.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
@@ -143,7 +143,6 @@ Please make sure the following code block is at the end of your pipeline file. T
 ```{r build, echo=FALSE, results='hide'}
 build_pipeline(make_file = "make-power_explorer.R")
 ```
-
 
 Once the pipeline script `make-power_explorer.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
 
@@ -157,11 +156,3 @@ raveio::pipeline_progress(method = 'details')
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
 raveio::pipeline_visualize()
 ```
-
-
-
-
-
-
-
-

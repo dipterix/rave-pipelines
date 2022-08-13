@@ -42,8 +42,6 @@ modules:
   standalone_viewer:
     label: Standalone Viewer
     hidden: yes
-  block_explorer:
-    label: Block Explorer
 groups:
   Import Signals:
     order: 1
