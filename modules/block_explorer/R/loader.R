@@ -2,7 +2,7 @@
 loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
   ravedash::simple_layout(
-    input_width = 4L,
+    input_width = 5L,
     container_fixed = TRUE,
     container_style = 'max-width:1444px;',
     input_ui = {
@@ -19,10 +19,11 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
           ),
           shidashi::flex_item(
             loader_subject$ui_func()
+          ),
+          shidashi::flex_item(
+            loader_block$ui_func()
           )
         ),
-
-        loader_epoch$ui_func(),
 
         ravedash::flex_group_box(
           title = "Electrodes and Reference",
@@ -75,7 +76,6 @@ loader_server <- function(input, output, session, ...){
           "loader_project_name",
           "loader_subject_code",
           "loader_electrode_text",
-          "loader_epoch_name",
           "loader_reference_name"
         )
       )
@@ -84,9 +84,8 @@ loader_server <- function(input, output, session, ...){
       # Save the variables into pipeline settings file
       pipeline$set_settings(.list = settings)
 
-      # Check if user has asked to set the epoch & reference to be the default
-      default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
-      default_reference <- isTRUE(loader_epoch$get_sub_element_input("default"))
+      # Check if user has asked to set the reference to be the default
+      default_reference <- isTRUE(loader_reference$get_sub_element_input("default"))
 
       # --------------------- Run the pipeline! ---------------------
 
@@ -122,12 +121,9 @@ loader_server <- function(input, output, session, ...){
         # When data can be imported
         onFulfilled = function(e){
 
-          # Set epoch and/or reference as default
-          if(default_epoch || default_reference){
+          # Set reference as default
+          if(default_reference){
             repo <- pipeline$read("repository")
-            if(default_epoch){
-              repo$subject$set_default("epoch_name", repo$epoch_name)
-            }
             if(default_reference) {
               repo$subject$set_default("reference_name", repo$reference_name)
             }

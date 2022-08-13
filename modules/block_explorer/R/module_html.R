@@ -15,10 +15,6 @@ module_html <- function(){
 
             electrode_selector$ui_func(),
 
-            comp_condition_groups$ui_func(),
-
-            baseline_choices$ui_func(),
-
             comp_analysis_ranges$ui_func()
 
           )
