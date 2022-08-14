@@ -13,15 +13,18 @@ lapply(sort(list.files(
     quote({
         load_yaml(settings_path)
     }), deps = "settings_path", cue = targets::tar_cue("always")), 
-    input_baseline_unit = targets::tar_target_raw("baseline_unit", 
+    input_analysis_electrodes__category = targets::tar_target_raw("analysis_electrodes__category", 
+        quote({
+            settings[["analysis_electrodes__category"]]
+        }), deps = "settings"), input_baseline_unit = targets::tar_target_raw("baseline_unit", 
         quote({
             settings[["baseline_unit"]]
-        }), deps = "settings"), input_requested_electrode = targets::tar_target_raw("requested_electrode", 
+        }), deps = "settings"), input_analysis_electrodes = targets::tar_target_raw("analysis_electrodes", 
         quote({
-            settings[["requested_electrode"]]
-        }), deps = "settings"), input_load_electrodes = targets::tar_target_raw("load_electrodes", 
+            settings[["analysis_electrodes"]]
+        }), deps = "settings"), input_loaded_electrodes = targets::tar_target_raw("loaded_electrodes", 
         quote({
-            settings[["load_electrodes"]]
+            settings[["loaded_electrodes"]]
         }), deps = "settings"), input_reference_name = targets::tar_target_raw("reference_name", 
         quote({
             settings[["reference_name"]]
@@ -46,36 +49,36 @@ lapply(sort(list.files(
             }
             return(subject)
         }), deps = c("project_name", "subject_code"), cue = targets::tar_cue("thorough"), 
-        pattern = NULL, iteration = "list"), parse_requested_electrode = targets::tar_target_raw(name = "sample_electrode", 
+        pattern = NULL, iteration = "list"), parse_analysis_electrodes = targets::tar_target_raw(name = "sample_electrode", 
         command = quote({
             {
-                sample_electrode <- dipsaus::parse_svec(requested_electrode)
+                sample_electrode <- dipsaus::parse_svec(analysis_electrodes)
                 if (length(sample_electrode) != 1) {
                   stop("Sample electrode number must have length of one")
                 }
             }
             return(sample_electrode)
-        }), deps = "requested_electrode", cue = targets::tar_cue("thorough"), 
+        }), deps = "analysis_electrodes", cue = targets::tar_cue("thorough"), 
         pattern = NULL, iteration = "list"), calculate_electrodes_to_load = targets::tar_target_raw(name = "electrodes_to_load", 
         command = quote({
             {
-                electrodes_to_load <- sort(c(dipsaus::parse_svec(load_electrodes), 
+                electrodes_to_load <- sort(c(dipsaus::parse_svec(loaded_electrodes), 
                   sample_electrode))
             }
             return(electrodes_to_load)
-        }), deps = c("load_electrodes", "sample_electrode"), 
+        }), deps = c("loaded_electrodes", "sample_electrode"), 
         cue = targets::tar_cue("thorough"), pattern = NULL, iteration = "list"), 
     load_repository = targets::tar_target_raw(name = "repository", 
         command = quote({
             {
                 repository <- with_future_parallel({
                   prepare_subject_with_blocks(subject = subject, 
-                    electrodes = load_electrodes, reference_name = reference_name, 
+                    electrodes = loaded_electrodes, reference_name = reference_name, 
                     blocks = block)
                 })
             }
             return(repository)
-        }), deps = c("subject", "load_electrodes", "reference_name", 
+        }), deps = c("subject", "loaded_electrodes", "reference_name", 
         "block"), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), extract_loaded_electrodes = targets::tar_target_raw(name = "electrodes_loaded", 
         command = quote({
@@ -123,7 +126,8 @@ lapply(sort(list.files(
                   time <- voltage$dnames$Time
                 }
                 voltage_sample <- list(origin = list(sample_rate = sample_rate, 
-                  time = voltage$dnames$Time, data = voltage_single), 
+                  time = voltage$dnames$Time, data = voltage_single, 
+                  range = range(voltage_single), sd = stats::sd(voltage_single)), 
                   decimated = list(decimate_factor = decimate_rate, 
                     sample_rate = sample_rate/decimate_rate, 
                     time = time, data = voltage_single_decimated))
@@ -147,23 +151,8 @@ lapply(sort(list.files(
                 sample_rate <- wavelet$sample_rate
                 wavelet_single <- subset(wavelet$data, Electrode ~ 
                   Electrode == sample_electrode, drop = TRUE)
-                n_timepoints <- ncol(wavelet_single)
-                n_freq <- nrow(wavelet_single)
-                if (n_freq * n_timepoints > 50000 && n_timepoints >= 
-                  16) {
-                  decimate_factor <- ceiling(n_freq * n_timepoints/50000)
-                  tidx <- seq(1, n_timepoints, by = decimate_factor)
-                } else {
-                  decimate_factor <- 1
-                  tidx <- seq_len(n_timepoints)
-                }
-                wavelet_decimated <- wavelet_single[, tidx, drop = FALSE]
                 wavelet_sample <- list(origin = list(sample_rate = sample_rate, 
-                  dnames = wavelet$dnames[c(1, 2)], data = wavelet_single), 
-                  decimated = list(decimate_factor = decimate_factor, 
-                    sample_rate = sample_rate/decimate_factor, 
-                    dnames = list(Frequency = wavelet$dnames$Frequency, 
-                      Time = wavelet$dnames$Time[tidx]), data = wavelet_decimated))
+                  dnames = wavelet$dnames[c(1, 2)], data = wavelet_single))
             }
             return(wavelet_sample)
         }), deps = c("wavelet", "sample_electrode"), cue = targets::tar_cue("thorough"), 
@@ -172,8 +161,9 @@ lapply(sort(list.files(
             {
                 power_sample <- wavelet_sample
                 switch(baseline_method, `Welch-Periodogram` = {
-                  apf <- approxfun(x = pwelch_overall$freq, y = pwelch_overall$spec)
+                  apf <- approxfun(x = pwelch_overall$freq, y = pwelch_overall$spec_db)
                   bl <- apf(wavelet_sample$origin$dnames$Frequency)
+                  bl <- 10^(bl/20)
                 }, `Block-Average` = {
                   bl <- rowMeans(Mod(wavelet_sample$origin$data)^2)
                 }, `Block-Median` = {
@@ -183,14 +173,10 @@ lapply(sort(list.files(
                   bl <- 1
                 })
                 power_sample$origin$data <- Mod(wavelet_sample$origin$data)^2/bl
-                power_sample$decimated$data <- Mod(wavelet_sample$decimated$data)^2/bl
                 switch(baseline_unit, Decibel = {
                   power_sample$origin$data <- 10 * log10(power_sample$origin$data)
-                  power_sample$decimated$data <- 10 * log10(power_sample$decimated$data)
                 }, `Percentage-Change` = {
                   power_sample$origin$data <- 100 * power_sample$origin$data - 
-                    100
-                  power_sample$decimated$data <- 100 * power_sample$decimated$data - 
                     100
                 }, {
                   stop("Unsupported baseline unit")

@@ -76,7 +76,8 @@ loader_server <- function(input, output, session, ...){
           "loader_project_name",
           "loader_subject_code",
           "loader_electrode_text",
-          "loader_reference_name"
+          "loader_reference_name",
+          "loader_block"
         )
       )
       # TODO: add your own input values to the settings file
@@ -88,10 +89,6 @@ loader_server <- function(input, output, session, ...){
       default_reference <- isTRUE(loader_reference$get_sub_element_input("default"))
 
       # --------------------- Run the pipeline! ---------------------
-
-      # Calculate the progress bar
-      tarnames <- pipeline$target_table$Names
-      count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
 
       # Pop up alert to prevent user from making any changes (auto_close=FALSE)
       # This requires manually closing the alert window
@@ -110,8 +107,7 @@ loader_server <- function(input, output, session, ...){
         scheduler = "none",
         type = "smart",  # parallel
         # async = TRUE,
-        callr_function = NULL,
-        progress_quiet = TRUE
+        callr_function = NULL
       )
 
       # The `res` contains a promise that might not have finished yet,

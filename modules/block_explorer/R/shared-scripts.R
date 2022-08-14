@@ -9,3 +9,4 @@ NULL
 
 library(dipsaus)
 library(raveio)
+loadNamespace("ravetools")

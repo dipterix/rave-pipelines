@@ -1,8 +1,9 @@
-project_name: "automated"
-subject_code: "PAV004__block002"
-load_electrodes: "1:20,110,128"
-reference_name: ~
-block: block002
-requested_electrode: 128
-baseline_method: "Block-Median"
-baseline_unit: "Decibel"
+analysis_electrodes: '14'
+analysis_electrodes__category: Electrode
+baseline_method: Block-Median
+baseline_unit: Decibel
+block: 008
+loaded_electrodes: 13-16,24
+project_name: demo
+reference_name: noref
+subject_code: DemoSubject

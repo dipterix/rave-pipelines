@@ -52,8 +52,8 @@ subject
 
 This code chunk always runs because it caches data internally, and only a shell (pointer to the data) is returned. We do not want to cache the shell as the data content could be deleted by the users. Instead, we want the repository to decide whether to use the cache, or to update.
 
-```{rave parse_requested_electrode, language = "R", export = "sample_electrode"}
-sample_electrode <- dipsaus::parse_svec(requested_electrode)
+```{rave parse_analysis_electrodes, language = "R", export = "sample_electrode"}
+sample_electrode <- dipsaus::parse_svec(analysis_electrodes)
 if(length(sample_electrode) != 1) {
   stop("Sample electrode number must have length of one")
 }
@@ -61,7 +61,7 @@ if(length(sample_electrode) != 1) {
 
 ```{rave calculate_electrodes_to_load, language = "R", export = "electrodes_to_load"}
 electrodes_to_load <- sort(
-  c( dipsaus::parse_svec(load_electrodes), sample_electrode )
+  c( dipsaus::parse_svec(loaded_electrodes), sample_electrode )
 )
 ```
 
@@ -69,7 +69,7 @@ electrodes_to_load <- sort(
 repository <- with_future_parallel({
   prepare_subject_with_blocks(
     subject = subject,
-    electrodes = load_electrodes,
+    electrodes = loaded_electrodes,
     reference_name = reference_name,
     blocks = block
   )
@@ -112,12 +112,12 @@ Each plot has one variation that uses a subset of analysis range, just like the 
 
 The affected global inputs are:
 
--   Electrode selector (will change `requested_electrode`)
+-   Electrode selector (will change `analysis_electrodes`)
 -   2 x Time & Frequency range selector (will be the sync target)
 
 ### Prepare sample data for voltage inspection
 
-R may become slow if [number of time points is large]([https://dipterix.org/blog/2022/R-plot-capacity](https://dipterix.org/blog/2022/R-plot-capacity/))
+R may become slow if [number of time points is large](%5Bhttps://dipterix.org/blog/2022/R-plot-capacity%5D(https://dipterix.org/blog/2022/R-plot-capacity/))
 
 Luckily, visually it makes little to no difference when plotting a million points vs. decimating the signal to 10k points and then plot.
 
@@ -143,7 +143,9 @@ voltage_sample <- list(
   origin = list(
     sample_rate = sample_rate,
     time = voltage$dnames$Time,
-    data = voltage_single
+    data = voltage_single,
+    range = range(voltage_single),
+    sd = stats::sd(voltage_single)
   ),
   decimated = list(
     decimate_factor = decimate_rate,
@@ -197,33 +199,12 @@ Profiling table of plotting images in `R` . It seems the rendering time is almos
 ```{rave prepare_sample_for_time-frequency_analysis, language = "R", export = "wavelet_sample"}
 sample_rate <- wavelet$sample_rate
 wavelet_single <- subset(wavelet$data, Electrode ~ Electrode == sample_electrode, drop = TRUE)
-n_timepoints <- ncol(wavelet_single)
-n_freq <- nrow(wavelet_single)
-
-# ravetools raises errors when number of time-points < 16
-if( n_freq * n_timepoints > 50000 && n_timepoints >= 16 ) {
-  decimate_factor <- ceiling(n_freq * n_timepoints / 50000)
-  tidx <- seq(1, n_timepoints, by = decimate_factor)
-} else {
-  decimate_factor <- 1
-  tidx <- seq_len(n_timepoints)
-}
-wavelet_decimated <- wavelet_single[, tidx, drop = FALSE]
 
 wavelet_sample <- list(
   origin = list(
     sample_rate = sample_rate,
     dnames = wavelet$dnames[c(1, 2)],
     data = wavelet_single
-  ),
-  decimated = list(
-    decimate_factor = decimate_factor,
-    sample_rate = sample_rate / decimate_factor,
-    dnames = list(
-      Frequency = wavelet$dnames$Frequency,
-      Time = wavelet$dnames$Time[tidx]
-    ),
-    data = wavelet_decimated
   )
 )
 ```
@@ -237,8 +218,9 @@ switch (
   "Welch-Periodogram" = {
     apf <- approxfun(
       x = pwelch_overall$freq, 
-      y = pwelch_overall$spec)
+      y = pwelch_overall$spec_db)
     bl <- apf(wavelet_sample$origin$dnames$Frequency)
+    bl <- 10^(bl / 20)
   }, 
   "Block-Average" = {
     bl <- rowMeans(Mod(wavelet_sample$origin$data)^2)
@@ -252,17 +234,14 @@ switch (
 )
 
 power_sample$origin$data <- Mod(wavelet_sample$origin$data)^2 / bl
-power_sample$decimated$data <- Mod(wavelet_sample$decimated$data)^2 / bl
 
 switch (
   baseline_unit,
   "Decibel" = {
     power_sample$origin$data <- 10 * log10(power_sample$origin$data)
-    power_sample$decimated$data <- 10 * log10(power_sample$decimated$data)
   }, 
   "Percentage-Change" = {
     power_sample$origin$data <- 100 * power_sample$origin$data - 100
-    power_sample$decimated$data <- 100 * power_sample$decimated$data - 100
   },
   {
     stop("Unsupported baseline unit")
@@ -274,47 +253,24 @@ switch (
 Visualize power (with baseline) data in heatmap
 
 ```{r}
-data <- t(power_sample$decimated$data)
-rg <- range(data)
-# zlim <- max(abs(rg)) * c(-1, 1)
-zlim <- sd(data) * c(-1, 1) * 4
-data[data < zlim[1]] <- zlim[1]
-data[data > zlim[2]] <- zlim[2]
-sd <- sd(data)
-pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
-pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
-bias <- log(2*sd / zlim[2]) / log(0.5)
-col <- c(
-  rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(50)),
-  pal[[3]],
-  colorRampPalette(pal[c(3,4,5)], bias = bias)(50)
-)
-layout(matrix(c(1, 2), nrow = 1), widths = c(1, lcm(2)))
-par(mar = c(5.1, 4.1, 4.1, 0.1))
-time <- power_sample$decimated$dnames$Time
-freq <- power_sample$decimated$dnames$Frequency
-image(
-  x = time, y = freq, z = data, zlim = zlim,
-  xlab = "Time (s)", ylab = "Frequency", 
-  useRaster = FALSE, col = col,
-  axes = FALSE
-)
-axis(1, at = pretty(time))
+time <- power_sample$origin$dnames$Time
+freq <- power_sample$origin$dnames$Frequency
+data <- t(power_sample$origin$data)
 
-pretty_freq <- c(pretty(freq), max(freq))
-pretty_freq[pretty_freq < min(freq)] <- min(freq)
-pretty_freq[pretty_freq > max(freq)] <- max(freq)
-axis(2, at = sort(unique(pretty_freq)), las = 1)
-par(mar = c(5.1, 0.1, 4.1, 2))
-legend_data <- seq(zlim[1], zlim[2], length.out = length(col))
-image(
-  y = legend_data,
-  z = matrix(legend_data, nrow = 1),
-  col = col,
-  axes = FALSE
+sd <- stats::sd(data)
+zlim <- sd * c(-1, 1) * 4
+
+# pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
+pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
+zlim <-
+bias <- log(2 * sd / zlim[2]) / log(0.5)
+col <- c(
+  rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
+  pal[[3]],
+  colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
 )
-axis(side = 4, at = c(zlim, -2*sd, 2*sd, 0), labels = c(sprintf("%.0f", c(zlim, -2*sd, 2*sd)), "0"), las = 1, hadj = 0.5, tck = -0.1)
-axis(side = 3, at = 0.5, labels = sprintf("[%.0f:%.0f]", rg[1], rg[2]), tick = FALSE, padj = 1)
+
+fastplot_power_over_freq_time(data, time, freq, col)
 ```
 
 ## Build, Visualize, & Run

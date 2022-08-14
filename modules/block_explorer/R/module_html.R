@@ -27,14 +27,74 @@ module_html <- function(){
           class = "row screen-height overflow-y-scroll padding-bottom-70 output-wrapper",
           shiny::column(
             width = 12L,
-            ravedash::output_card(
-              'Collapsed over frequency',
-              class_body = "no-padding fill-width height-450 min-height-450 resize-vertical",
-              shiny::div(
-                class = 'position-relative fill',
-                shiny::plotOutput(ns("collapse_over_trial"), width = '100%', height = "100%")
+            shidashi::card_tabset(
+              inputId = ns("output_tab"),
+              title = "",
+              class_body = "fill-height padding-5",
+              tools = list(
+                card_tool(
+                  widget = "collapse"
+                ),
+                card_tool(
+                  widget = "maximize"
+                )
+              ),
+              `Single electrode` = shiny::div(
+                class = "fill-height height-700 resize-vertical",
+                shiny::div(
+                  class = "row fill-height",
+                  shiny::div(
+                    class = "col-sm-6 fill-height",
+                    ravedash::group_box(
+                      title = "Overview",
+                      style = "height: calc(100% - 3rem);",
+                      shiny::plotOutput(
+                        ns("plot_single_overall_power"), width = '100%',
+                        height = "50%",
+                        brush = shiny::brushOpts(
+                          id = ns("plot_single_overall_power__brush"),
+                          direction = "xy",
+                          clip = TRUE,
+                          delayType = "throttle",
+                          delay = 300,
+                          opacity = 0.75
+                        )),
+                      shiny::plotOutput(
+                        ns("plot_single_overall_voltge"), width = '100%',
+                        height = "25%"),
+                      shiny::plotOutput(
+                        ns("plot_single_overall_pwelch"), width = '100%',
+                        height = "25%")
+                    )
+                  ),
+
+                  shiny::div(
+                    class = "col-sm-6 fill-height",
+                    ravedash::group_box(
+                      title = "Selected subset",
+                      style = "height: calc(100% - 3rem);",
+                      shiny::plotOutput(
+                        ns("plot_single_sub_power"), width = '100%',
+                        height = "50%"
+                      ),
+                      shiny::plotOutput(ns("plot_single_sub_voltge"), width = '100%',
+                                        height = "25%"),
+                      shiny::plotOutput(ns("plot_single_sub_pwelch"), width = '100%',
+                                        height = "25%")
+                    )
+                  )
+
+                )
               )
             )
+            # ravedash::output_card(
+            #   'Collapsed over frequency',
+            #   class_body = "no-padding fill-width height-450 min-height-450 resize-vertical",
+            #   shiny::div(
+            #     class = 'position-relative fill',
+            #     shiny::plotOutput(ns("collapse_over_trial"), width = '100%', height = "100%")
+            #   )
+            # )
           )
         )
       )
