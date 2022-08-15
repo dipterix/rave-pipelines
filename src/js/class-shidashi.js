@@ -4,7 +4,7 @@ import "./scrollbars.min.js";
 
 const default_scroll_opt = {
   autoUpdate           : null,
-  autoUpdateInterval   : 33,
+  autoUpdateInterval   : 330,
   sizeAutoCapable      : true,
   scrollbars : {
     visibility       : "auto",
