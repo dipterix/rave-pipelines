@@ -1,6 +1,13 @@
 library(targets)
 library(raveio)
 source("common.R", local = TRUE, chdir = TRUE)
+lapply(sort(list.files(
+  "R/", ignore.case = TRUE,
+  pattern = "^shared-.*\\.R", 
+  full.names = TRUE
+)), function(f) {
+  source(f, local = FALSE, chdir = TRUE)
+})
 ...targets <- list(`__Check_settings_file` = targets::tar_target_raw("settings_path", 
     "settings.yaml", format = "file"), `__Load_settings` = targets::tar_target_raw("settings", 
     quote({
@@ -152,13 +159,11 @@ source("common.R", local = TRUE, chdir = TRUE)
                   font_size <- 2
                 }
                 quiet <- isTRUE(params$quiet)
-                source("./R/diagnose_plot.R", local = TRUE)
                 diagnostic_plots <- diagnose_notch_filters(subject = subject, 
                   electrodes = imported_electrodes, max_freq = max_freq, 
                   winlen = winlen, nbins = nbins, bg = background, 
                   fg = foreground, cex = font_size, std = 3, 
-                  lwd = 0.3, mar = c(5.2, 5.1, 4.1, 2.1), mai = c(0.6, 
-                    0.6, 0.4, 0.1), quiet = quiet)
+                  lwd = 0.3, quiet = quiet)
             }
             return(diagnostic_plots)
         }), deps = c("diagnostic_plot_params", "subject", "imported_electrodes"
