@@ -1642,8 +1642,8 @@ module_server <- function(input, output, session, ...){
     ravedash::safe_observe({
       info = input$bipolar_table_cell_edit
 
-      val <- trimws(info$value)
-      val <- gsub("[^0-9,-]", "", val)
+      val0 <- trimws(info$value)
+      val <- gsub("[^0-9,-]", "", val0)
       elecs <- dipsaus::parse_svec(val)
 
       if( length(elecs) ) {
@@ -1653,11 +1653,11 @@ module_server <- function(input, output, session, ...){
           if(!isTRUE(val %in% get_reference_options())) {
             error_notification(list(
               message = sprintf(
-                "Cannot find reference signal called `%s`. Please correct this input.",
+                "Cannot find reference signal called `%s`. Set to no-reference as a fallback. Please correct.",
                 val
               )
             ))
-            return()
+            val <- "noref"
           }
         } else {
           repo <- component_container$data$repository
@@ -1667,15 +1667,17 @@ module_server <- function(input, output, session, ...){
           if(!elecs %in% subject$electrodes){
             error_notification(list(
               message = sprintf(
-                "Channel %s is not valid. Please fix this reference.",
+                "Channel %s is not valid. Set to no-reference as a fallback. Please fix.",
                 elecs
               )
             ))
-            return()
+            val <- "noref"
           }
         }
 
         info$value <- val
+      } else if(startsWith(tolower(val0), "n")) {
+        info$value <- "noref"
       } else {
         info$value <- ""
       }
