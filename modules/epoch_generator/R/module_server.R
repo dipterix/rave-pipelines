@@ -130,6 +130,20 @@ module_server <- function(input, output, session, ...){
           header = header,
           type = "EDF"
         )
+      } else if(endsWith(tolower(epoch_channel_file), "nev")) {
+        header <- raveio::BlackrockFile$new(path = epoch_channel_file, block = input$block)
+        varnames_choices <- sprintf(
+          "Channel %d [%s] (%s)",
+          header$electrode_table$Electrode,
+          header$electrode_table$Label,
+          header$electrode_table$NSType
+        )
+        sel <- header$electrode_table$NSType == "ns5"
+        varnames <- varnames_choices[sel] %OF% varnames_choices
+        local_reactives$epoch_header <- list(
+          header = header,
+          type = "NEV"
+        )
       } else {
         header <- raveio::read_mat2(epoch_channel_file, ram = FALSE)
         nm <- raveio:::guess_raw_trace(header, electrodes = subject$electrodes)
@@ -156,9 +170,10 @@ module_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
 
+      if(length(input$varname) != 1) { return() }
       epoch_header <- local_reactives$epoch_header
       if(!is.list(epoch_header) ||
-         !isTRUE(epoch_header$type %in% c("MAT", "EDF"))) {
+         !isTRUE(epoch_header$type %in% c("MAT", "EDF", "NEV"))) {
         return()
       }
       subject <- local_data$subject
@@ -171,6 +186,16 @@ module_server <- function(input, output, session, ...){
 
       if(type == "EDF") {
         sample_rate <- header$sampleRate2[header$sHeaders == input$varname]
+      } else if (type == "NEV") {
+        # "Channel %d [%s] (%s)"
+        # get ns type
+        m <- gregexpr("(ns[0-9])\\)$", input$varname)[[1]]
+        nstype <- substr(input$varname, start = m, stop = nchar(input$varname) - 1)
+        if(nstype %in% names(header$sample_rates)) {
+          sample_rate <- header$sample_rates[[nstype]]
+        } else {
+          sample_rate <- 2000
+        }
       } else if(type == "MAT") {
         sample_rate <- input$sample_rate
         if(isTRUE(sample_rate > 1)) { return() }
@@ -233,12 +258,12 @@ module_server <- function(input, output, session, ...){
 
       block_path <- file.path(subject$preprocess_settings$raw_path, input$block)
       epoch_files <- list.files(
-        block_path, pattern = ".(h5|mat|edf|pd|aud)",
+        block_path, pattern = ".(h5|mat|edf|pd|aud|nev)",
         full.names = FALSE, recursive = FALSE,
         include.dirs = FALSE, all.files = FALSE,
         ignore.case = TRUE, no.. = TRUE
       )
-      guess0 <- epoch_files[grepl("\\.(pd|aud)$", tolower(epoch_files))]
+      guess0 <- epoch_files[grepl("\\.(pd|aud|nev)$", tolower(epoch_files))]
       guess1 <- epoch_files[grepl("[^0-9]1(29|30).(mat|h5)$", tolower(epoch_files))]
       guess2 <- epoch_files[endsWith(tolower(epoch_files), ".edf")]
       epoch_file <- input$epoch_file %OF% c(guess0, guess1, guess2, epoch_files)
@@ -257,7 +282,7 @@ module_server <- function(input, output, session, ...){
     ravedash::safe_observe({
       epoch_header <- local_reactives$epoch_header
 
-      if(!is.list(epoch_header) || !isTRUE(epoch_header$type %in% c("MAT", "EDF"))) {
+      if(!is.list(epoch_header) || !isTRUE(epoch_header$type %in% c("MAT", "EDF", "NEV"))) {
         error_notification(list(message = "Please load epoch file first"))
         return()
       }
@@ -297,6 +322,13 @@ module_server <- function(input, output, session, ...){
         s <- s$signal
 
         shidashi::clear_notifications(class = ns("loading_notif"))
+      } else if(type == "NEV") {
+        m <- gregexec("^Channel ([0-9]+)\\ ", text = varname, ignore.case = TRUE)[[1]]
+        ml <- attr(m, "match.length")
+        channel <- substr(varname, m[[2]], m[[2]] + ml[[2]] - 1)
+        channel <- as.integer(channel)
+        header$refresh_data(verbose = TRUE)
+        s <- header$get_electrode(channel)
       } else {
         s <- header[[varname]][drop = TRUE]
       }
