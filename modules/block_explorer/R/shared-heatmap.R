@@ -6,7 +6,11 @@ fastplot_power_over_freq_time <- function(
     nrow(data) == length(time) &&
       (length(freq) == 1 || ncol(data) == length(freq))
   )
-  theme <- ravedash::current_shiny_theme()
+  # theme <- ravedash::current_shiny_theme()
+  theme <- list(
+    foreground = "black",
+    background = 'white'
+  )
   fg <- theme$foreground
   bg <- theme$background
   old_theme <- graphics::par(c("fg", "bg", "col.axis", "col.lab", "col.main",
@@ -48,11 +52,11 @@ fastplot_power_over_freq_time <- function(
 
   par(mar = c(2.6, 0.2, 2.1, 2), mgp = c(2, 0.5, 0))
   legend_data <- seq(zlim[1], zlim[2], length.out = length(col))
-  image(
+  graphics::image(
     y = legend_data,
     z = matrix(legend_data, nrow = 1),
     col = col,
-    axes = FALSE
+    axes = FALSE, useRaster = TRUE
   )
   axis(side = 4, at = c(zlim, -2*sd, 2*sd, 0),
        labels = c(sprintf("%.0f", c(zlim, -2*sd, 2*sd)), "0"),

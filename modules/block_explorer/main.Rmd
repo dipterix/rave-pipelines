@@ -123,35 +123,16 @@ Luckily, visually it makes little to no difference when plotting a million point
 
 ```{rave prepare_sample_for_voltage_analysis, language = "R", export = "voltage_sample"}
 sample_rate <- voltage$sample_rate
-voltage_single <- subset(voltage$data, Electrode ~ Electrode == sample_electrode, drop = TRUE)
-n_timepoints <- length(voltage_single)
-if( n_timepoints > 10000 ) {
-  decimate_rate <- ceiling(n_timepoints / 10000)
-  voltage_single_decimated <- ravetools::decimate(
-    x = voltage_single,
-    q = decimate_rate
-  )
-  time <- ravetools::decimate(voltage$dnames$Time, 
-                              q = decimate_rate)
-} else {
-  decimate_rate <- 1L
-  voltage_single_decimated <- voltage_single
-  time <- voltage$dnames$Time
-}
+
+# filearray subset will add dimnames. which significant increases data size
+voltage_single <- as.vector(subset(voltage$data, Electrode ~ Electrode == sample_electrode, drop = TRUE))
 
 voltage_sample <- list(
   origin = list(
     sample_rate = sample_rate,
-    time = voltage$dnames$Time,
     data = voltage_single,
     range = range(voltage_single),
     sd = stats::sd(voltage_single)
-  ),
-  decimated = list(
-    decimate_factor = decimate_rate,
-    sample_rate = sample_rate / decimate_rate,
-    time = time,
-    data = voltage_single_decimated
   )
 )
 ```
@@ -159,12 +140,11 @@ voltage_sample <- list(
 Plot the channel trace
 
 ```{r}
-decimated <- voltage_sample$decimated
 ravetools::diagnose_channel(
-  decimated$data, try_compress = FALSE, 
-  srate = decimated$sample_rate, which = 1
+  voltage_sample$origin$data, 
+  srate = voltage_sample$origin$sample_rate, 
+  which = 1
 )
-
 ```
 
 Calculate Welch-Periodogram of the entire voltage signal
@@ -185,20 +165,14 @@ plot(pwelch_overall, xlim = c(0, log10(300)))
 
 ### Prepare sample data for time-frequency inspection
 
-Profiling table of plotting images in `R` . It seems the rendering time is almost linear to the number of pixels. We want to reduce the total number of pixels to 50k.
+Get wavelet, calculate power baseline
 
-| Dimension        | Render Time (s) |
-|------------------|-----------------|
-| $43080\times 10$ | 1.776           |
-| $4308\times 100$ | 1.491           |
-| $1077\times 400$ | 1.437           |
-| $2000\times 100$ | 0.657           |
-| $1000\times 100$ | 0.348           |
-| $500\times 100$  | 0.184           |
-
-```{rave prepare_sample_for_time-frequency_analysis, language = "R", export = "wavelet_sample"}
+```{rave prepare_sample_power, language = "R", export = "power_sample"}
 sample_rate <- wavelet$sample_rate
-wavelet_single <- subset(wavelet$data, Electrode ~ Electrode == sample_electrode, drop = TRUE)
+wavelet_single <- subset(wavelet$data, Electrode ~ Electrode == sample_electrode, drop = FALSE)
+
+dimnames(wavelet_single) <- NULL
+dim(wavelet_single) <- dim(wavelet$data)[c(1, 2)]
 
 wavelet_sample <- list(
   origin = list(
@@ -207,11 +181,8 @@ wavelet_sample <- list(
     data = wavelet_single
   )
 )
-```
 
-Baseline-correct power
 
-```{rave baseline_power, language = "R", export = "power_sample"}
 power_sample <- wavelet_sample
 switch (
   baseline_method,

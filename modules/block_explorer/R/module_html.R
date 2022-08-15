@@ -48,23 +48,43 @@ module_html <- function(){
                     ravedash::group_box(
                       title = "Overview",
                       style = "height: calc(100% - 3rem);",
-                      shiny::plotOutput(
-                        ns("plot_single_overall_power"), width = '100%',
-                        height = "50%",
-                        brush = shiny::brushOpts(
-                          id = ns("plot_single_overall_power__brush"),
-                          direction = "xy",
-                          clip = TRUE,
-                          delayType = "throttle",
-                          delay = 300,
-                          opacity = 0.75
-                        )),
-                      shiny::plotOutput(
-                        ns("plot_single_overall_voltge"), width = '100%',
-                        height = "25%"),
-                      shiny::plotOutput(
-                        ns("plot_single_overall_pwelch"), width = '100%',
-                        height = "25%")
+                      shiny::div(
+                        class = "fill",
+                        shiny::div(
+                          style = "height: 40%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(
+                              ns("plot_single_overall_power"), width = '100%',
+                              height = "100%",
+                              brush = shiny::brushOpts(
+                                id = ns("plot_single_overall_power__brush"),
+                                direction = "xy",
+                                clip = TRUE,
+                                delayType = "debounce",
+                                delay = 300,
+                                opacity = 0.25,
+                                resetOnNew = FALSE
+                              )
+                            )
+                          )
+                        ),
+                        shiny::div(
+                          style = "height: 30%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(
+                              ns("plot_single_overall_voltge"), width = '100%',
+                              height = "100%")
+                          )
+                        ),
+                        shiny::div(
+                          style = "height: 30%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(
+                              ns("plot_single_overall_pwelch"), width = '100%',
+                              height = "100%")
+                          )
+                        )
+                      )
                     )
                   ),
 
@@ -73,17 +93,49 @@ module_html <- function(){
                     ravedash::group_box(
                       title = "Selected subset",
                       style = "height: calc(100% - 3rem);",
-                      shiny::plotOutput(
-                        ns("plot_single_sub_power"), width = '100%',
-                        height = "50%"
-                      ),
-                      shiny::plotOutput(ns("plot_single_sub_voltge"), width = '100%',
-                                        height = "25%"),
-                      shiny::plotOutput(ns("plot_single_sub_pwelch"), width = '100%',
-                                        height = "25%")
+                      shiny::div(
+                        class = "fill",
+                        shiny::div(
+                          style = "height: 40%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(
+                              ns("plot_single_sub_power"), width = '100%',
+                              height = "100%"
+                            )
+                          )
+                        ),
+                        shiny::div(
+                          style = "height: 30%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(ns("plot_single_sub_voltge"), width = '100%',
+                                              height = "100%")
+                          )
+                        ),
+                        shiny::div(
+                          style = "height: 30%;",
+                          ravedash::output_gadget_container(
+                            shiny::plotOutput(ns("plot_single_sub_pwelch"), width = '100%',
+                                              height = "100%")
+                          )
+                        )
+                      )
                     )
                   )
 
+                )
+              ),
+
+
+              `Batch visualization` = shiny::div(
+                class = "fill-height height-700 resize-vertical",
+                shiny::div(
+                  class = "row fill-height",
+                  shiny::div(
+                    class = "col-sm-6 fill-height",
+                    ravedash::group_box(
+                      title = "as"
+                    )
+                  )
                 )
               )
             )

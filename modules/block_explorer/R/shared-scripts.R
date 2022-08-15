@@ -9,4 +9,6 @@ NULL
 
 library(dipsaus)
 library(raveio)
+loadNamespace("filearray")
 loadNamespace("ravetools")
+# options(shiny.reactlog = TRUE)

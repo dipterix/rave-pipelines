@@ -26,12 +26,8 @@ module_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
 
-      # Invalidate previous results (stop them because they are no longer needed)
-      if(!is.null(local_data$results)) {
-        local_data$results$invalidate()
-        ravedash::logger("Invalidating previous run", level = "trace")
-      }
 
+      local_data$results <- list(valid = FALSE)
 
       # Collect input data
       settings <- component_container$collect_settings(ids = c(
@@ -41,70 +37,108 @@ module_server <- function(input, output, session, ...){
 
       pipeline$set_settings(.list = settings)
 
-      #' Run pipeline without blocking the main session
-      #' The trick to speed up is to set
-      #' `async=TRUE` will run the pipeline in the background
-      #' `shortcut=TRUE` will ignore the dependencies and directly run `names`
-      #' `names` are the target nodes to run
-      #' `scheduler="none"` will try to avoid starting any schedulers and
-      #' run targets sequentially. Combined with `callr_function=NULL`,
-      #' scheduler's overhead can be removed.
-      #' `type="smart"` will start `future` plan in the background, allowing
-      #' multicore calculation
-      results <- pipeline$run(
-        as_promise = TRUE,
-        scheduler = "none",
-        type = "smart",
-        callr_function = NULL,
-        progress_title = "Calculating in progress",
-        async = TRUE,
-        check_interval = 0.3,
-        shortcut = TRUE,
-        names = c(
-          "settings",
-          names(settings),
-          "baseline_method", "baseline_unit",
-          "subject", "sample_electrode", "voltage",
-          "wavelet", "voltage_sample", "pwelch_overall",
-          "wavelet_sample", "power_sample"
-        )
-      )
+      tryCatch({
+        # repository <- pipeline$read(var_names = 'repository')
+        #
+        # args <- pipeline$get_settings()
+        # args$repository <- repository
+        # samples <- do.call(get_sample_data, args)
+        # print(lobstr::obj_size(samples))
 
+        target_names <- c("voltage_sample", "pwelch_overall", "power_sample")
+        system.time({
+        samples <- pipeline$eval(c("sample_electrode", "electrodes_loaded", "voltage",
+                        "wavelet", "voltage_sample", "pwelch_overall", "power_sample"))
+        })
 
-      local_data$results <- results
-      ravedash::logger("Scheduled: ", pipeline$pipeline_name,
-                       level = 'debug', reset_timer = TRUE)
-
-      results$promise$then(
-        onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline$pipeline_name,
-                           level = 'debug')
-          shidashi::clear_notifications(class = "pipeline-error")
-
-          pipeline_data <- pipeline$read(var_names = c(
-            "power_sample", "voltage_sample", "pwelch_overall"
-          ))
-
-          local_reactives$power_sample <- pipeline_data$power_sample
-          local_reactives$voltage_sample <- pipeline_data$voltage_sample
-          local_reactives$pwelch_overall <- pipeline_data$pwelch_overall
-          local_reactives$update_outputs <- Sys.time()
-          return(TRUE)
-        },
-        onRejected = function(e, ...){
-          msg <- paste(e$message, collapse = "\n")
-          if(inherits(e, "error")){
-            ravedash::logger(msg, level = 'error')
-            ravedash::logger(traceback(e), level = 'error', .sep = "\n")
-            shidashi::show_notification(
-              message = msg,
-              title = "Error while running pipeline", type = "danger",
-              autohide = FALSE, close = TRUE, class = "pipeline-error"
-            )
-          }
-          return(msg)
+        for(nm in target_names) {
+          local_reactives[[nm]] <- samples[[nm]]
         }
-      )
+        local_data$results <- list(valid = TRUE)
+        local_reactives$update_outputs <- Sys.time()
+        shidashi::clear_notifications(class = "pipeline-error")
+      }, error = function(e) {
+        msg <- paste(e$message, collapse = "\n")
+        if(inherits(e, "error")){
+          ravedash::logger(msg, level = 'error')
+          ravedash::logger(traceback(e), level = 'error', .sep = "\n")
+          shidashi::show_notification(
+            message = msg,
+            title = "Error while running pipeline", type = "danger",
+            autohide = FALSE, close = TRUE, class = "pipeline-error"
+          )
+        }
+      })
+
+      # # Invalidate previous results (stop them because they are no longer needed)
+      # if(!is.null(local_data$results)) {
+      #   local_data$results$invalidate()
+      #   ravedash::logger("Invalidating previous run", level = "trace")
+      # }
+      #
+      #
+      # # Collect input data
+      # settings <- component_container$collect_settings(ids = c(
+      #   "electrode_text"
+      #   # "analysis_ranges"
+      # ))
+      #
+      # pipeline$set_settings(.list = settings)
+      #
+      # results <- pipeline$run(
+      #   as_promise = TRUE,
+      #   scheduler = "future",
+      #   type = "callr",
+      #   callr_function = NULL,
+      #   progress_title = "Calculating in progress",
+      #   # async = TRUE,
+      #   # check_interval = 0.3,
+      #   shortcut = TRUE,
+      #   names = c(
+      #     "settings",
+      #     names(settings),
+      #     "baseline_method", "baseline_unit",
+      #     "subject", "sample_electrode", "voltage",
+      #     "wavelet", "voltage_sample", "pwelch_overall",
+      #     "power_sample"
+      #   )
+      # )
+      #
+      #
+      # local_data$results <- results
+      # ravedash::logger("Scheduled: ", pipeline$pipeline_name,
+      #                  level = 'debug', reset_timer = TRUE)
+      #
+      # results$promise$then(
+      #   onFulfilled = function(...){
+      #     ravedash::logger("Fulfilled: ", pipeline$pipeline_name,
+      #                      level = 'debug')
+      #     shidashi::clear_notifications(class = "pipeline-error")
+      #
+      #     pipeline_data <- pipeline$read(var_names = c(
+      #       "power_sample", "voltage_sample", "pwelch_overall"
+      #     ))
+      #
+      #     local_reactives$power_sample <- pipeline_data$power_sample
+      #     local_reactives$voltage_sample <- pipeline_data$voltage_sample
+      #     local_reactives$pwelch_overall <- pipeline_data$pwelch_overall
+      #     local_reactives$update_outputs <- Sys.time()
+      #     return(TRUE)
+      #   },
+      #   onRejected = function(e, ...){
+      #     msg <- paste(e$message, collapse = "\n")
+      #     if(inherits(e, "error")){
+      #       ravedash::logger(msg, level = 'error')
+      #       ravedash::logger(traceback(e), level = 'error', .sep = "\n")
+      #       shidashi::show_notification(
+      #         message = msg,
+      #         title = "Error while running pipeline", type = "danger",
+      #         autohide = FALSE, close = TRUE, class = "pipeline-error"
+      #       )
+      #     }
+      #     return(msg)
+      #   }
+      # )
 
       return()
 
@@ -171,6 +205,7 @@ module_server <- function(input, output, session, ...){
 
   # get brush
   get_brush <- shiny::reactive({
+
     brush <- input$plot_single_overall_power__brush
     if(!is.list(brush)) { return(NULL) }
     voltage_sample <- local_reactives$voltage_sample
@@ -208,8 +243,8 @@ module_server <- function(input, output, session, ...){
     }
 
     # subset voltage and calculate pwelch
-    time <- voltage_sample$origin$time
     data <- voltage_sample$origin$data
+    time <- seq(0, by = 1 / voltage_sample$origin$sample_rate, length.out = length(data))
 
     time_idx <- time >= time_range[1] & time <= time_range[2]
     freq <- pwelch_overall$freq
@@ -243,71 +278,216 @@ module_server <- function(input, output, session, ...){
   })
 
   # Register outputs
-  output$plot_single_overall_power <- shiny::renderPlot({
-    outputs_need_update()
+  ravedash::register_output(
+    outputId = "plot_single_overall_power",
+    render_function = shiny::renderPlot({
+      outputs_need_update()
 
-    power_sample <- local_reactives$power_sample
-    time <- power_sample$origin$dnames$Time
-    freq <- power_sample$origin$dnames$Frequency
-    data <- t(power_sample$origin$data)
+      power_sample <- local_reactives$power_sample
+      time <- power_sample$origin$dnames$Time
+      freq <- power_sample$origin$dnames$Frequency
+      data <- t(power_sample$origin$data)
 
-    sd <- stats::sd(data)
-    zlim <- quantile(data, c(0.005, 0.995))
-    zlim <- c(-1, 1) * max(abs(zlim))
+      sd <- stats::sd(data)
+      zlim <- quantile(data, c(0.005, 0.995))
+      zlim <- c(-1, 1) * max(abs(zlim))
 
-    # pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
-    pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
-    bias <- log(3 * sd / zlim[2]) / log(0.5)
-    col <- c(
-      rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
-      pal[[3]],
-      colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
-    )
-
-    fastplot_power_over_freq_time(data, time, freq, col, zlim = zlim)
-
-  })
-
-  output$plot_single_overall_voltge <- shiny::renderPlot({
-    outputs_need_update(message = "")
-    brush <- get_brush()
-
-    voltage_sample <- local_reactives$voltage_sample
-    time_range <- brush$time_range
-
-    rg <- range(voltage_sample$origin$data)
-
-    res <- fastplot_signal_trace(
-      data = voltage_sample$origin$data,
-      time = voltage_sample$origin$time,
-      method = "slide_max"
-    )
-
-    if(length(time_range) == 2) {
-      graphics::rect(
-        xleft = time_range[[1]],
-        ybottom = rg[[1]],
-        xright = time_range[[2]],
-        ytop = rg[[2]],
-        border = "#003366",
-        col = grDevices::adjustcolor("#99ccff", 0.25)
+      # pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
+      pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
+      bias <- log(3 * sd / zlim[2]) / log(0.5)
+      col <- c(
+        rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
+        pal[[3]],
+        colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
       )
-    }
-  })
 
-  output$plot_single_overall_pwelch <- shiny::renderPlot({
-    outputs_need_update(message = "")
-    brush <- get_brush()
 
-    pwelch_overall <- local_reactives$pwelch_overall
-    voltage_sample <- local_reactives$voltage_sample
+      fastplot_power_over_freq_time(data, time, freq, col, zlim = zlim)
 
-    freq_range <- brush$freq_range
+      brush <- get_brush()
+      if(is.list(brush)) {
+        time_range <- brush$time_range
+        freq_range <- brush$freq_range
+        if(length(time_range) == 2 && length(freq_range) == 2) {
+          graphics::rect(
+            xleft = time_range[[1]],
+            ybottom = freq_range[[1]],
+            xright = time_range[[2]],
+            ytop = freq_range[[2]],
+            border = "#003366",
+            col = grDevices::adjustcolor("#99ccff", 0.25)
+          )
+        }
 
-    pwelch_ranges <- fastplot_pwelch(pwelch_overall, se = 3, adj = 0.95, add_lm = TRUE)
+      }
 
-    if(length(freq_range) == 2) {
-      freq <- pwelch_overall$freq
+
+
+
+    }),
+    output_opts = list(
+      brush = shiny::brushOpts(
+        id = ns("plot_single_overall_power__brush"),
+        direction = "xy",
+        clip = TRUE,
+        delayType = "debounce",
+        delay = 300,
+        opacity = 0.25,
+        resetOnNew = FALSE
+      )
+    )
+  )
+
+  ravedash::register_output(
+    outputId = "plot_single_overall_voltge",
+    render_function = shiny::renderPlot({
+      outputs_need_update(message = "")
+      brush <- get_brush()
+
+      voltage_sample <- local_reactives$voltage_sample
+      time_range <- brush$time_range
+
+      rg <- range(voltage_sample$origin$data)
+
+      res <- fastplot_signal_trace(
+        data = voltage_sample$origin$data,
+        sample_rate = voltage_sample$origin$sample_rate,
+        method = "slide_max"
+      )
+
+      if(length(time_range) == 2) {
+        graphics::rect(
+          xleft = time_range[[1]],
+          ybottom = rg[[1]],
+          xright = time_range[[2]],
+          ytop = rg[[2]],
+          border = "#003366",
+          col = grDevices::adjustcolor("#99ccff", 0.25)
+        )
+      }
+    })
+  )
+
+  ravedash::register_output(
+    outputId = "plot_single_overall_pwelch",
+    render_function = shiny::renderPlot({
+      outputs_need_update(message = "")
+      brush <- get_brush()
+
+      pwelch_overall <- local_reactives$pwelch_overall
+      voltage_sample <- local_reactives$voltage_sample
+
+      freq_range <- brush$freq_range
+
+      pwelch_ranges <- fastplot_pwelch(pwelch_overall, se = 3, adj = 0.95, add_lm = TRUE)
+
+      if(length(freq_range) == 2) {
+        freq <- pwelch_overall$freq
+        freq_range[[1]] <- max(freq_range[[1]], min(freq))
+        freq_range <- log10(freq_range)
+        graphics::rect(
+          xleft = freq_range[[1]],
+          ybottom = pwelch_ranges$ylim[[1]],
+          xright = freq_range[[2]],
+          ytop = pwelch_ranges$ylim[[2]],
+          border = "#003366",
+          col = grDevices::adjustcolor("#99ccff", 0.25)
+        )
+      }
+
+      subset_data <- brush$subset
+
+      if(is.list(subset_data)) {
+        pwelch_sub <- subset_data$pwelch
+        plot(pwelch_sub, add = TRUE, col = "purple3", lwd = 2)
+      }
+
+
+    })
+  )
+
+
+  ravedash::register_output(
+    outputId = "plot_single_sub_power",
+    render_function = shiny::renderPlot({
+      outputs_need_update(message = "")
+
+      brush <- get_brush()
+      shiny::validate(
+        shiny::need(length(brush) >= 2, "Please choose a time & frequency ranges from the power heatmap")
+      )
+      freq_range <- brush$freq_range
+      time_range <- brush$time_range
+
+      power_sample <- local_reactives$power_sample
+      time <- power_sample$origin$dnames$Time
+      freq <- power_sample$origin$dnames$Frequency
+      data <- t(power_sample$origin$data)
+
+      sd <- stats::sd(data)
+      zlim <- quantile(data, c(0.005, 0.995))
+      zlim <- c(-1, 1) * max(abs(zlim))
+      bias <- log(3 * sd / zlim[2]) / log(0.5)
+      pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
+      col <- c(
+        rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
+        pal[[3]],
+        colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
+      )
+
+      # subset
+      freq_idx <- freq >= freq_range[1] & freq <= freq_range[2]
+      time_idx <- time >= time_range[1] & time <= time_range[2]
+
+      freq <- freq[freq_idx]
+      time <- time[time_idx]
+      data <- data[time_idx, freq_idx, drop = FALSE]
+
+      fastplot_power_over_freq_time(data, time, freq, col, zlim = zlim)
+
+    })
+  )
+
+  ravedash::register_output(
+    outputId = "plot_single_sub_voltge",
+    render_function = shiny::renderPlot({
+      outputs_need_update(message = "")
+      brush <- get_brush()
+      shiny::validate(
+        shiny::need(length(brush) >= 3, "")
+      )
+      freq_range <- brush$freq_range
+      time_range <- brush$time_range
+      subset_data <- brush$subset
+
+      res <- fastplot_signal_trace(
+        data = subset_data$voltage,
+        time = subset_data$time,
+        method = "decimate",
+        sd = stats::sd(subset_data$voltage)
+      )
+    })
+  )
+
+  ravedash::register_output(
+    outputId = "plot_single_sub_pwelch",
+    render_function = shiny::renderPlot({
+      outputs_need_update(message = "")
+      brush <- get_brush()
+      shiny::validate(
+        shiny::need(length(brush) >= 3, "")
+      )
+      pwelch_overall <- local_reactives$pwelch_overall
+      freq_range <- brush$freq_range
+      subset_data <- brush$subset
+      pwelch_sub <- subset_data$pwelch
+
+      pwelch_sub$spec <- pwelch_sub$spec / pwelch_overall$spec[seq_along(pwelch_sub$spec)]
+      pwelch_ranges <- fastplot_pwelch(pwelch_sub, xlim = c(0, 400))
+
+      abline(h = 0, col = 'gray60', lty = 2)
+
+      freq <- pwelch_sub$freq
       freq_range[[1]] <- max(freq_range[[1]], min(freq))
       freq_range <- log10(freq_range)
       graphics::rect(
@@ -318,104 +498,10 @@ module_server <- function(input, output, session, ...){
         border = "#003366",
         col = grDevices::adjustcolor("#99ccff", 0.25)
       )
-    }
-
-    subset_data <- brush$subset
-
-    if(is.list(subset_data)) {
-      pwelch_sub <- subset_data$pwelch
-      plot(pwelch_sub, add = TRUE, col = "purple3", lwd = 2)
-    }
 
 
-  })
+    })
+  )
 
-
-  output$plot_single_sub_power <- shiny::renderPlot({
-    outputs_need_update(message = "")
-
-    brush <- get_brush()
-    shiny::validate(
-      shiny::need(length(brush) >= 2, "Please choose a time-frequency range using the power heat-map")
-    )
-    freq_range <- brush$freq_range
-    time_range <- brush$time_range
-
-    power_sample <- local_reactives$power_sample
-    time <- power_sample$origin$dnames$Time
-    freq <- power_sample$origin$dnames$Frequency
-    data <- t(power_sample$origin$data)
-
-    sd <- stats::sd(data)
-    zlim <- quantile(data, c(0.005, 0.995))
-    zlim <- c(-1, 1) * max(abs(zlim))
-    bias <- log(3 * sd / zlim[2]) / log(0.5)
-    pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
-    col <- c(
-      rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
-      pal[[3]],
-      colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
-    )
-
-    # subset
-    freq_idx <- freq >= freq_range[1] & freq <= freq_range[2]
-    time_idx <- time >= time_range[1] & time <= time_range[2]
-
-    freq <- freq[freq_idx]
-    time <- time[time_idx]
-    data <- data[time_idx, freq_idx, drop = FALSE]
-
-    fastplot_power_over_freq_time(data, time, freq, col, zlim = zlim)
-
-  })
-
-  output$plot_single_sub_voltge <- shiny::renderPlot({
-    outputs_need_update(message = "")
-    brush <- get_brush()
-    shiny::validate(
-      shiny::need(length(brush) >= 3, "")
-    )
-    freq_range <- brush$freq_range
-    time_range <- brush$time_range
-    subset_data <- brush$subset
-
-    res <- fastplot_signal_trace(
-      data = subset_data$voltage,
-      time = subset_data$time,
-      method = "decimate",
-      sd = stats::sd(subset_data$voltage)
-    )
-  })
-
-  output$plot_single_sub_pwelch <- shiny::renderPlot({
-    outputs_need_update(message = "")
-    brush <- get_brush()
-    shiny::validate(
-      shiny::need(length(brush) >= 3, "")
-    )
-    pwelch_overall <- local_reactives$pwelch_overall
-    freq_range <- brush$freq_range
-    subset_data <- brush$subset
-    pwelch_sub <- subset_data$pwelch
-
-    pwelch_sub$spec <- pwelch_sub$spec / pwelch_overall$spec[seq_along(pwelch_sub$spec)]
-    pwelch_ranges <- fastplot_pwelch(pwelch_sub, xlim = c(0, 400))
-
-    abline(h = 0, col = 'gray60', lty = 2)
-
-    freq <- pwelch_sub$freq
-    freq_range[[1]] <- max(freq_range[[1]], min(freq))
-    freq_range <- log10(freq_range)
-    graphics::rect(
-      xleft = freq_range[[1]],
-      ybottom = pwelch_ranges$ylim[[1]],
-      xright = freq_range[[2]],
-      ytop = pwelch_ranges$ylim[[2]],
-      border = "#003366",
-      col = grDevices::adjustcolor("#99ccff", 0.25)
-    )
-
-
-  })
 
 }

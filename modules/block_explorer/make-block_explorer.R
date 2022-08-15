@@ -111,26 +111,12 @@ lapply(sort(list.files(
         command = quote({
             {
                 sample_rate <- voltage$sample_rate
-                voltage_single <- subset(voltage$data, Electrode ~ 
-                  Electrode == sample_electrode, drop = TRUE)
-                n_timepoints <- length(voltage_single)
-                if (n_timepoints > 10000) {
-                  decimate_rate <- ceiling(n_timepoints/10000)
-                  voltage_single_decimated <- ravetools::decimate(x = voltage_single, 
-                    q = decimate_rate)
-                  time <- ravetools::decimate(voltage$dnames$Time, 
-                    q = decimate_rate)
-                } else {
-                  decimate_rate <- 1L
-                  voltage_single_decimated <- voltage_single
-                  time <- voltage$dnames$Time
-                }
+                voltage_single <- as.vector(subset(voltage$data, 
+                  Electrode ~ Electrode == sample_electrode, 
+                  drop = TRUE))
                 voltage_sample <- list(origin = list(sample_rate = sample_rate, 
-                  time = voltage$dnames$Time, data = voltage_single, 
-                  range = range(voltage_single), sd = stats::sd(voltage_single)), 
-                  decimated = list(decimate_factor = decimate_rate, 
-                    sample_rate = sample_rate/decimate_rate, 
-                    time = time, data = voltage_single_decimated))
+                  data = voltage_single, range = range(voltage_single), 
+                  sd = stats::sd(voltage_single)))
             }
             return(voltage_sample)
         }), deps = c("voltage", "sample_electrode"), cue = targets::tar_cue("thorough"), 
@@ -145,20 +131,17 @@ lapply(sort(list.files(
             }
             return(pwelch_overall)
         }), deps = "voltage_sample", cue = targets::tar_cue("thorough"), 
-        pattern = NULL, iteration = "list"), `prepare_sample_for_time-frequency_analysis` = targets::tar_target_raw(name = "wavelet_sample", 
+        pattern = NULL, iteration = "list"), prepare_sample_power = targets::tar_target_raw(name = "power_sample", 
         command = quote({
             {
                 sample_rate <- wavelet$sample_rate
                 wavelet_single <- subset(wavelet$data, Electrode ~ 
-                  Electrode == sample_electrode, drop = TRUE)
+                  Electrode == sample_electrode, drop = FALSE)
+                dimnames(wavelet_single) <- NULL
+                dim(wavelet_single) <- dim(wavelet$data)[c(1, 
+                  2)]
                 wavelet_sample <- list(origin = list(sample_rate = sample_rate, 
                   dnames = wavelet$dnames[c(1, 2)], data = wavelet_single))
-            }
-            return(wavelet_sample)
-        }), deps = c("wavelet", "sample_electrode"), cue = targets::tar_cue("thorough"), 
-        pattern = NULL, iteration = "list"), baseline_power = targets::tar_target_raw(name = "power_sample", 
-        command = quote({
-            {
                 power_sample <- wavelet_sample
                 switch(baseline_method, `Welch-Periodogram` = {
                   apf <- approxfun(x = pwelch_overall$freq, y = pwelch_overall$spec_db)
@@ -183,6 +166,6 @@ lapply(sort(list.files(
                 })
             }
             return(power_sample)
-        }), deps = c("wavelet_sample", "baseline_method", "pwelch_overall", 
-        "baseline_unit"), cue = targets::tar_cue("thorough"), 
+        }), deps = c("wavelet", "sample_electrode", "baseline_method", 
+        "pwelch_overall", "baseline_unit"), cue = targets::tar_cue("thorough"), 
         pattern = NULL, iteration = "list"))

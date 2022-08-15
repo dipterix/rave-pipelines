@@ -86,11 +86,11 @@ fastplot_signal_trace <- function(
   mtext(side = 2, text = ylab, line = 2.5)
   mtext(side = 1, text = xlab, line = 1.5)
 
-  abline(h = 0, col = "gray60", lty = 3, lty = 2)
+  abline(h = 0, col = "gray60", lty = 2, lwd = 2)
 
   if(length(sds)) {
-    abline(h = sds * sd, col = col[seq_along(sds) + 1], lty = 2)
-    abline(h = -sds * sd, col = col[seq_along(sds) + 1], lty = 2)
+    abline(h = sds * sd, col = col[seq_along(sds) + 1], lty = 2, lwd = 2)
+    abline(h = -sds * sd, col = col[seq_along(sds) + 1], lty = 2, lwd = 2)
   }
   # legend(
   #   "bottomright", bg = "#FFFFFF4F", box.col = "#FFFFFFFF",

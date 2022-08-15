@@ -19,7 +19,7 @@ loader_viewer <- ravedash::presets_loader_3dviewer(height = "100%")
 loader_block <- presets_loader_block()
 
 import_export_pipeline <- ravedash::presets_import_export_subject_pipeline()
-electrode_selector <- ravedash::presets_analysis_electrode_selector2()
+electrode_selector <- ravedash::presets_analysis_electrode_selector2(start_simple = TRUE, multiple = FALSE)
 comp_analysis_ranges <- ravedash::presets_analysis_ranges()
 
 # Register the components
