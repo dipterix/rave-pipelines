@@ -912,8 +912,6 @@ module_server <- function(input, output, session, ...){
         lwd = 0.3,
         name = c("Referenced", "Raw"),
         col = c("dodgerblue3", "gray60"),
-        mar = c(5.2, 5.4, 4.1, 2.1),
-        mai = c(0.6, 0.8, 0.4, 0.1),
         nclass = 30,
         main = sprintf("Block %s, Electrode %s",
                        block, einsp_electrode)

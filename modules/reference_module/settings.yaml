@@ -1,18 +1,8 @@
-changes:
-- group_name: Bipolar-last-electrode
-  electrodes: '22,39'
-  reference_type: No Reference
-  reference_signal: noref
+changes: []
 electrode_group:
   '1':
-    name: G
-    electrodes: 6-7,14-15
-  '2':
-    name: Bipolar-last-electrode
-    electrodes: '22,39'
-  '3':
-    name: S
-    electrodes: 23,30-31,38
-project_name: test2
+    name: Grid
+    electrodes: 13-16,24
+project_name: demo
 reference_name: _unsaved
-subject_code: KC
+subject_code: DemoSubject

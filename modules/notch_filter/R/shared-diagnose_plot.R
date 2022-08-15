@@ -1,12 +1,13 @@
 diagnose_notch_filters <- function(
   subject, electrodes, blocks,
   max_freq = 300, winlen = "auto", nbins= 50,
-  bg = "white", fg = "black", cex = 3,
-  std = 3,
-  lwd = 0.3,
-  mar = c(5.2, 5.4, 4.1, 2.1),
-  mai = c(0.6, 0.8, 0.4, 0.1),
-  quiet = FALSE
+  bg = "white", fg = "black",
+  quiet = FALSE, ...
+  # cex = 3,
+  # std = 3,
+  # lwd = 0.3,
+  # mar = c(5.2, 5.4, 4.1, 2.1),
+  # mai = c(0.6, 0.8, 0.4, 0.1),
 ) {
   subject <- raveio::as_rave_subject(subject, strict = FALSE)
   # subject <- local_data$subject
@@ -73,16 +74,12 @@ diagnose_notch_filters <- function(
           max_freq = max_freq,
           try_compress = TRUE,
           window = winlen,
-          cex = cex,
-          std = std,
-          lwd = lwd,
           name = c("Original", "Filtered"),
           col = c(fg, "red"),
-          mar = mar,
-          mai = mai,
           nclass = nbins,
           main = sprintf("%s, Block %s, Electrode %s (%s)",
-                         subject$subject_id, block, e, etype)
+                         subject$subject_id, block, e, etype),
+          ...
         )
       } else {
         notch_signal <- raw_signal
@@ -95,16 +92,12 @@ diagnose_notch_filters <- function(
           max_freq = max_freq,
           try_compress = TRUE,
           window = winlen,
-          cex = cex,
-          std = std,
-          lwd = lwd,
           name = c("Original", ""),
-          mar = mar,
-          mai = mai,
           col = c(fg, NA),
           nclass = nbins,
           main = sprintf("%s, Block %s, Electrode %s (%s)",
-                         subject$subject_id, block, e, etype)
+                         subject$subject_id, block, e, etype),
+          ...
         )
       }
     }

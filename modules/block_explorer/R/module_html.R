@@ -40,7 +40,7 @@ module_html <- function(){
                 )
               ),
               `Single electrode` = shiny::div(
-                class = "fill-height height-700 resize-vertical",
+                class = "fill-height min-height-vh70 height-700 resize-vertical",
                 shiny::div(
                   class = "row fill-height",
                   shiny::div(

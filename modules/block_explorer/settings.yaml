@@ -1,9 +1,9 @@
-analysis_electrodes: '24'
+analysis_electrodes: '14'
 analysis_electrodes__category: Electrode
 baseline_method: Block-Median
 baseline_unit: Decibel
 block: 008
-loaded_electrodes: 13-15,24
-project_name: demo
-reference_name: default
-subject_code: DemoSubject
+loaded_electrodes: '14'
+project_name: congruency
+reference_name: default_CAR
+subject_code: YAB
