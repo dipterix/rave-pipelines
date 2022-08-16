@@ -3,6 +3,8 @@ title: "RAVE Preprocess: Notch Filter"
 output:
   html_document: default
   pdf_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -10,11 +12,28 @@ output:
 # Please do not remove me
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 build_pipeline <- raveio::configure_knitr()
-if(FALSE){
-  settings <- raveio::load_yaml(file.path(rstudioapi::getActiveProject(), "modules", "notch_filter", "settings.yaml"))
-  list2env(as.list(settings), envir = environment())
-}
 
+# For debug use, try to mimic the environment of pipeline
+# Load R scripts starting with `shared-` in R/ folder
+.project_path <- rstudioapi::getActiveProject()
+.module_id <- "notch_filter"
+lapply(
+  list.files(
+    file.path(.project_path, "modules", .module_id, "R"),
+    pattern = "^shared-.*\\.R$",
+    ignore.case = TRUE,
+    full.names = TRUE
+  ), 
+  function(f){
+    source(f, local = FALSE, chdir = TRUE)
+    invisible()
+  })
+
+# Load variables in `settings.yaml` and expose them to the current environment
+.settings <- raveio::load_yaml(file.path(
+  .project_path, "modules", 
+  .module_id, "settings.yaml"))
+list2env(as.list(.settings), envir = environment())
 ```
 
 ```{rave load_subject, language = "R", export = "subject", cue = "always"}
@@ -172,7 +191,6 @@ if(!length(font_size) || is.na(font_size)) {
 quiet <- isTRUE(params$quiet)
 
 
-source("./R/diagnose_plot.R", local = TRUE)
 diagnostic_plots <- diagnose_notch_filters(
   subject = subject,
   electrodes = imported_electrodes,
@@ -184,12 +202,8 @@ diagnostic_plots <- diagnose_notch_filters(
   cex = font_size,
   std = 3,
   lwd = 0.3,
-  mar = c(5.2, 5.1, 4.1, 2.1), mai = c(0.6, 0.6, 0.4, 0.1),
   quiet = quiet
 )
-
-
-
 ```
 
 ## Build, Visualize, & Run
@@ -197,26 +211,9 @@ diagnostic_plots <- diagnose_notch_filters(
 Please make sure the following code block is at the end of your pipeline file. This block will build the pipeline and generate a `make-notch_filter.R` script with your pipeline markdown file. `RAVE` will use the generated pipeline script to execute the pipeline in the dashboard application, or in massive production mode.
 
 ```{r build, echo=FALSE, results='hide'}
-build_pipeline(make_file = "make-notch_filter.R")
-```
-
-
-Once the pipeline script `make-notch_filter.R` is built, you can visualize and execute the pipeline without the need of re-knit this document. Notice we use `r` block instead of `rave`. (This is because the code blocks are not part of pipeline targets.)
-
-```{r visualize, echo=FALSE}
 Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+build_pipeline(make_file = "make-notch_filter.R")
 raveio::pipeline_visualize()
 ```
-
-
-```{r execute}
-Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
-raveio::pipeline_run(type = "vanilla")
-raveio::pipeline_progress(method = 'details')
-```
-
-
-
-
 
 

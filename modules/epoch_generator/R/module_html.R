@@ -147,7 +147,7 @@ module_html <- function(){
                       click = NULL,
                       dblclick = shiny::dblclickOpts(ns("plot_overall__dblclick"),
                                                      clip = TRUE),
-                      brush = shiny::brushOpts(ns("plot_overall__brush"),
+                      brush = shiny::brushOpts(ns("plot_overall__brush"), resetOnNew = TRUE,
                                                clip = TRUE, direction = "x")
                     )
                   )

@@ -405,11 +405,9 @@ module_server <- function(input, output, session, ...){
         nbins = input$pwelch_nbins,
         bg = theme$background,
         fg = theme$foreground,
-        cex = 3,
+        cex = 2,
         std = 3,
         lwd = 0.3,
-        mar = c(5.2, 5.4, 4.1, 2.1),
-        mai = c(0.6, 0.8, 0.4, 0.1),
         quiet = TRUE
       )
 

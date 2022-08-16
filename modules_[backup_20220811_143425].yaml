@@ -1,0 +1,51 @@
+divider:
+  Preprocess:
+    order: 0
+  Built-ins:
+    order: 10
+modules:
+  import_lfp_native:
+    label: Native Structure
+    group: Import Signals
+    order: 1.1
+  power_explorer:
+    label: Power Explorer
+    order: 11
+    badge: New!|badge-info
+  jupyterlab:
+    label: JupyterLab
+    order: 100
+    badge: Experimental|badge-warning
+  notch_filter:
+    label: Notch Filter
+    order: 3
+  wavelet_module:
+    label: Wavelet
+    order: 4
+  epoch_generator:
+    label: Generate Epoch
+    order: 5
+  reference_module:
+    label: Reference Channels
+    order: 6
+  surface_reconstruction:
+    label: Reconstruction & Coregistration
+    group: Surface & Electrodes
+    order: 7.1
+  electrode_localization:
+    label: Electrode Localization
+    group: Surface & Electrodes
+    order: 7.2
+  compatibility_rave1:
+    label: Data Tools
+    order: 8
+  standalone_viewer:
+    label: Standalone Viewer
+    hidden: yes
+groups:
+  Import Signals:
+    order: 1
+    open: no
+  Surface & Electrodes:
+    order: 7
+    open: no

@@ -1,0 +1,260 @@
+---
+title: "RAVE Block Explorer"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+# This code block sets up the engine environment
+# Please do not remove me
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+build_pipeline <- raveio::configure_knitr()
+
+# For debug use, try to mimic the environment of pipeline
+# Load R scripts starting with `shared-` in R/ folder
+.project_path <- rstudioapi::getActiveProject()
+.module_id <- "block_explorer"
+lapply(
+  list.files(
+    file.path(.project_path, "modules", .module_id, "R"),
+    pattern = "^shared-.*\\.R$",
+    ignore.case = TRUE,
+    full.names = TRUE
+  ), 
+  function(f){
+    source(f, local = FALSE, chdir = TRUE)
+    invisible()
+  })
+
+# Load variables in `settings.yaml` and expose them to the current environment
+.settings <- raveio::load_yaml(file.path(
+  .project_path, "modules", 
+  .module_id, "settings.yaml"))
+list2env(as.list(.settings), envir = environment())
+```
+
+## Importing data from RAVE
+
+#### Step 1: Create `RAVE` subject's instances
+
+Noting that all the items in the `settings.yaml` are available as variables.
+
+```{rave load_subject, language = "R", export = "subject"}
+subject <- RAVESubject$new(
+  project_name = project_name, 
+  subject_code = subject_code
+)
+subject
+```
+
+#### Step 2: Load Block Data
+
+This code chunk always runs because it caches data internally, and only a shell (pointer to the data) is returned. We do not want to cache the shell as the data content could be deleted by the users. Instead, we want the repository to decide whether to use the cache, or to update.
+
+```{rave parse_analysis_electrodes, language = "R", export = "sample_electrode"}
+sample_electrode <- dipsaus::parse_svec(analysis_electrodes)
+if(length(sample_electrode) != 1) {
+  stop("Sample electrode number must have length of one")
+}
+```
+
+```{rave calculate_electrodes_to_load, language = "R", export = "electrodes_to_load"}
+electrodes_to_load <- sort(
+  c( dipsaus::parse_svec(loaded_electrodes), sample_electrode )
+)
+```
+
+```{rave load_repository, language = "R", export = "repository", cue = "always"}
+repository <- with_future_parallel({
+  prepare_subject_with_blocks(
+    subject = subject,
+    electrodes = loaded_electrodes,
+    reference_name = reference_name,
+    blocks = block
+  )
+})
+
+```
+
+The repository may contain more electrodes than loaded thanks to the internal cache, allowing users may be able to analyze more electrodes than requested, or to reduce the time needed to load.
+
+```{rave extract_loaded_electrodes, language = "R", export = "electrodes_loaded", cue = "always"}
+electrodes_loaded <- repository$block_data[[block]]$voltage$data$get_header("cached_electrodes")
+electrodes_loaded <- sort(electrodes_loaded)
+
+if(!isTRUE(sample_electrode %in% electrodes_loaded)) {
+  stop(sprintf("Sample electrode [%s] has not been loaded successfully", paste(sample_electrode, collapse = ", ")))
+}
+```
+
+```{rave single_out_voltage_data, language = "R", export = "voltage"}
+voltage <- repository$block_data[[block]]$voltage
+```
+
+```{rave single_out_wavelet_data, language = "R", export = "wavelet"}
+wavelet <- repository$block_data[[block]]$wavelet
+```
+
+## Generate overall plots for one electrode
+
+There are three plots to show:
+
+-   Overall voltage & power plot
+    -   Allow to select time & frequency window from the power plot
+    -   Power can be baseline-corrected by
+        -   Average power of each frequency
+        -   No baseline
+    -   Power is to be displayed in decibel unit by default, but should be able to change to other types if baseline is enabled
+-   Welch-Periodogram for the whole block
+
+Each plot has one variation that uses a subset of analysis range, just like the "zoom-in" plot in the epoch module. The footer will be used to display summary statistics of overall vs selected range. A button is needed to sync the selected time x frequency range to a range selector (input)
+
+The affected global inputs are:
+
+-   Electrode selector (will change `analysis_electrodes`)
+-   2 x Time & Frequency range selector (will be the sync target)
+
+### Prepare sample data for voltage inspection
+
+R may become slow if [number of time points is large](%5Bhttps://dipterix.org/blog/2022/R-plot-capacity%5D(https://dipterix.org/blog/2022/R-plot-capacity/))
+
+Luckily, visually it makes little to no difference when plotting a million points vs. decimating the signal to 10k points and then plot.
+
+```{rave prepare_sample_for_voltage_analysis, language = "R", export = "voltage_sample"}
+sample_rate <- voltage$sample_rate
+
+# filearray subset will add dimnames. which significant increases data size
+voltage_single <- as.vector(subset(voltage$data, Electrode ~ Electrode == sample_electrode, drop = TRUE))
+
+voltage_sample <- list(
+  origin = list(
+    sample_rate = sample_rate,
+    data = voltage_single,
+    range = range(voltage_single),
+    sd = stats::sd(voltage_single)
+  )
+)
+```
+
+Plot the channel trace
+
+```{r}
+ravetools::diagnose_channel(
+  voltage_sample$origin$data, 
+  srate = voltage_sample$origin$sample_rate, 
+  which = 1
+)
+```
+
+Calculate Welch-Periodogram of the entire voltage signal
+
+```{rave calculate_Welch-Periodogram, language = "R", export = "pwelch_overall"}
+data <- voltage_sample$origin$data
+srate <- voltage_sample$origin$sample_rate
+pwelch_overall <- ravetools::pwelch(
+  x = data, fs = srate, plot = FALSE,
+  window = srate * 2, noverlap = srate)
+```
+
+"P-Welch" plot example:
+
+```{r}
+plot(pwelch_overall, xlim = c(0, log10(300)))
+```
+
+### Prepare sample data for time-frequency inspection
+
+Get wavelet, calculate power baseline
+
+```{rave prepare_sample_power, language = "R", export = "power_sample"}
+sample_rate <- wavelet$sample_rate
+wavelet_single <- subset(wavelet$data, Electrode ~ Electrode == sample_electrode, drop = FALSE)
+
+dimnames(wavelet_single) <- NULL
+dim(wavelet_single) <- dim(wavelet$data)[c(1, 2)]
+
+wavelet_sample <- list(
+  origin = list(
+    sample_rate = sample_rate,
+    dnames = wavelet$dnames[c(1, 2)],
+    data = wavelet_single
+  )
+)
+
+
+power_sample <- wavelet_sample
+switch (
+  baseline_method,
+  "Welch-Periodogram" = {
+    apf <- approxfun(
+      x = pwelch_overall$freq, 
+      y = pwelch_overall$spec_db)
+    bl <- apf(wavelet_sample$origin$dnames$Frequency)
+    bl <- 10^(bl / 20)
+  }, 
+  "Block-Average" = {
+    bl <- rowMeans(Mod(wavelet_sample$origin$data)^2)
+  }, 
+  "Block-Median" = {
+    bl <- apply(Mod(wavelet_sample$origin$data)^2, 1, median)
+  },
+  {
+    bl <- 1
+  }
+)
+
+power_sample$origin$data <- Mod(wavelet_sample$origin$data)^2 / bl
+
+switch (
+  baseline_unit,
+  "Decibel" = {
+    power_sample$origin$data <- 10 * log10(power_sample$origin$data)
+  }, 
+  "Percentage-Change" = {
+    power_sample$origin$data <- 100 * power_sample$origin$data - 100
+  },
+  {
+    stop("Unsupported baseline unit")
+  }
+)
+
+```
+
+Visualize power (with baseline) data in heatmap
+
+```{r}
+time <- power_sample$origin$dnames$Time
+freq <- power_sample$origin$dnames$Frequency
+data <- t(power_sample$origin$data)
+
+sd <- stats::sd(data)
+zlim <- sd * c(-1, 1) * 4
+
+# pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
+pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
+zlim <-
+bias <- log(2 * sd / zlim[2]) / log(0.5)
+col <- c(
+  rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
+  pal[[3]],
+  colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
+)
+
+fastplot_power_over_freq_time(data, time, freq, col)
+```
+
+## Build, Visualize, & Run
+
+```{r build, echo=FALSE, results='hide'}
+build_pipeline(make_file = "make-block_explorer.R")
+```
+
+```{r visualize, echo=FALSE}
+Sys.setenv("RAVE_PIPELINE" = normalizePath("."))
+try({
+  raveio::pipeline_visualize()
+}, silent = TRUE)
+```
