@@ -14,9 +14,25 @@ component_container <- ravedash::new_rave_shiny_component_container(
 loader_project <- ravedash::presets_loader_project()
 loader_subject <- ravedash::presets_loader_subject(checks = "notch")
 
+loader_sync1 <- ravedash::presets_loader_sync_project_subject(id = "loader_sync_from_recent_project_subject")
+loader_sync2 <- ravedash::presets_loader_sync_project_subject(
+  id = "loader_sync_from_notch_project_subject",
+  from_module = "notch_filter",
+  label = "Sync subject from module [Notch Filter]"
+)
+loader_sync3 <- ravedash::presets_loader_sync_project_subject(
+  id = "loader_sync_from_import_project_subject",
+  from_module = "import_lfp_native",
+  project_varname = "import_setup__project_name",
+  subject_varname = "import_setup__subject_code",
+  label = "Sync subject from module [Import Signals -> Native Structure]"
+)
+
+
 # Register the components
 component_container$add_components(
-  loader_project, loader_subject
+  loader_project, loader_subject,
+  loader_sync1, loader_sync2, loader_sync3
 )
 
 

@@ -23,10 +23,9 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
           ),
 
           footer = shiny::tagList(
-            shiny::actionLink(
-              inputId = ns("loader_sync_btn"),
-              label = "Sync from [Import LFP] module"
-            ),
+            loader_sync2$ui_func(),
+            shiny::br(),
+            loader_sync1$ui_func(),
             shiny::hr(),
             dipsaus::actionButtonStyled(
               inputId = ns("loader_ready_btn"),
@@ -76,6 +75,12 @@ loader_server <- function(input, output, session, ...){
           ravedash::fire_rave_event('data_changed', Sys.time())
           ravedash::logger("Data has been loaded loaded")
 
+          # Save session-based state: project name & subject code
+          ravedash::session_setopt(
+            project_name = settings$project_name,
+            subject_code = settings$subject_code
+          )
+
         },
 
 
@@ -100,31 +105,5 @@ loader_server <- function(input, output, session, ...){
     }),
     input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE
   )
-
-  shiny::bindEvent(
-    ravedash::safe_observe({
-      pipe2 <- raveio::pipeline_find("import_lfp_native")
-      data <- structure(raveio::pipeline_read(c(
-        "import_setup__project_name",
-        "import_setup__subject_code"
-      ), pipe_dir = pipe2),
-      names = c("project_name", "subject_code"))
-
-      shiny::updateSelectInput(
-        session = session,
-        inputId = loader_project$get_sub_element_id(),
-        selected = data$project_name
-      )
-
-      shiny::updateSelectInput(
-        session = session,
-        inputId = loader_subject$get_sub_element_id(),
-        selected = data$subject_code
-      )
-
-    }),
-    input$loader_sync_btn, ignoreNULL = TRUE, ignoreInit = TRUE
-  )
-
 
 }

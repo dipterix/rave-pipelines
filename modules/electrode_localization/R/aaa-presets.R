@@ -13,10 +13,24 @@ component_container <- ravedash::new_rave_shiny_component_container(
 loader_project <- ravedash::presets_loader_project()
 loader_subject <- ravedash::presets_loader_subject(checks = "3dviewer")
 
+loader_sync1 <- ravedash::presets_loader_sync_project_subject(id = "loader_sync_from_recent_project_subject")
+loader_sync2 <- ravedash::presets_loader_sync_project_subject(
+  id = "loader_sync_from_recon_project_subject",
+  from_module = "surface_reconstruction",
+  label = "Sync subject from module [Reconstruction & Coregistration]"
+)
+loader_sync3 <- ravedash::presets_loader_sync_project_subject(
+  id = "loader_sync_from_import_project_subject",
+  from_module = "import_lfp_native",
+  project_varname = "import_setup__project_name",
+  subject_varname = "import_setup__subject_code",
+  label = "Sync subject from module [Import Signals -> Native Structure]"
+)
 
 # Register the components
 component_container$add_components(
-  loader_project, loader_subject
+  loader_project, loader_subject,
+  loader_sync1, loader_sync2, loader_sync3
 )
 
 

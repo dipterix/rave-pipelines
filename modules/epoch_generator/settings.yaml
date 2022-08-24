@@ -11,9 +11,9 @@ intervals:
 - - -1.0
   - 2.0
 loaded_electrodes: 13-16,24
-project_name: automated
+project_name: test
 reference: default
 reference_name: default
 save_pipeline: yes
-subject_code: PAV004__block003
+subject_code: PAV005
 type: power

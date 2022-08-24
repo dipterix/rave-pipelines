@@ -15,9 +15,17 @@ loader_subject <- ravedash::presets_loader_subject()
 loader_reference <- ravedash::presets_loader_reference(
   mode = "create", label = "Create from existing reference profile")
 
+loader_sync1 <- ravedash::presets_loader_sync_project_subject(id = "loader_sync_from_recent_project_subject")
+loader_sync2 <- ravedash::presets_loader_sync_project_subject(
+  id = "loader_sync_from_wavelet_project_subject",
+  from_module = "wavelet_module",
+  label = "Sync subject from module [Wavelet]"
+)
+
 # Register the components
 component_container$add_components(
-  loader_project, loader_subject, loader_reference
+  loader_project, loader_subject, loader_reference,
+  loader_sync1, loader_sync2
 )
 
 

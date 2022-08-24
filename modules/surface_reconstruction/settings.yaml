@@ -1,5 +1,5 @@
-afni_path: /Users/dipterix/abin
-dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
+afni_path: ''
+dcm2niix_path: ''
 freesurfer_path: ''
 fsl_path: ''
 params:
@@ -12,9 +12,9 @@ params:
   freesurfer:
     flag: -autorecon1
     fresh_start: no
-path_ct: IMG/YCQ_CT.nii
-path_mri: IMG/YCQ_MRI.nii
-project_name: devel
+path_ct: rave-imaging/DICOM
+path_mri: rave-imaging/DICOM
+project_name: test
 skip_coregistration: no
 skip_recon: no
-subject_code: YCQ
+subject_code: PAV005
