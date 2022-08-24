@@ -615,8 +615,6 @@ module_server <- function(input, output, session, ...){
       block <- input$plot_block
       existing_refs <- get_reference_options()
 
-      list2env(as.list(environment()), globalenv())
-
       if(!length(ginsp_gap) || is.na(ginsp_gap)){ ginsp_gap <- 0.999 }
 
       shiny::validate(
@@ -647,8 +645,6 @@ module_server <- function(input, output, session, ...){
                     col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
       on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
 
-      ravedash::logger("2", level = "debug")
-
       tidx_start <- round(ginsp_start * vdata$sample_rate)
       tidx_end <- round((ginsp_start + ginsp_duration) * vdata$sample_rate)
       max_tps <- nrow(vdata$data)
@@ -669,8 +665,6 @@ module_server <- function(input, output, session, ...){
       ginsp_gap <- abs(ginsp_gap)
 
       is_bipolar <- isTRUE(ginfo$data$Type[[1]] %in% reference_choices[4])
-
-      ravedash::logger("3", level = "debug")
 
       get_cols <- function(col, invalid = "red"){
         re <- rep(col, length(electrodes))
@@ -811,9 +805,6 @@ module_server <- function(input, output, session, ...){
           col = get_cols('gray60')
         )
       }
-
-      ravedash::logger("5", level = "debug")
-
 
       return()
 
