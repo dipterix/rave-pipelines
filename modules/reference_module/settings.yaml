@@ -1,8 +1,12 @@
-changes: []
+changes:
+- group_name: Nolabel
+  electrodes: 1-233
+  reference_type: Common Average Reference
+  reference_signal: ref_1-200
 electrode_group:
   '1':
-    name: G
-    electrodes: 13-16,24
-project_name: demo
+    name: Nolabel
+    electrodes: 1-233
+project_name: test
 reference_name: _unsaved
-subject_code: YAB
+subject_code: PAV004

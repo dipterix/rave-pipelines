@@ -3,12 +3,12 @@ dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
 freesurfer_path: ''
 fsl_path: ''
 params:
-  nii_t1: YCQ_MRI.nii
-  nii_ct: YCQ_CT_shft.nii
+  nii_t1: ''
+  nii_ct: ''
   dcm2niix:
     merge: Auto
     float: 'Yes'
-    crop: 'Yes'
+    crop: 'No'
   freesurfer:
     flag: -autorecon1
     fresh_start: no

@@ -602,6 +602,7 @@ module_server <- function(input, output, session, ...){
 
   ravedash::register_output(
     shiny::renderPlot({
+
       data_loaded <- ravedash::watch_data_loaded()
       vdata <- voltage_data()
       ginsp_start <- input$ginsp_start
@@ -613,6 +614,8 @@ module_server <- function(input, output, session, ...){
       theme <- ravedash::current_shiny_theme()
       block <- input$plot_block
       existing_refs <- get_reference_options()
+
+      list2env(as.list(environment()), globalenv())
 
       if(!length(ginsp_gap) || is.na(ginsp_gap)){ ginsp_gap <- 0.999 }
 
@@ -644,41 +647,45 @@ module_server <- function(input, output, session, ...){
                     col.sub = fg, mai = c(0.8, 0.5, 0.42, 0.1))
       on.exit({ do.call(graphics::par, old_theme) }, add = TRUE)
 
+      ravedash::logger("2", level = "debug")
 
-      signals <- vdata$data[,vdata$electrodes %in% electrodes, drop = FALSE]
+      tidx_start <- round(ginsp_start * vdata$sample_rate)
+      tidx_end <- round((ginsp_start + ginsp_duration) * vdata$sample_rate)
+      max_tps <- nrow(vdata$data)
+
+      if(tidx_start <= 0 ) { tidx_start <- 1 }
+      if( tidx_end > max_tps ){ tidx_end <- max_tps }
+      if( tidx_end <= tidx_start ) { tidx_start <- tidx_end - min(100, max_tps - 1) }
+      ginsp_start <- (tidx_start - 1) / vdata$sample_rate
+      ginsp_duration <- (tidx_end - tidx_start) / vdata$sample_rate
+
+      tp_idx <- seq.int(tidx_start, tidx_end)
+      elec_idx <- vdata$electrodes %in% electrodes
+      signals <- vdata$data[tp_idx, , drop = FALSE]
+
+      if(ginsp_gap <= 1) {
+        ginsp_gap <- stats::quantile(signals, max(ginsp_gap, 0.01), na.rm = TRUE)
+      }
+      ginsp_gap <- abs(ginsp_gap)
 
       is_bipolar <- isTRUE(ginfo$data$Type[[1]] %in% reference_choices[4])
 
+      ravedash::logger("3", level = "debug")
+
+      get_cols <- function(col, invalid = "red"){
+        re <- rep(col, length(electrodes))
+        re[invalids] <- invalid
+        if(!is_bipolar) {
+          re <- c("orange", re)
+        }
+        re
+      }
+
+      ref_names <- ginfo$data$Reference
+      invalids <- ref_names == ""
+      can_show_refs <- TRUE
+
       if( is_bipolar ) {
-
-        ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
-        invalids <- ref_names == ""
-
-        get_cols <- function(col, invalid = "red"){
-          re <- rep(col, length(electrodes))
-          re[invalids] <- invalid
-          re
-        }
-
-        if(ginsp_type == "Show original signals only") {
-          rave::plot_signals(
-            signals = t(signals),
-            sample_rate = vdata$sample_rate,
-            space = ginsp_gap,
-            start_time = ginsp_start,
-            duration = ginsp_duration,
-            compress = TRUE,
-            channel_names = electrodes,
-            ylab = "Electrode Channels",
-            new_plot = TRUE,
-            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-            main = "Reference: Bi-polar",
-            col = get_cols('gray60')
-          )
-          return()
-        }
-
-
         refed_signals <- sapply(seq_along(ref_names), function(ii){
           name <- ref_names[[ii]]
           name2 <- dipsaus::parse_svec(gsub("^ref_", "", name))
@@ -687,7 +694,7 @@ module_server <- function(input, output, session, ...){
           }
 
           if(length(name2) == 1 && isTRUE(name2 %in% vdata$electrodes)) {
-            ref_data <- vdata$data[, vdata$electrodes %in% name2, drop = FALSE]
+            ref_data <- signals[, vdata$electrodes %in% name2, drop = FALSE]
             return(signals[,ii] - ref_data)
           }
 
@@ -696,56 +703,17 @@ module_server <- function(input, output, session, ...){
             if(is.null(ref_data)) {
               ref_data <- 0
             } else {
-              ref_data <- ref_data$voltage[[block]]
+              ref_data <- ref_data$voltage[[block]][tp_idx]
             }
             return(signals[,ii] - ref_data)
           }
           return(signals[,ii])
         })
-
-
-        params <- rave::plot_signals(
-          signals = t(refed_signals),
-          sample_rate = vdata$sample_rate,
-          space = ginsp_gap,
-          start_time = ginsp_start,
-          duration = ginsp_duration,
-          compress = TRUE,
-          channel_names = electrodes,
-          ylab = "Electrode Channels",
-          new_plot = TRUE,
-          space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-          main = "Reference: Bi-polar",
-          col = get_cols('dodgerblue3')
-        )
-
-
-        if(ginsp_type == "Show all") {
-          rave::plot_signals(
-            signals = t(signals),
-            sample_rate = vdata$sample_rate,
-            space = params$space,
-            start_time = ginsp_start,
-            duration = ginsp_duration,
-            compress = params$compress,
-            channel_names = electrodes,
-            new_plot = FALSE,
-            space_mode = "absolute",
-            col = get_cols('gray60', invalid = NA)
-          )
-        }
-        return()
-
+        refed_signals <- t(refed_signals[, elec_idx, drop = FALSE])
+        signals <- t(signals[, elec_idx, drop = FALSE])
+        channel_names <- electrodes
+        main <- "Reference: Bi-polar"
       } else {
-
-        ref_names <- ginfo$data$Reference[ginfo$data$Electrode %in% electrodes]
-        invalids <- ref_names == ""
-        get_cols <- function(col, invalid = "red"){
-          re <- rep(col, length(electrodes))
-          re[invalids] <- invalid
-          c("orange", re)
-        }
-
         ref_signal <- unique(ginfo$data$Reference)
         ref_signal <- ref_signal[ref_signal %in% existing_refs]
         if(length(ref_signal)) {
@@ -753,75 +721,101 @@ module_server <- function(input, output, session, ...){
           ref_data <- get_reference_data(ref_signal)
           if(is.null(ref_data)) {
             ref_signal <- "noref"
-            signals <- cbind(NA, signals)
+            ref_data <- 0
           } else {
-            ref_data <- ref_data$voltage[[block]]
+            ref_data <- ref_data$voltage[[block]][tp_idx]
           }
-          signals <- cbind(ref_data, signals)
         } else {
-          ref_signal <- "noref"
-          signals <- cbind(NA, signals)
-        }
-        refed_signals <- signals
-        sel <- (ginfo$data$Reference == ref_signal)[ginfo$data$Electrode %in% electrodes]
-        if(ref_signal != "noref" && any(sel)) {
-          sel <- c(FALSE, sel)
-          refed_signals[, sel] <- refed_signals[, sel] - refed_signals[,1]
-        }
-
-        if(ginsp_type == "Show original signals only") {
-          rave::plot_signals(
-            signals = t(signals),
-            sample_rate = vdata$sample_rate,
-            space = ginsp_gap,
-            start_time = ginsp_start,
-            duration = ginsp_duration,
-            compress = TRUE,
-            channel_names = c("REF", electrodes),
-            ylab = "Electrode Channels",
-            new_plot = TRUE,
-            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-            main = sprintf("Reference: %s", ref_signal),
-            col = get_cols('gray60')
-          )
-          return()
-        } else {
-          params <- rave::plot_signals(
-            signals = t(refed_signals),
-            sample_rate = vdata$sample_rate,
-            space = ginsp_gap,
-            start_time = ginsp_start,
-            duration = ginsp_duration,
-            compress = TRUE,
-            channel_names = c("REF", electrodes),
-            ylab = "Electrode Channels",
-            new_plot = TRUE,
-            space_mode = ifelse(ginsp_gap > 1, "absolute", "quantile"),
-            main = sprintf("Reference: %s", ref_signal),
-            col = get_cols('dodgerblue3')
-          )
-
-
-          if(ginsp_type == "Show all") {
-            rave::plot_signals(
-              signals = t(signals),
-              sample_rate = vdata$sample_rate,
-              space = params$space,
-              start_time = ginsp_start,
-              duration = ginsp_duration,
-              compress = params$compress,
-              channel_names = c("REF", electrodes),
-              new_plot = FALSE,
-              space_mode = "absolute",
-              col = get_cols('gray60', invalid = NA)
-            )
+          ref_signal <- ref_names[!ref_names %in% c("", "noref")]
+          ref_signal <- unlist(lapply(ref_signal, function(x) {
+            re <- dipsaus::parse_svec(gsub("^ref_", "", x))
+            if(length(re) == 1 && re %in% vdata$electrodes) { return(re) }
+            return(NULL)
+          }))
+          if(!length(ref_signal)) {
+            ref_signal <- "noref"
+            ref_data <- 0
+          } else {
+            ref_signal <- ref_signal[[1]]
+            ref_data <- signals[, vdata$electrodes %in% ref_signal, drop = TRUE]
+            ref_signal <- sprintf("ref_%s", ref_signal)
           }
         }
+        signals <- signals[, elec_idx, drop = FALSE]
+        refed_signals <- signals - ref_data
 
+        signals <- t(cbind(ref_data, signals))
+        refed_signals <- t(cbind(ref_data, refed_signals))
+        channel_names <- c('REF', electrodes)
 
-        return()
+        main <- sprintf("Reference: %s", ref_signal)
       }
 
+      if(ginsp_type == "Show original signals only") {
+        ravetools::plot_signals(
+          signals = signals,
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          space_mode = "absolute",
+          time_shift = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = channel_names,
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          main = main,
+          col = get_cols('dodgerblue3')
+        )
+      } else if (ginsp_type == "Show referenced signals only") {
+        ravetools::plot_signals(
+          signals = refed_signals,
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          space_mode = "absolute",
+          time_shift = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = channel_names,
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          main = main,
+          col = get_cols('gray60')
+        )
+      } else {
+        ravetools::plot_signals(
+          signals = signals,
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          space_mode = "absolute",
+          time_shift = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = channel_names,
+          ylab = "Electrode Channels",
+          new_plot = TRUE,
+          main = main,
+          col = get_cols('dodgerblue3')
+        )
+        ravetools::plot_signals(
+          signals = refed_signals,
+          sample_rate = vdata$sample_rate,
+          space = ginsp_gap,
+          space_mode = "absolute",
+          time_shift = ginsp_start,
+          duration = ginsp_duration,
+          compress = TRUE,
+          channel_names = channel_names,
+          ylab = "Electrode Channels",
+          new_plot = FALSE,
+          main = main,
+          col = get_cols('gray60')
+        )
+      }
+
+      ravedash::logger("5", level = "debug")
+
+
+      return()
 
     }),
     outputId = "reference_plot_signals",
