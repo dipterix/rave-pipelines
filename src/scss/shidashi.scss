@@ -754,11 +754,16 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
   }
 }
 
-.back-to-top [role="group"] {
+.ravedash-back-to-top,
+.back-to-top {
   // opacity: 0.4;
   // transition: opacity 200ms;
+  bottom: 1.25rem;
+  position: fixed;
+  right: 1.25rem;
   z-index: 10000;
   box-shadow: 0 0 10px 1px adjust-color($gray, $alpha: -0.5);
+  border-radius: .25rem;
 
   &.show,
   &:hover {
@@ -768,7 +773,12 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
   & .dropdown-menu {
     margin-bottom: 0;
   }
+
+  &:focus {
+    box-shadow: none;
+  }
 }
+
 
 // code-display
 .info-box {

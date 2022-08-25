@@ -800,10 +800,10 @@ class Shidashi {
     }
 
     // scroll-top widget
-    const gotop_el = $(".back-to-top");
-    const gotop_btn = $(".back-to-top .btn-go-top");
-    const root_btn = $(".back-to-top .dropdown-toggle");
-    const menu = $(".back-to-top .dropdown-menu");
+    const gotop_el = $(".back-to-top,.ravedash-back-to-top");
+    const gotop_btn = $(".back-to-top .btn-go-top,.ravedash-back-to-top .btn-go-top");
+    const root_btn = $(".back-to-top .dropdown-toggle,.ravedash-back-to-top .dropdown-toggle");
+    const menu = $(".back-to-top .dropdown-menu,.ravedash-back-to-top .dropdown-menu");
     const anchors = $(".shidashi-anchor");
 
     // Scroll-top widgets
