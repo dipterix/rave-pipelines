@@ -237,7 +237,8 @@ dipsaus::lapply_async2(
         freqs = kernels$freqs,
         srate = srate,
         wave_num = kernels$cycles,
-        precision = kernels_precision
+        precision = kernels_precision,
+        signature = subject$subject_id
       )
       
       # Subset coefficients to save space

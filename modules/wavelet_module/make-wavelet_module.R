@@ -222,7 +222,8 @@ lapply(sort(list.files(
                       data_length <- length(s)
                       re <- ravetools::morlet_wavelet(data = s,
                         freqs = kernels$freqs, srate = srate,
-                        wave_num = kernels$cycles, precision = kernels_precision)
+                        wave_num = kernels$cycles, precision = kernels_precision,
+                        signature = subject$subject_id)
                       ind <- floor(seq(1, data_length, by = compress_rate))
                       if (kernels_precision == "float") {
                         coef <- t(re[ind, , drop = FALSE])
