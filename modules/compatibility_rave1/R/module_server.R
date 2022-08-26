@@ -80,7 +80,9 @@ module_server <- function(input, output, session, ...){
           icon = "info"
         )
         Sys.sleep(0.5)
-        raveio::rave_subject_format_conversion(subject = subject)
+        raveio::with_future_parallel({
+          raveio::rave_subject_format_conversion(subject = subject)
+        })
 
         dipsaus::close_alert2()
         dipsaus::shiny_alert2(
