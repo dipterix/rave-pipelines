@@ -172,7 +172,8 @@ lapply(sort(list.files(
                       data_length <- length(sample_data)
                     }
                     generate_kernel(freqs = kernels$freqs, srate = srate/pre_decimate,
-                      wave_num = kernels$cycles, data_length = data_length)
+                      wave_num = kernels$cycles, data_length = data_length,
+                      signature = subject$subject_id)
                   })
                 })
                 overall_progress$inc("Removing previously generated wavelet coefficients")
