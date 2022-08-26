@@ -168,7 +168,7 @@ lapply(unique(srates), function(srate) {
       data_length <- length(sample_data)
     }
     
-    generate_kernel(freqs = kernels$freqs, srate = srate / pre_decimate, wave_num = kernels$cycles, data_length = data_length)
+    generate_kernel(freqs = kernels$freqs, srate = srate / pre_decimate, wave_num = kernels$cycles, data_length = data_length, signature = subject$subject_id)
   })
 })
 
