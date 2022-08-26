@@ -49,7 +49,13 @@ module_html <- function(){
               class_body = "no-padding fill-width height-vh80 min-height-450 resize-vertical",
               shiny::div(
                 class = 'position-relative fill',
-                threeBrain::threejsBrainOutput(ns("localization_viewer"), width = '100%', height = "100%")
+                ravedash::output_gadget_container(
+                  threeBrain::threejsBrainOutput(
+                    outputId = ns("localization_viewer"),
+                    width = '100%',
+                    height = "100%"
+                  )
+                )
               )
             )
           )

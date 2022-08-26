@@ -295,74 +295,79 @@ module_server <- function(input, output, session, ...){
     )
   })
 
-  output$localization_viewer <- threeBrain::renderBrain({
-    local_reactives$refresh
+  # output$localization_viewer <-
+  ravedash::register_output(
+    outputId = "localization_viewer", export_type = "3dviewer",
+    render_function = threeBrain::renderBrain({
+      local_reactives$refresh
 
-    subject <- component_container$data$subject
-    shiny::validate(
-      shiny::need(
-        isTRUE(ravedash::watch_data_loaded()) && !is.null(subject),
-        message = "Waiting for the data..."
+      subject <- component_container$data$subject
+      shiny::validate(
+        shiny::need(
+          isTRUE(ravedash::watch_data_loaded()) && !is.null(subject),
+          message = "Waiting for the data..."
+        )
       )
-    )
 
-    theme <- shiny::isolate(ravedash::current_shiny_theme())
+      theme <- shiny::isolate(ravedash::current_shiny_theme())
 
-    brain <- component_container$data$brain
-    brain$electrodes$objects <- list()
-    # brain <- threeBrain::freesurfer_brain2(
-    #   fs_subject_folder = subject$freesurfer_path,
-    #   subject_name = subject$subject_code
-    # )
+      brain <- component_container$data$brain
+      brain$electrodes$objects <- list()
+      # brain <- threeBrain::freesurfer_brain2(
+      #   fs_subject_folder = subject$freesurfer_path,
+      #   subject_name = subject$subject_code
+      # )
 
-    ct_in_t1 <- pipeline$read("ct_in_t1")
+      ct_in_t1 <- pipeline$read("ct_in_t1")
 
-    control_presets <- c("localization", "animation", "display_highlights")
-    controllers <- list()
-    controllers[["Highlight Box"]] <- FALSE
-    controllers[["Overlay Coronal"]] <- TRUE
-    controllers[["Overlay Axial"]] <- TRUE
-    controllers[["Overlay Sagittal"]] <- TRUE
-    controllers[["Show Panels"]] <- FALSE
-    controllers[["Show Time"]] <- FALSE
+      control_presets <- c("localization", "animation", "display_highlights")
+      controllers <- list()
+      controllers[["Highlight Box"]] <- FALSE
+      controllers[["Overlay Coronal"]] <- TRUE
+      controllers[["Overlay Axial"]] <- TRUE
+      controllers[["Overlay Sagittal"]] <- TRUE
+      controllers[["Show Panels"]] <- FALSE
+      controllers[["Show Time"]] <- FALSE
 
-    dipsaus::shiny_alert2(
-      title = "Finalizing...",
-      text = "Generating 3D viewer, rendering voxel data...",
-      auto_close = FALSE,
-      danger_mode = FALSE,
-      icon = "info",
-      buttons = FALSE
-    )
-    on.exit({
-      dipsaus::close_alert2()
-    }, add = TRUE)
+      dipsaus::shiny_alert2(
+        title = "Finalizing...",
+        text = "Generating 3D viewer, rendering voxel data...",
+        auto_close = FALSE,
+        danger_mode = FALSE,
+        icon = "info",
+        buttons = FALSE
+      )
+      on.exit({
+        dipsaus::close_alert2()
+      }, add = TRUE)
 
-    if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-      class(ct_in_t1) <- "threeBrain.nii"
-      viewer <- brain$localize(
-        ct_in_t1, show_modal = FALSE,
-        controllers = list(
-          `Overlay Coronal` = TRUE,
-          `Overlay Axial` = TRUE,
-          `Overlay Sagittal` = TRUE,
-          `Edit Mode` = "disabled",
-          `Show Panels` = FALSE
-        ))
-    } else {
-      viewer <- brain$localize(
-        show_modal = FALSE,
-        controllers = list(
-          `Overlay Coronal` = TRUE,
-          `Overlay Axial` = TRUE,
-          `Overlay Sagittal` = TRUE,
-          `Edit Mode` = "disabled",
-          `Show Panels` = FALSE
-        ))
-    }
+      if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
+        class(ct_in_t1) <- "threeBrain.nii"
+        viewer <- brain$localize(
+          ct_in_t1, show_modal = FALSE,
+          controllers = list(
+            `Overlay Coronal` = TRUE,
+            `Overlay Axial` = TRUE,
+            `Overlay Sagittal` = TRUE,
+            `Edit Mode` = "disabled",
+            `Show Panels` = FALSE
+          ))
+      } else {
+        viewer <- brain$localize(
+          show_modal = FALSE,
+          controllers = list(
+            `Overlay Coronal` = TRUE,
+            `Overlay Axial` = TRUE,
+            `Overlay Sagittal` = TRUE,
+            `Edit Mode` = "disabled",
+            `Show Panels` = FALSE
+          ))
+      }
 
-    viewer
-  })
+      viewer
+    })
+  )
+
   brain_proxy <- threeBrain::brain_proxy("localization_viewer")
 
   ravedash::safe_observe({
