@@ -1,7 +1,7 @@
-afni_path: ''
-dcm2niix_path: ''
-freesurfer_path: ''
-fsl_path: ''
+afni_path: /Users/dipterix/abin
+dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20211006/bin/dcm2niix
+freesurfer_path: /Applications/freesurfer/7.2.0
+fsl_path: /usr/local/fsl
 params:
   nii_t1: ''
   nii_ct: ''
@@ -12,9 +12,9 @@ params:
   freesurfer:
     flag: -autorecon1
     fresh_start: no
-path_ct: rave-imaging/DICOM
-path_mri: rave-imaging/DICOM
-project_name: test
+path_ct: block003
+path_mri: block003
+project_name: automated
 skip_coregistration: no
 skip_recon: no
-subject_code: PAV005
+subject_code: PAV004__block003
