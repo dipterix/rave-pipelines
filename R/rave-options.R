@@ -105,7 +105,7 @@ rave_option_server <- function(input, output, session){
   })
 
 
-  register_path_input <- function(input_id, opt_key, opt_name) {
+  register_path_input <- function(input_id, opt_key, opt_name, ok_ifnot_exists = FALSE) {
     # require(dipsaus); session %?<-% shiny::MockShinySession$new()
     sv <- shinyvalidate::InputValidator$new(session = session)
 
@@ -116,7 +116,7 @@ rave_option_server <- function(input, output, session){
           opt_name
         ))
       }
-      if(!dir.exists(value)) {
+      if(!ok_ifnot_exists && !dir.exists(value)) {
         return(sprintf(
           "Path to [%s] does not exists",
           opt_name
@@ -135,7 +135,7 @@ rave_option_server <- function(input, output, session){
           "Trying to set RAVE option [{opt_key}] <- {val}",
           level = "debug", use_glue = TRUE
         )
-        raveio::raveio_setopt(opt_key, value = val)
+        raveio::raveio_setopt(opt_key, value = val, .save = TRUE)
 
         current_val <- raveio::raveio_getopt(opt_key)
 
@@ -174,7 +174,8 @@ rave_option_server <- function(input, output, session){
 
   register_path_input(input_id = "temp_dir",
                       opt_key = "tensor_temp_path",
-                      opt_name = "session data")
+                      opt_name = "session data",
+                      ok_ifnot_exists = TRUE)
 
   local({
     sv <- shinyvalidate::InputValidator$new(session = session)

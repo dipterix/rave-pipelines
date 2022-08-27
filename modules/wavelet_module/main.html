@@ -1693,13 +1693,18 @@ function resetOneNode(node, options, network){
 }
 
 // Global function to reset all node
-function resetAllNodes(nodes, update, options, network){
-  var nodesToReset = nodes.get({
-    filter: function (item) {
-      return item.isHardToRead === true;
-    },
-    returnType :'Array'
-  });
+function resetAllNodes(nodes, update, options, network, all){
+  
+  if(all === false){
+      var nodesToReset = nodes.get({
+      filter: function (item) {
+        return item.isHardToRead === true;
+      },
+      returnType :'Array'
+    });
+  } else {
+      var nodesToReset = nodes.get({returnType :'Array'});
+  }
   
   var have_cluster_nodes = false;
   var nodes_in_clusters;
@@ -3058,7 +3063,7 @@ if (HTMLWidgets.shinyMode){
 
             //reset nodes
             resetAllEdges(el.edges, el.highlightColor, el.byselectionColor, el.chart);
-            resetAllNodes(el.nodes, true, el.options, el.chart);
+            resetAllNodes(el.nodes, true, el.options, el.chart, false);
             
             if (main_el.selectActive === true){
               main_el.selectActive = false;
@@ -3143,7 +3148,7 @@ if (HTMLWidgets.shinyMode){
           // reset some parameters / date before
           if (main_el.selectActive === true | main_el.highlightActive === true) {
             //reset nodes
-            resetAllNodes(el.nodes, true, el.options, el.chart);
+            resetAllNodes(el.nodes, true, el.options, el.chart, false);
             
             if (main_el.selectActive === true){
               main_el.selectActive = false;
@@ -4456,7 +4461,7 @@ HTMLWidgets.widget({
       }
       else if (el_id.selectActive === true) {
         //reset nodes
-        resetAllNodes(nodes, update, options, instance.network)
+        resetAllNodes(nodes, update, options, instance.network, false)
         el_id.selectActive = false
       }
     } 
@@ -4870,7 +4875,7 @@ HTMLWidgets.widget({
             resetList("nodeSelect", el.id, 'selected');
           }
           //reset nodes
-          resetAllNodes(nodes, update, options, instance.network)
+          resetAllNodes(nodes, update, options, instance.network, false)
           el_id.highlightActive = false;
           is_clicked = false;
           
@@ -5203,13 +5208,15 @@ HTMLWidgets.widget({
     if(x.clusteringGroup || x.clusteringColor || x.clusteringOutliers || x.clusteringHubsize || x.clusteringConnection){
       // if we click on a node, we want to open it up!
       instance.network.on("doubleClick", function (params){
-        
         if (params.nodes.length === 1) {
           if (instance.network.isCluster(params.nodes[0]) === true) {
             is_clicked = false;
             instance.network.openCluster(params.nodes[0], {releaseFunction : function(clusterPosition, containedNodesPositions) {
               return containedNodesPositions;
             }});
+            // must be better...
+            resetAllEdges(edges, el_id.highlightColor, el_id.byselectionColor, instance.network);
+            resetAllNodes(nodes, true, options, instance.network, true);
           } else {
             if(x.clusteringGroup){
               var array_group = nodes.get({
@@ -5674,7 +5681,7 @@ subject &lt;- raveio::RAVESubject$new(
   subject_code = subject_code
 )
 print(subject)
-#&gt; RAVE subject &lt;test2/KC&gt;</code></pre>
+#&gt; RAVE subject &lt;test/PAV004&gt;</code></pre>
 <pre class="r"><code># clear all existing cache data in cache_dir
 
 clear_cache &lt;- raveio::clear_cached_files(
@@ -5733,385 +5740,20 @@ kernels &lt;- list(
   cycles = cycles,
   precision = precision
 )</code></pre>
-<pre class="r"><code># If notch filter results not changed, we can skip the wavelet
-force(notch_filtere_stamp)
-#&gt; $electrodes
-#&gt;  [1]  6  7 14 15 22 23 30 31 38 39
-#&gt; 
-#&gt; $notch_filter_lowerbound
-#&gt; [1]  59 118 178
-#&gt; 
-#&gt; $notch_filter_upperbound
-#&gt; [1]  61 122 182
-#&gt; 
-#&gt; $timestamp
-#&gt; [1] &quot;2022-07-12 22:55:21 EDT&quot;
-raveio::clear_cached_files(
-  subject_code = subject$subject_code
+<pre class="r"><code>wavelet_params &lt;- raveio:::run_wavelet(
+  subject = subject, electrodes = notch_filtered_electrodes[[1]], 
+  freqs = kernels$freqs, cycles = kernels$cycles,
+  target_sample_rate = target_sample_rate,
+  kernels_precision = kernels$precision, 
+  pre_downsample = pre_downsample,
+  verbose = TRUE
 )
-
-blocks &lt;- subject$preprocess_settings$blocks
-electrodes &lt;- notch_filtered_electrodes
-srates &lt;- sample_rates
-compress_rates &lt;- srates / target_sample_rate
-kernels_precision &lt;- kernels$precision
-pre_decimate &lt;- as.integer(pre_downsample)
-if(pre_decimate &lt; 1) {
-  pre_decimate &lt;- 1
-} 
-
-overall_progress &lt;- dipsaus::progress2(&quot;Wavelet overall progress&quot;, max = 5, shiny_auto_close = TRUE)
 #&gt; [Wavelet overall progress]: initializing... 
-
-# Create dir
-overall_progress$inc(&quot;Creating directories&quot;)
-#&gt; [Wavelet overall progress]: Creating directories (1 out of 5) 
-subject$initialize_paths(include_freesurfer = FALSE)
-raveio::dir_create2(file.path(subject$data_path, &quot;power&quot;))
-raveio::dir_create2(file.path(subject$data_path, &quot;phase&quot;))
-raveio::dir_create2(file.path(subject$data_path, &quot;voltage&quot;))
-
-# prepare kernels
-overall_progress$inc(&quot;Generating wavelet kernels&quot;)
-#&gt; [Wavelet overall progress]: Generating wavelet kernels (2 out of 5) 
-ravetools &lt;- asNamespace(&quot;ravetools&quot;)
-generate_kernel &lt;- ravetools[[sprintf(&quot;wavelet_kernels2_%s&quot;, kernels_precision)]]
-
-sample_file = file.path(subject$preprocess_path, &#39;voltage&#39;, 
-                     sprintf(&#39;electrode_%d.h5&#39;, electrodes[[1]]))
-
-
-if(!file.exists(sample_file) || !raveio::h5_valid(sample_file)){
-  stop(&quot;Electrode file is missing (preprocess, electrode &quot;, electrodes[[1]], &quot;)&quot;)
-}
-sample_names &lt;- gsub(&quot;^/&quot;, &quot;&quot;, raveio::h5_names(sample_file))
-
-lapply(unique(srates), function(srate) {
-  lapply(blocks, function(block){
-    sample_name &lt;- sprintf(&quot;notch/%s&quot;, block)
-    if(!sample_name %in% sample_names) {
-      stop(sprintf(&quot;I can find the imported signal file for Electrode %s, but cannot find any notch-filtered signal for block %s. The data file might be corrupted.&quot;, electrodes[[1]], block))
-    }
-    sample_data &lt;- raveio::load_h5(sample_file, name = sample_name, ram = FALSE, read_only = TRUE)
-    data_length &lt;- length(sample_data)
-    
-    if(data_length &lt;= 0) {
-      stop(sprintf(&quot;Electrode %s has zero-length signal (/notch/%s). The data file might be corrupted.&quot;, electrodes[[1]], block))
-    }
-    
-    if(pre_downsample &gt; 1) {
-      sample_data &lt;- ravetools::decimate(
-        sample_data[], pre_downsample, ftype = &quot;fir&quot;)
-      data_length &lt;- length(sample_data)
-    }
-    
-    generate_kernel(freqs = kernels$freqs, srate = srate / pre_decimate, wave_num = kernels$cycles, data_length = data_length)
-  })
-})
-#&gt; [[1]]
-#&gt; [[1]][[1]]
-#&gt; [[1]][[1]]$real
-#&gt; Reference class object of class &quot;FileArray&quot;
-#&gt; Mode: readonly 
-#&gt; Dimension: 810360x20 
-#&gt; # of partitions: 20 
-#&gt; Partition size: 1 
-#&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-038e2f42290e339b82957a58b23fd77e 
-#&gt; 
-#&gt; [[1]][[1]]$imag
-#&gt; Reference class object of class &quot;FileArray&quot;
-#&gt; Mode: readonly 
-#&gt; Dimension: 810360x20 
-#&gt; # of partitions: 20 
-#&gt; Partition size: 1 
-#&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-038e2f42290e339b82957a58b23fd77e 
-#&gt; 
-#&gt; 
-#&gt; [[1]][[2]]
-#&gt; [[1]][[2]]$real
-#&gt; Reference class object of class &quot;FileArray&quot;
-#&gt; Mode: readonly 
-#&gt; Dimension: 809880x20 
-#&gt; # of partitions: 20 
-#&gt; Partition size: 1 
-#&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-real-10ad08903192bed8a3b07a89519efc20 
-#&gt; 
-#&gt; [[1]][[2]]$imag
-#&gt; Reference class object of class &quot;FileArray&quot;
-#&gt; Mode: readonly 
-#&gt; Dimension: 809880x20 
-#&gt; # of partitions: 20 
-#&gt; Partition size: 1 
-#&gt; Storage type: double (internal size: 8)
-#&gt; Location: /Users/dipterix/rave_data/cache_dir/ravetools/wavelet-imag-10ad08903192bed8a3b07a89519efc20
-
-
-
-### Prepare for the wavelet file. Since users may specify different sample rate, we need to remove files if they exists
-# 1. reference file
-# ref_file = file.path(dirs$channel_dir, &#39;reference&#39;, sprintf(&#39;ref_%s.h5&#39;, dipsaus::deparse_svec(electrodes)))
-# unlink(ref_file)
-
-# 2. raw channel files and power/phase files
-overall_progress$inc(&quot;Removing previously generated wavelet coefficients&quot;)
-#&gt; [Wavelet overall progress]: Removing previously generated wavelet coefficients (3 out of 5) 
-preproc &lt;- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = TRUE)
-
-for(e in electrodes) {
-  preproc$data[[as.character(e)]]$has_wavelet &lt;- FALSE
-}
-preproc$save()
-
-data_root &lt;- subject$data_path
-lapply(electrodes, function(e){
-  unlink(file.path(data_root, &#39;power&#39;, sprintf(&#39;%d.h5&#39;, e)))
-  unlink(file.path(data_root, &#39;phase&#39;, sprintf(&#39;%d.h5&#39;, e)))
-  unlink(file.path(data_root, &#39;voltage&#39;, sprintf(&#39;%d.h5&#39;, e)))
-  for(block in blocks){
-    unlink(file.path(data_root, &#39;cache&#39;, &#39;power&#39;, &#39;raw&#39;, block, sprintf(&#39;%d.fst&#39;, e)))
-    unlink(file.path(data_root, &#39;cache&#39;, &#39;phase&#39;, &#39;raw&#39;, block, sprintf(&#39;%d.fst&#39;, e)))
-  }
-})
-#&gt; [[1]]
-#&gt; NULL
-#&gt; 
-#&gt; [[2]]
-#&gt; NULL
-#&gt; 
-#&gt; [[3]]
-#&gt; NULL
-#&gt; 
-#&gt; [[4]]
-#&gt; NULL
-#&gt; 
-#&gt; [[5]]
-#&gt; NULL
-#&gt; 
-#&gt; [[6]]
-#&gt; NULL
-#&gt; 
-#&gt; [[7]]
-#&gt; NULL
-#&gt; 
-#&gt; [[8]]
-#&gt; NULL
-#&gt; 
-#&gt; [[9]]
-#&gt; NULL
-#&gt; 
-#&gt; [[10]]
-#&gt; NULL
-
-
-
-# load signals
-overall_progress$inc(&quot;Applying wavelet (a.k.a. the long step)&quot;)
-#&gt; [Wavelet overall progress]: Applying wavelet (a.k.a. the long step) (4 out of 5) 
-preprocess_dir &lt;- subject$preprocess_path
-dipsaus::lapply_async2(
-  seq_along(electrodes), function(ii){
-    
-    e &lt;- electrodes[[ii]]
-    srate &lt;- srates[[ii]]
-    compress_rate &lt;- compress_rates[[ii]]
-    
-    if(pre_decimate &gt; 1) {
-      compress_rate &lt;- compress_rates[[ii]] / pre_decimate
-      srate &lt;- srate / pre_decimate
-    }
-    
-    for(block in blocks){
-      
-      sorig &lt;- raveio::load_h5(
-        file = file.path(preprocess_dir, &#39;voltage&#39;, sprintf(&#39;electrode_%d.h5&#39;, e)),
-        name = sprintf(&#39;/notch/%s&#39;, block),
-        ram = TRUE
-      )
-      
-      if(pre_decimate &gt; 1) {
-        s &lt;- ravetools::decimate(sorig, pre_decimate, 
-                                 ftype = &quot;fir&quot;)
-      } else {
-        s &lt;- sorig
-      }
-      data_length &lt;- length(s)
-      
-      re &lt;- ravetools::morlet_wavelet(
-        data = s,
-        freqs = kernels$freqs,
-        srate = srate,
-        wave_num = kernels$cycles,
-        precision = kernels_precision
-      )
-      
-      # Subset coefficients to save space
-      ind &lt;- floor(seq(1, data_length, by = compress_rate))
-      
-      if(kernels_precision == &quot;float&quot;){
-        # Load all at once and subset is faster, but one signal is around 1-2GB, so...
-        coef &lt;- t(re[ind,,drop = FALSE])
-        
-        phase &lt;- Arg(coef)
-        power &lt;- Mod(coef)^2
-        
-        re$.mode &lt;- &quot;readwrite&quot;
-        re$delete()
-      } else {
-        coef &lt;- t(re$real[ind, , drop = FALSE] + 1i * re$imag[ind, , drop = FALSE])
-        
-        phase &lt;- Arg(coef)
-        power &lt;- Mod(coef)^2
-        re$real$.mode &lt;- &quot;readwrite&quot;
-        re$real$delete()
-        re$imag$.mode &lt;- &quot;readwrite&quot;
-        re$imag$delete()
-      }
-      
-      # Save power, phase, voltage
-      fname &lt;- sprintf(&#39;%d.h5&#39;, e)
-      wavelet_h5chunk &lt;- c(length(kernels$freqs), 128)
-      
-      # power
-      raveio::save_h5(
-        x = power,
-        file = file.path(data_root, &quot;power&quot;, fname),
-        name = sprintf(&#39;/raw/power/%s&#39;, block),
-        chunk = wavelet_h5chunk,
-        replace = TRUE
-      )
-      # save_h5(
-      #   x = &#39;noref&#39;,
-      #   file = file.path(data_root, &quot;power&quot;, fname),
-      #   name = &#39;/reference&#39;,
-      #   chunk = 1,
-      #   replace = TRUE, size = 1000
-      # )
-      
-      # phase
-      raveio::save_h5(
-        x = phase,
-        file = file.path(data_root, &quot;phase&quot;, fname),
-        name = sprintf(&#39;/raw/phase/%s&#39;, block),
-        chunk = wavelet_h5chunk,
-        replace = TRUE
-      )
-      
-      # voltage
-      raveio::save_h5(
-        x = sorig,
-        file = file.path(data_root, &quot;voltage&quot;, fname),
-        name = sprintf(&#39;/raw/voltage/%s&#39;, block),
-        chunk = 1024,
-        replace = TRUE
-      )
-    }
-  },
-  plan = FALSE,
-  callback = function(ii){
-    sprintf(sprintf(&quot;Applying wavelet|Electrode - %s&quot;, electrodes[[ii]]))
-  }
-)
-#&gt; [[1]]
-#&gt; NULL
-#&gt; 
-#&gt; [[2]]
-#&gt; NULL
-#&gt; 
-#&gt; [[3]]
-#&gt; NULL
-#&gt; 
-#&gt; [[4]]
-#&gt; NULL
-#&gt; 
-#&gt; [[5]]
-#&gt; NULL
-#&gt; 
-#&gt; [[6]]
-#&gt; NULL
-#&gt; 
-#&gt; [[7]]
-#&gt; NULL
-#&gt; 
-#&gt; [[8]]
-#&gt; NULL
-#&gt; 
-#&gt; [[9]]
-#&gt; NULL
-#&gt; 
-#&gt; [[10]]
-#&gt; NULL
-
-overall_progress$inc(&quot;Saving configurations and update log files&quot;)
-#&gt; [Wavelet overall progress]: Saving configurations and update log files (5 out of 5) 
-
-# reload preprocess settings in case some changes are not captured
-preproc &lt;- raveio::RAVEPreprocessSettings$new(subject = subject$subject_id, read_only = TRUE)
-
-for(e in electrodes) {
-  preproc$data[[as.character(e)]]$has_wavelet &lt;- TRUE
-}
-
-wavelet_params &lt;- list(
-  channels = electrodes,
-  electrodes = electrodes,
-  downsample_to = target_sample_rate,
-  target_srate = target_sample_rate,
-  frequencies = kernels$freqs,
-  wave_num = kernels$cycles,
-  cycle = kernels$cycles,
-  precision = kernels_precision,
-  pre_downsample = pre_downsample
-)
-
-wavelet_logs &lt;- as.list(preproc$data$wavelet_logs)
-wavelet_logs[[length(wavelet_logs) + 1]] &lt;- wavelet_params
-preproc$data$wavelet_logs &lt;- wavelet_logs
-
-wavelet_params &lt;- wavelet_params[c(
-  &quot;electrodes&quot;, &quot;downsample_to&quot;, &quot;frequencies&quot;,
-  &quot;cycle&quot;, &quot;precision&quot;, &quot;pre_downsample&quot;
-)]
-wavelet_params$timestamp &lt;- strftime(Sys.time(), usetz = TRUE)
-preproc$data$wavelet_params &lt;- wavelet_params
-preproc$save()
-
-subject$set_default(
-  namespace = &quot;wavelet_module&quot;,
-  key = &quot;parameters&quot;,
-  wavelet_params
-)
-
-# generate reference table
-raveio::safe_write_csv(
-  file = file.path(subject$meta_path, &quot;reference_noref.csv&quot;),
-  row.names = FALSE,
-  data.frame(
-    Electrode = subject$electrodes,
-    Group = &quot;Default&quot;,
-    Reference = &quot;noref&quot;,
-    Type = &quot;No Reference&quot;
-  )
-)
-#&gt; [1] &quot;/Users/dipterix/rave_data/data_dir/test2/KC/rave/meta/reference_noref.csv&quot;
-
-# generate frequencies.csv
-utils::write.csv(
-  file = file.path(subject$meta_path, &quot;frequencies.csv&quot;),
-  row.names = FALSE,
-  data.frame(
-    Frequency = kernels$freqs,
-    Cycle = kernels$cycles,
-    Method = &quot;Wavelet&quot;
-  )
-)
-
-# Finalizing: clear cache
-raveio::clear_cached_files(
-  subject_code = subject$subject_code
-)</code></pre>
+[Wavelet overall progress]: Creating directories (1 out of 5) 
+[Wavelet overall progress]: Generating wavelet kernels (2 out of 5) 
+[Wavelet overall progress]: Removing previously generated wavelet coefficients (3 out of 5) 
+[Wavelet overall progress]: Applying wavelet (a.k.a. the long step) (4 out of 5) 
+[Wavelet overall progress]: Saving configurations and update log files (5 out of 5) </code></pre>
 <div id="build-visualize-run" class="section level2">
 <h2>Build, Visualize, &amp; Run</h2>
 <p>Please make sure the following code block is at the end of your
@@ -6125,8 +5767,8 @@ you can visualize and execute the pipeline without the need of re-knit
 this document. Notice we use <code>r</code> block instead of
 <code>rave</code>. (This is because the code blocks are not part of
 pipeline targets.)</p>
-<div id="htmlwidget-d673ea4677d32fc8a278" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
-<script type="application/json" data-for="htmlwidget-d673ea4677d32fc8a278">{"x":{"nodes":{"name":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","outdated"],"seconds":[0.029,0.001,0,0,0.001,0.001,0,0.001,0,0,0.001,0.003,0,0,61.088],"bytes":[116,193,208,207,70,50,58,56,50,8060,462,240257,54,50,314],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#78B7C5"],"id":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"level":[5,3,4,5,5,3,3,3,6,2,1,4,3,3,7],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","notch_filtered_electrodes","kernel_table","precision","subject","settings","settings","settings","settings","subject","settings","project_name","subject_code","subject","notch_filtere_stamp","subject","notch_filtered_electrodes","sample_rates","target_sample_rate","kernels","pre_downsample","settings_path"],"to":["precision","sample_rates","sample_rates","kernels","kernels","notch_filtered_electrodes","subject_code","target_sample_rate","pre_downsample","kernel_table","notch_filtere_stamp","project_name","subject","subject","clear_cache","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Stem"],"color":["#78B7C5","#354823","#899DA4"],"shape":["dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-eb6662ebc4787dc11f98" style="width:672px;height:480px;" class="visNetwork html-widget"></div>
+<script type="application/json" data-for="htmlwidget-eb6662ebc4787dc11f98">{"x":{"nodes":{"name":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"type":["stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem","stem"],"status":["outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","outdated","uptodate","outdated","outdated","outdated","started"],"seconds":[0.003,0.001,0,0.001,0.003,0,0,0.001,0.002,0,0,0.011,0,0,181.768],"bytes":[118,343,359,592,408,51,59,57,58,14900,1772,267696,59,51,718],"branches":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"label":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"color":["#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#78B7C5","#354823","#78B7C5","#78B7C5","#78B7C5","#DC863B"],"id":["clear_cache","kernel_table","kernels","notch_filtere_stamp","notch_filtered_electrodes","pre_downsample","precision","project_name","sample_rates","settings","settings_path","subject","subject_code","target_sample_rate","wavelet_params"],"level":[5,3,4,5,5,3,3,3,6,2,1,4,3,3,6],"shape":["dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot","dot"]},"edges":{"from":["settings","subject","notch_filtered_electrodes","kernel_table","precision","subject","settings","settings","settings","settings","subject","settings","project_name","subject_code","subject","subject","notch_filtered_electrodes","kernels","target_sample_rate","pre_downsample","settings_path"],"to":["precision","sample_rates","sample_rates","kernels","kernels","notch_filtered_electrodes","subject_code","target_sample_rate","pre_downsample","kernel_table","notch_filtere_stamp","project_name","subject","subject","clear_cache","wavelet_params","wavelet_params","wavelet_params","wavelet_params","wavelet_params","settings"],"arrows":["to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to","to"]},"nodesToDataframe":true,"edgesToDataframe":true,"options":{"width":"100%","height":"100%","nodes":{"shape":"dot","physics":false},"manipulation":{"enabled":false},"edges":{"smooth":{"type":"cubicBezier","forceDirection":"horizontal"}},"physics":{"stabilization":false},"interaction":{"zoomSpeed":0.1},"layout":{"hierarchical":{"enabled":true,"direction":"LR"}}},"groups":null,"width":null,"height":null,"idselection":{"enabled":false,"style":"width: 150px; height: 26px","useLabels":true,"main":"Select by id"},"byselection":{"enabled":false,"style":"width: 150px; height: 26px","multiple":false,"hideColor":"rgba(200,200,200,0.5)","highlight":false},"main":{"text":"","style":"font-family:Georgia, Times New Roman, Times, serif;font-weight:bold;font-size:20px;text-align:center;"},"submain":null,"footer":null,"background":"rgba(0, 0, 0, 0)","highlight":{"enabled":true,"hoverNearest":false,"degree":{"from":1,"to":1},"algorithm":"hierarchical","hideColor":"rgba(200,200,200,0.5)","labelOnly":true},"collapse":{"enabled":true,"fit":false,"resetHighlight":true,"clusterOptions":null,"keepCoord":true,"labelSuffix":"(cluster)"},"legend":{"width":0.2,"useGroups":false,"position":"right","ncol":1,"stepX":100,"stepY":100,"zoom":true,"nodes":{"label":["Outdated","Up to date","Started","Stem"],"color":["#78B7C5","#354823","#DC863B","#899DA4"],"shape":["dot","dot","dot","dot"]},"nodesToDataframe":true},"tooltipStay":300,"tooltipStyle":"position: fixed;visibility:hidden;padding: 5px;white-space: nowrap;font-family: verdana;font-size:14px;font-color:#000000;background-color: #f5f4ed;-moz-border-radius: 3px;-webkit-border-radius: 3px;border-radius: 3px;border: 1px solid #808074;box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 
