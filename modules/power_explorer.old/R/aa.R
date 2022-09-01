@@ -1,7 +1,4 @@
 library(ravedash)
-
-require(magrittr)
-
 # global variables for the module
 
 # Stores global variables
@@ -11,22 +8,20 @@ pipeline <- raveio::pipeline(
   pipeline_name = "power_explorer",
   paths = "./modules")
 
-# analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
-# max_analysis_ranges <- 2
-# gray_label_color <- "#c8c9ca"
+analysis_lock_choices <- c("Unlocked", "Lock frequency", "Lock time")
+max_analysis_ranges <- 2
+gray_label_color <- "#c8c9ca"
 
-# auto_recalculate_onchange <- c(
-#   "merge_hemisphere_labels",
-#   "analysis_lock",
-#   "baseline_windows",
-#   "global_baseline_choice",
-#   "unit_of_analysis",
-#   "analysis_ranges",
-#   "electrode_text",
-#   "condition_groups"
-# )
-
-
+auto_recalculate_onchange <- c(
+  "merge_hemisphere_labels",
+  "analysis_lock",
+  "baseline_windows",
+  "global_baseline_choice",
+  "unit_of_analysis",
+  "analysis_ranges",
+  "electrode_text",
+  "condition_groups"
+)
 
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
@@ -38,13 +33,6 @@ pipeline <- raveio::pipeline(
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
-
-  # if(first_time){
-  #   ravedash::fire_rave_event('loader_message', NULL)
-  #   re <- FALSE
-  #   return(re)
-  # }
-
   re <- tryCatch({
     repo <- pipeline$read('repository')
     if(!inherits(repo, "rave_prepare_power")) {
@@ -57,7 +45,10 @@ check_data_loaded <- function(first_time = FALSE){
     ravedash::fire_rave_event('loader_message', NULL)
     FALSE
   })
-
+  # if(first_time){
+  #   ravedash::fire_rave_event('loader_message', NULL)
+  #   re <- FALSE
+  # }
   re
 }
 

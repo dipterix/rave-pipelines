@@ -1,29 +1,37 @@
-analysis_electrodes: '14 '
-analysis_electrodes__category: Electrode
-analysis_lock: Unlocked
-analysis_ranges:
+analysis_electrodes__category: freesurferlabel
+analysis_settings:
   '1':
-    frequency:
-    - 2
-    - 152
+    label: A-onset BHA
+    event: Trial Onset
     time:
-    - -0.92
-    - 2
-analysis_ranges__lock: Unlocked
-baseline__global_baseline_choice: Per frequency, trial, and electrode
-baseline__unit_of_analysis: Decibel
-baseline__windows:
+    - 0
+    - 0.5
+    frequency:
+    - 70
+    - 126
+baseline_settings:
+  window:
+  - - -1.0
+    - -0.5
+  scope: Per frequency, trial, and electrode
+  unit_of_analysis: '% Change Power'
+electrode_groupings:
+  enabled: no
+  groups:
+    '1':
+      label: STG/S
+      electrodes: 13-14
+    '2':
+      label: Other
+      electrodes: 15-25
+electrodes_list: 13-16,24
+epoch_choice: auditory_onset
+epoch_choice__trial_ends: 2.0
+epoch_choice__trial_starts: -1.0
+first_condition_groupings:
   '1':
-    window_interval:
-    - -1
-    - -0.41
-baseline_windows:
-- - -1.0
-  - -0.38
-condition_groups:
-  '1':
-    group_name: All Conditions
-    group_conditions:
+    label: All Conditions
+    conditions:
     - AdriveVlast
     - AknownVmeant
     - AlastVknown
@@ -31,26 +39,24 @@ condition_groups:
     - drive_a
     - drive_av
     - drive_v
-    - known_v
+    - known_a
     - known_av
+    - known_v
     - last_a
     - last_av
     - last_v
     - meant_a
-    - known_a
     - meant_av
     - meant_v
     - press_AV
-electrode_category_selector: Electrode
-epoch_choice: auditory_onset
-epoch_choice__trial_ends: 2
-epoch_choice__trial_starts: -1
-epoch_name: KCaOutlier
-global_baseline_choice: Per frequency, trial, and electrode
-loaded_electrodes: 13-16,24
 project_name: demo
 reference_name: default
-subject_code: DemoSubject
-trial_ends: 2
-trial_starts: -1
-unit_of_analysis: z-score Power
+selected_electrodes: '13 '
+subject_name: DemoSubject
+tensor_collapse_method: mean
+time_censor:
+  enabled: no
+  window:
+  - 0
+  - 1
+trial_outliers_list: ~

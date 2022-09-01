@@ -63,7 +63,7 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
 loader_server <- function(input, output, session, ...){
 
-  list2env(list(session = session, input = input), envir=globalenv())
+  # list2env(list(session = session, input = input), envir=globalenv())
 
   # Add validator
   # session <- shiny::MockShinySession$new()
@@ -76,79 +76,80 @@ loader_server <- function(input, output, session, ...){
   loader_validator_subject_code <- loader_subject$sv
 
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
 
-  ravedash::safe_observe({
-    # gather information
-    settings <- dipsaus::fastmap2()
+      # gather information
+      settings <- dipsaus::fastmap2()
 
-    settings <- component_container$collect_settings(
-      ids = c(
-        "loader_project_name",
-        "loader_subject_code",
-        "loader_electrode_text",
-        "loader_epoch_name",
-        "loader_reference_name"
-      ),
-      map = settings
-    )
-    pipeline$set_settings(.list = settings)
+      settings <- component_container$collect_settings(
+        ids = c(
+          "loader_project_name",
+          "loader_subject_code",
+          "loader_electrode_text",
+          "loader_epoch_name",
+          "loader_reference_name"
+        ),
+        map = settings
+      )
+      pipeline$set_settings(.list = settings)
 
-    default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
-    default_reference <- isTRUE(loader_epoch$get_sub_element_input("default"))
+      default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
+      default_reference <- isTRUE(loader_reference$get_sub_element_input("default"))
 
-    # Run the pipeline!
-    tarnames <- pipeline$target_table$Names
+      # Run the pipeline!
+      tarnames <- pipeline$target_table$Names
 
-    count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
+      count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
 
-    dipsaus::shiny_alert2(
-      title = "Loading in progress",
-      text = paste(
-        "Everything takes time. Some might need more patience than others."
-      ), icon = "info", auto_close = FALSE, buttons = FALSE
-    )
+      dipsaus::shiny_alert2(
+        title = "Loading in progress",
+        text = paste(
+          "Everything takes time. Some might need more patience than others."
+        ), icon = "info", auto_close = FALSE, buttons = FALSE
+      )
 
-    res <- pipeline$run(
-      as_promise = TRUE,
-      names = "repository",
-      scheduler = "none",
-      type = "smart",  # parallel
-      # async = TRUE,
-      callr_function = NULL,
-      progress_quiet = TRUE
-    )
-    res$promise$then(
-      onFulfilled = function(e){
-        if(default_epoch || default_reference){
-          repo <- pipeline$read("repository")
-          if(default_epoch){
-            repo$subject$set_default("epoch_name", repo$epoch_name)
+      res <- pipeline$run(
+        as_promise = TRUE,
+        names = "repository",
+        scheduler = "none",
+        type = "smart",  # parallel
+        # async = TRUE,
+        callr_function = NULL,
+        progress_quiet = TRUE
+      )
+      res$promise$then(
+        onFulfilled = function(e){
+          if(default_epoch || default_reference){
+            repo <- pipeline$read("repository")
+            if(default_epoch){
+              repo$subject$set_default("epoch_name", repo$epoch_name)
+            }
+            if(default_reference) {
+              repo$subject$set_default("reference_name", repo$reference_name)
+            }
           }
-          if(default_reference) {
-            repo$subject$set_default("reference_name", repo$reference_name)
-          }
+
+          ravedash::fire_rave_event('data_changed', Sys.time())
+          ravedash::logger("Data has been loaded loaded")
+          dipsaus::close_alert2()
+        },
+        onRejected = function(e){
+          dipsaus::close_alert2()
+          dipsaus::shiny_alert2(
+            title = "Errors",
+            text = paste(
+              "Found an error while loading the power data:\n\n",
+              paste(e$message, collapse = "\n")
+            ),
+            icon = "error",
+            danger_mode = TRUE,
+            auto_close = FALSE
+          )
         }
-
-        ravedash::fire_rave_event('data_changed', Sys.time())
-        ravedash::logger("Data has been loaded loaded")
-        dipsaus::close_alert2()
-      },
-      onRejected = function(e){
-        dipsaus::close_alert2()
-        dipsaus::shiny_alert2(
-          title = "Errors",
-          text = paste(
-            "Found an error while loading the power data:\n\n",
-            paste(e$message, collapse = "\n")
-          ),
-          icon = "error",
-          danger_mode = TRUE,
-          auto_close = FALSE
-        )
-      }
-    )
-  }) |>
-    shiny::bindEvent(input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE)
+      )
+    }),
+    input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE)
 
 
 
