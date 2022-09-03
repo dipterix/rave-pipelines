@@ -179,7 +179,7 @@ class Shidashi {
 
   }
 
-  async cleanLocalStorage(maxEntries = 1000) {
+  async cleanLocalStorage(maxEntries = 100) {
     // Clean the localStorage
     const items = [];
     for(let key in this._localStorage){
@@ -1212,14 +1212,17 @@ class Shidashi {
     });
 
     // keep alive
+    /*let alive_counter = 0;
     const keep_alive = () => {
       if( this._keep_alive ) {
-        this._shiny.setInputValue(".__shidashi_keep_alive_signal__.", Date());
+        alive_counter++;
+        this._shiny.setInputValue(".__shidashi_keep_alive_signal__.", alive_counter);
       }
       // send signal to R session every other 25 seconds
       setTimeout(keep_alive, 25000);
     };
     keep_alive();
+    */
 
   }
 }

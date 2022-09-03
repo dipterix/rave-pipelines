@@ -1,10 +1,11 @@
 library(shiny)
 page_title <- function(complete = TRUE){
   if(complete){
-    "RAVE"
+    re <- "RAVE"
   } else {
-    sprintf("RAVE (%s)", as.character(packageVersion('rave')))
+    re <- sprintf("RAVE (%s)", as.character(packageVersion('rave')))
   }
+  re
 }
 page_logo <- function(size = c("normal", "small", "large")){
   "shidashi/img/icon.png"

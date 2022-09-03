@@ -20,8 +20,8 @@ server <- function(input, output, session){
 
   # Sync input ID
   shared_data <- shidashi::register_session_id(session)
-  shared_data$enable_broadcast()
-  shared_data$enable_sync()
+  # shared_data$enable_broadcast()
+  # shared_data$enable_sync()
 
   # Set max upload file size to be 300MB by default
   if(!isTRUE(getOption('shiny.maxRequestSize', 0) > 0)) {
