@@ -777,7 +777,19 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
   &:focus {
     box-shadow: none;
   }
+
+  &.left {
+    right: auto;
+    left: 1.25rem;
+
+    & .rave-button-autorecalculate {
+      background-color: $yellow;
+      // adjust-color($color: $yellow, $lightness: 25%);
+    }
+  }
 }
+
+
 
 
 // code-display
