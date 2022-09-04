@@ -58,7 +58,36 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
           ),
 
-          shiny::textOutput(ns("loader_short_message"))
+          ravedash::flex_group_box(
+            title = "Additional Options",
+
+            shidashi::flex_item(
+              shiny::selectInput(
+                inputId = ns("loader_surface_types"),
+                label = "Additional surface types",
+                choices = c("white", "smoothwm", "pial-outer-smooth"),
+                selected = local({
+                  v <- pipeline$get_settings("surface_types")
+                  if(!length(v)) {
+                    v <- character()
+                  }
+                  v
+                }),
+                multiple = TRUE
+              )
+            ),
+            shidashi::flex_break(),
+            shidashi::flex_item(
+              shiny::checkboxInput(
+                inputId = ns("loader_template_ok"),
+                label = "Load template if 3D models not found",
+                value = FALSE
+              )
+            )
+
+          )
+
+          # shiny::textOutput(ns("loader_short_message"))
         )
       ),
       shiny::column(
@@ -240,9 +269,6 @@ loader_server <- function(input, output, session, ...){
 
   })
 
-  output$loader_short_message <- shiny::renderText({
-
-  })
 
 
   # Triggers the event when `input$loader_ready_btn` is changed
@@ -250,32 +276,22 @@ loader_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
       # gather information from preset UIs
-      settings <- component_container$collect_settings(
-        ids = c(
-          "loader_project_name",
-          "loader_subject_code",
-          "loader_electrode_text",
-          "loader_epoch_name",
-          "loader_reference_name"
-        )
-      )
-      # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
-      pipeline$set_settings(.list = settings)
+      pipeline$save_data(
+        data = get_electrode_table(),
+        name = "suggested_electrode_table",
+        overwrite = TRUE
+      )
+      pipeline$set_settings(
+        subject_code = input$loader_subject_code,
+        project_name = input$loader_project_name,
+        surface_types = input$loader_surface_types,
+        template_ok = input$loader_template_ok,
+        uploaded_source = NULL,
+        shiny_outputId = ns("viewer_ready")
+      )
 
-      # Check if user has asked to set the epoch & reference to be the default
-      default_epoch <- isTRUE(loader_epoch$get_sub_element_input("default"))
-      default_reference <- isTRUE(loader_epoch$get_sub_element_input("default"))
-
-      # --------------------- Run the pipeline! ---------------------
-
-      # Calculate the progress bar
-      tarnames <- pipeline$target_table$Names
-      count <- length(tarnames) + length(dipsaus::parse_svec(loader_electrodes$current_value)) + 4
-
-      # Pop up alert to prevent user from making any changes (auto_close=FALSE)
-      # This requires manually closing the alert window
       dipsaus::shiny_alert2(
         title = "Loading in progress",
         text = paste(
@@ -283,35 +299,18 @@ loader_server <- function(input, output, session, ...){
         ), icon = "info", auto_close = FALSE, buttons = FALSE
       )
 
-      # Run the pipeline target `repository`
-      # Use `as_promise=TRUE` to make result as a promise
       res <- pipeline$run(
         as_promise = TRUE,
-        names = "repository",
+        names = c("loaded_brain", "initial_brain_widget"),
         scheduler = "none",
-        type = "smart",  # parallel
-        # async = TRUE,
-        callr_function = NULL,
-        progress_quiet = TRUE
+        type = "vanilla",
+        callr_function = NULL
       )
 
-      # The `res` contains a promise that might not have finished yet,
-      # so register functions to run when the promise is resolved
       res$promise$then(
 
         # When data can be imported
         onFulfilled = function(e){
-
-          # Set epoch and/or reference as default
-          if(default_epoch || default_reference){
-            repo <- pipeline$read("repository")
-            if(default_epoch){
-              repo$subject$set_default("epoch_name", repo$epoch_name)
-            }
-            if(default_reference) {
-              repo$subject$set_default("reference_name", repo$reference_name)
-            }
-          }
 
           # Let the module know the data has been changed
           ravedash::fire_rave_event('data_changed', Sys.time())
@@ -332,7 +331,7 @@ loader_server <- function(input, output, session, ...){
           dipsaus::shiny_alert2(
             title = "Errors",
             text = paste(
-              "Found an error while loading the power data:\n\n",
+              "Found an error while loading the 3D models:\n\n",
               paste(e$message, collapse = "\n")
             ),
             icon = "error",

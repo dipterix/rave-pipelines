@@ -10,7 +10,7 @@ modules:
     order: 1.1
   power_explorer:
     label: Power Explorer
-    order: 11
+    order: 12
     badge: New!|badge-info
   jupyterlab:
     label: JupyterLab
@@ -44,6 +44,9 @@ modules:
     hidden: yes
   block_explorer:
     label: Block Explorer
+  custom_3d_viewer:
+    label: Brain Viewer
+    order: 11.0
 groups:
   Import Signals:
     order: 1

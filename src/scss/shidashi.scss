@@ -490,7 +490,7 @@ pre {
   }
 
 }
-tt, code {
+tt, code, .code {
   @include code-font-family;
 }
 

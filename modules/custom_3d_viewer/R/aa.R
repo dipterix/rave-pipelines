@@ -20,7 +20,30 @@ debug <- TRUE
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
   # Always use loading screen
-  FALSE
+  # if( first_time ) {
+  #   ravedash::fire_rave_event('loader_message', NULL)
+  #   return(FALSE)
+  # }
+
+  tryCatch({
+    loaded_brain <- pipeline$read("loaded_brain")
+
+    has_electrode <- is.data.frame(loaded_brain$electrode_table)
+
+    msg <- sprintf("%s, electrodes [%s]", loaded_brain$subject_code,
+                   ifelse(has_electrode, nrow(loaded_brain$electrode_table),
+                          "missing"))
+
+    ravedash::fire_rave_event('loader_message', msg)
+    return(TRUE)
+
+  }, error = function(e) {
+    ravedash::fire_rave_event('loader_message', NULL)
+    return(FALSE)
+  })
+
+
+
 }
 
 

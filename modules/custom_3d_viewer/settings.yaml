@@ -1,3 +1,52 @@
-'n': 100
-pch: 16
-col: steelblue
+controllers:
+  Display Coordinates: no
+  Show Panels: no
+  Coronal (P - A): 0
+  Axial (I - S): 0
+  Sagittal (L - R): 0
+  Overlay Coronal: no
+  Overlay Axial: no
+  Overlay Sagittal: no
+  Dist. Threshold: 2
+  Surface Material: MeshPhongMaterial
+  Left Hemisphere: normal
+  Right Hemisphere: normal
+  Left Opacity: 1
+  Right Opacity: 1
+  Surface Color: vertices
+  Blend Factor: 0.4
+  Sigma: 3
+  Decay: 0.15
+  Range Limit: 10
+  Visibility: all visible
+  Voxel Label: '0'
+  Display Data: z_score_Amplitude_Trial_Onset
+  Display Range: ''
+  Threshold Data: '[None]'
+  Threshold Range: ''
+  Threshold Method: '|v| >= T1'
+  Video Mode: muted
+  Show Legend: yes
+  Show Time: yes
+  Highlight Box: yes
+  Info Text: yes
+data_source: Saved pipelines/modules
+data_source_pipeline: power_explorer/power_explorer-22_09_03-22_54_46
+data_source_pipeline_target: reference_name
+data_source_project: demo
+main_camera:
+  position:
+    x: -427.1101347
+    'y': 198.3092923
+    z: 66.2574192
+  zoom: 1
+  up:
+    x: 0.1312965
+    'y': 0.0758764
+    z: 0.9884351
+project_name: '[Auto]'
+shiny_outputId: custom_3d_viewer-viewer_ready
+subject_code: YAB
+surface_types: ~
+template_ok: no
+uploaded_source: YAB_demo_export-20210525-072121.fst

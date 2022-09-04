@@ -43,3 +43,33 @@ get_projects_with_scode <- function(subject_code, refresh = TRUE,
   all_projects
 }
 
+get_subject_imaging_datapath <- function(
+    ..., subject_code, project_name, type = c("uploads", "pipeline"), check = FALSE,
+    raw_path = raveio::raveio_getopt("raw_data_dir")) {
+
+  type <- match.arg(type)
+
+  switch(
+    type,
+    "pipeline" = {
+      subject <- raveio::RAVESubject$new(project_name = project_name,
+                                         subject_code = subject_code,
+                                         strict = FALSE)
+      root_path <- subject$pipeline_path
+      if(check && dir.exists(subject$rave_path)) {
+        # subject must exists, otherwise do not create
+        raveio::dir_create2(root_path)
+      }
+      file.path(root_path, ...)
+    },
+    {
+      root_path <- file.path(raw_path, subject_code,
+                             "rave-imaging", "custom-data")
+      if(check) {
+        raveio::dir_create2(root_path)
+      }
+      file.path(root_path, ...)
+    }
+  )
+
+}
