@@ -20,10 +20,10 @@ debug <- TRUE
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
   # Always use loading screen
-  # if( first_time ) {
-  #   ravedash::fire_rave_event('loader_message', NULL)
-  #   return(FALSE)
-  # }
+  if( first_time ) {
+    ravedash::fire_rave_event('loader_message', NULL)
+    return(FALSE)
+  }
 
   tryCatch({
     loaded_brain <- pipeline$read("loaded_brain")
