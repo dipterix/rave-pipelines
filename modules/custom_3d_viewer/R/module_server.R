@@ -225,8 +225,6 @@ module_server <- function(input, output, session, ...){
     loaded_brain <- component_container$data$loaded_brain
     if(!length(loaded_brain$subject_code) == 1) { return() }
 
-    print(loaded_brain$subject_code)
-
     root_path <- get_subject_imaging_datapath(subject_code = loaded_brain$subject_code, type = "uploads")
 
     candidates <- NULL
@@ -371,8 +369,6 @@ module_server <- function(input, output, session, ...){
         project_name = project_name,
         type = "pipeline")
 
-      print(root_path)
-
       avaialble_pipelines <- list.dirs(root_path, full.names = FALSE, recursive = FALSE)
       avaialble_pipelines <- unlist(lapply(avaialble_pipelines, function(pn) {
         re <- list.dirs(file.path(root_path, pn), full.names = FALSE, recursive = FALSE)
@@ -438,8 +434,6 @@ module_server <- function(input, output, session, ...){
       }
 
       tryCatch({
-        # TODO: used shared folder
-        print(pipepath)
         candidates <- unname(raveio::pipeline_target_names(pipepath))
         selected <- c(
           shiny::isolate(input$data_source_pipeline_target),
@@ -476,7 +470,6 @@ module_server <- function(input, output, session, ...){
       loaded_brain <- component_container$data$loaded_brain
 
 
-      print(input$data_source)
       if( identical(input$data_source, "Uploads") ) {
         update_upload_source()
       } else if( identical(input$data_source, "Saved pipelines/modules") ) {

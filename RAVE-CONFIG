@@ -46,7 +46,8 @@ SubPipelines:
     modules/notch_filter,
     modules/wavelet_module,
     modules/reference_module,
-    modules/surface_reconstruction
+    modules/surface_reconstruction,
+    modules/custom_3d_viewer
 InteractiveModules:
     modules/import_lfp_native,
     modules/notch_filter,
@@ -57,4 +58,5 @@ InteractiveModules:
     modules/surface_reconstruction,
     modules/electrode_localization,
     modules/compatibility_rave1,
-    modules/standalone_viewer
+    modules/standalone_viewer,
+    modules/custom_3d_viewer

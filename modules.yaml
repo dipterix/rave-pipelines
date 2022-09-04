@@ -46,7 +46,7 @@ modules:
     label: Block Explorer
   custom_3d_viewer:
     label: Brain Viewer
-    order: 11.0
+    order: 11
 groups:
   Import Signals:
     order: 1

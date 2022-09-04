@@ -10,5 +10,6 @@ adhoc
 _rs_job.R
 Rplots.pdf
 log
-.Rhistory (Beauchamp Lab's conflicted copy 2022-06-03)
+.Rhistory*
 node_modules
+modules_\[backup_*\].yaml
