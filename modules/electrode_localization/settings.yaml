@@ -1789,10 +1789,105 @@ localization_list:
     - LFP
 localization_plan:
   '1':
-    label: Nolabel
-    dimension: '233'
+    label: OOB-LI
+    dimension: '3'
     type: iEEG
     info: ~
-path_ct_in_t1: ~
-project_name: test
-subject_code: PAV004
+  '2':
+    label: LI
+    dimension: '4'
+    type: sEEG
+    info: ~
+  '3':
+    label: OOB-LI
+    dimension: '5'
+    type: iEEG
+    info: ~
+  '4':
+    label: LA
+    dimension: '10'
+    type: sEEG
+    info: ~
+  '5':
+    label: OOB-LA
+    dimension: '2'
+    type: iEEG
+    info: ~
+  '6':
+    label: LB
+    dimension: '10'
+    type: sEEG
+    info: ~
+  '7':
+    label: OOB-LB
+    dimension: '2'
+    type: iEEG
+    info: ~
+  '8':
+    label: RI
+    dimension: '8'
+    type: sEEG
+    info: ~
+  '9':
+    label: OOB-RI
+    dimension: '4'
+    type: iEEG
+    info: ~
+  '10':
+    label: RA
+    dimension: '10'
+    type: sEEG
+    info: ~
+  '11':
+    label: OOB-RA
+    dimension: '2'
+    type: iEEG
+    info: ~
+  '12':
+    label: RB
+    dimension: '8'
+    type: sEEG
+    info: ~
+  '13':
+    label: OOB-RB
+    dimension: '4'
+    type: iEEG
+    info: ~
+  '14':
+    label: RC
+    dimension: '9'
+    type: sEEG
+    info: ~
+  '15':
+    label: OOB-RC
+    dimension: '3'
+    type: iEEG
+    info: ~
+  '16':
+    label: RD
+    dimension: '9'
+    type: sEEG
+    info: ~
+  '17':
+    label: OOB-RD
+    dimension: '3'
+    type: iEEG
+    info: ~
+  '18':
+    label: RQ
+    dimension: '8'
+    type: sEEG
+    info: ~
+  '19':
+    label: OOB-RQ
+    dimension: '4'
+    type: iEEG
+    info: ~
+  '20':
+    label: OTHERS
+    dimension: '8'
+    type: iEEG
+    info: ~
+path_ct_in_t1: '{subject$freesurfer_path}/../coregistration/ct_in_t1.nii.gz'
+project_name: devel
+subject_code: PAV006

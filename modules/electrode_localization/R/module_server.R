@@ -328,6 +328,8 @@ module_server <- function(input, output, session, ...){
       controllers[["Overlay Sagittal"]] <- TRUE
       controllers[["Show Panels"]] <- FALSE
       controllers[["Show Time"]] <- FALSE
+      controllers[["Left Hemisphere"]] <- "hidden"
+      controllers[["Right Hemisphere"]] <- "hidden"
 
       dipsaus::shiny_alert2(
         title = "Finalizing...",
@@ -345,23 +347,11 @@ module_server <- function(input, output, session, ...){
         class(ct_in_t1) <- "threeBrain.nii"
         viewer <- brain$localize(
           ct_in_t1, show_modal = FALSE,
-          controllers = list(
-            `Overlay Coronal` = TRUE,
-            `Overlay Axial` = TRUE,
-            `Overlay Sagittal` = TRUE,
-            `Edit Mode` = "disabled",
-            `Show Panels` = FALSE
-          ))
+          controllers = controllers)
       } else {
         viewer <- brain$localize(
           show_modal = FALSE,
-          controllers = list(
-            `Overlay Coronal` = TRUE,
-            `Overlay Axial` = TRUE,
-            `Overlay Sagittal` = TRUE,
-            `Edit Mode` = "disabled",
-            `Show Panels` = FALSE
-          ))
+          controllers = controllers)
       }
 
       viewer
@@ -471,7 +461,7 @@ module_server <- function(input, output, session, ...){
     sel <- df$Coord_x == 0 & df$Coord_y == 0 & df$Coord_z == 0
     mni152[, sel] <- 0
     mni152_text <- sprintf("%.0f,%.0f,%.0f", mni152[1,], mni152[2,], mni152[3,])
-    mni152_link <- sprintf("https://neurosynth.org/locations/?x=%.0f&y=%.0f&z=%.0f", mni152[1,], mni152[2,], mni152[3,])
+    mni152_link <- raveio::url_neurosynth(mni152[1,], mni152[2,], mni152[3,])
     mni152_col <- sprintf('<a href="%s" target="_blank">%s</a>', mni152_link, mni152_text)
     mni152_col[sel] <- ""
     table_output <- data.frame(
@@ -518,6 +508,54 @@ module_server <- function(input, output, session, ...){
     return(TRUE)
   })
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      ridx <- input$group_table_rows_selected
+      # if(length(ridx) != 1 || ridx < 1) { return() }
+
+      group_id <- local_reactives$active_plan
+      # if(length(group_id) != 1 || !is.numeric(group_id)) { return() }
+      # if(group_id > length(local_data$plan_list)) { return() }
+
+      shidashi::show_notification(
+        title = "Waiting for response",
+        message = shiny::tagList(
+          "Please double-click on the CT volume to re-localize this electrode. ",
+          "If you accidentally requested re-localization, click ",
+          shiny::actionLink(ns("relocalize_cancel"), "here"), " to cancel."
+        ),
+        type = "default", autohide = FALSE, session = session,
+        class = ns("relocalize")
+      )
+      local_data$flag_relocalize <- list(
+        group_id = group_id,
+        which = ridx
+      )
+      # label <- input$fsindex_label
+      # group_table <- local_data$plan_list[[group_id]]
+      # # if(!is.data.frame(group_table)) { return() }
+      # if(isTRUE(label %in% component_container$data$fslut$labels)) {
+      #   # change label
+      #   # if(nrow(group_table) < ridx) { return() }
+      #   group_table$FSIndex[[ridx]] <- component_container$data$fslut$cmap$get_key(label)
+      #   group_table$FSLabel[[ridx]] <- label
+      #   local_data$plan_list[[group_id]] <- group_table
+      # }
+
+    }),
+    input$relocalize_electrode,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      local_data$flag_relocalize <- NULL
+      shidashi::clear_notifications(class = ns("relocalize"))
+    }),
+    input$relocalize_cancel,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
   output$fsindex_selector <- shiny::renderUI({
     if(!isTRUE(group_table_selected())) { return() }
     ridx <- shiny::isolate(input$group_table_rows_selected)
@@ -527,6 +565,7 @@ module_server <- function(input, output, session, ...){
     shiny::tagList(
       shiny::div(
         class = "margin-top-5",
+        shiny::p("To re-localize this electrode, click ", shiny::actionLink(ns("relocalize_electrode"), label = "here")),
         shiny::p("If you want to change the FreeSurfer label, please select one from below:")
       ),
       shidashi::flex_container(
@@ -706,34 +745,61 @@ module_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
       table <- brain_proxy$localization_table
-      ginfo <- current_group()
-      if(!is.data.frame(table)) { return() }
-      if(!is.list(ginfo)) { return() }
 
-      # return(list(
+      # local_data$flag_relocalize <- list(
       #   group_id = group_id,
-      #   group_table = group_table,
-      #   batch_size = batch_size,
-      #   label_prefix = group_table$LabelPrefix[[1]]
-      # ))
-      group_id <- ginfo$group_id
-      group_table <- ginfo$group_table
-      # local_data$plan_list[[group_id]]
-      n <- min(nrow(table), nrow(group_table))
-      if(n <= 0) { return() }
-      idx <- seq_len(n)
+      #   which = ridx
+      # )
+      update_viewer <- FALSE
+      if( is.list(local_data$flag_relocalize) ) {
+        # reset flag
+        flag_data <- local_data$flag_relocalize
+        local_data$flag_relocalize <- NULL
+        update_viewer <- TRUE
 
-      group_table$Coord_x[idx] <- table$Coord_x[idx]
-      group_table$Coord_y[idx] <- table$Coord_y[idx]
-      group_table$Coord_z[idx] <- table$Coord_z[idx]
-      group_table$MNI305_x[idx] <- table$MNI305_x[idx]
-      group_table$MNI305_y[idx] <- table$MNI305_y[idx]
-      group_table$MNI305_z[idx] <- table$MNI305_z[idx]
-      group_table$FSIndex[idx] <- table$FSIndex[idx]
-      group_table$FSLabel[idx] <- table$FSLabel[idx]
+        shidashi::clear_notifications(class = ns("relocalize"))
+
+        group_id <- flag_data$group_id
+        if(length(group_id) != 1 || !is.numeric(group_id)) { return() }
+        if(group_id > length(local_data$plan_list)) { return() }
+
+        group_table <- local_data$plan_list[[group_id]]
+        if(!is.data.frame(table)) { return() }
+        n <- nrow(table)
+        if(n <= 0) { return() }
+
+        idx1 <- n
+        idx2 <- flag_data$which
+
+      } else {
+        ginfo <- current_group()
+        if(!is.data.frame(table)) { return() }
+        if(!is.list(ginfo)) { return() }
+        group_id <- ginfo$group_id
+        group_table <- ginfo$group_table
+        # local_data$plan_list[[group_id]]
+        n <- min(nrow(table), nrow(group_table))
+        if(n <= 0) { return() }
+        idx1 <- seq_len(n)
+        idx2 <- idx1
+      }
+
+      group_table$Coord_x[idx2] <- table$Coord_x[idx1]
+      group_table$Coord_y[idx2] <- table$Coord_y[idx1]
+      group_table$Coord_z[idx2] <- table$Coord_z[idx1]
+      group_table$MNI305_x[idx2] <- table$MNI305_x[idx1]
+      group_table$MNI305_y[idx2] <- table$MNI305_y[idx1]
+      group_table$MNI305_z[idx2] <- table$MNI305_z[idx1]
+      group_table$FSIndex[idx2] <- table$FSIndex[idx1]
+      group_table$FSLabel[idx2] <- table$FSLabel[idx1]
 
       local_data$plan_list[[group_id]] <- group_table
-      local_reactives$refresh_table <- Sys.time()
+
+      if(update_viewer) {
+        show_group()
+      } else {
+        local_reactives$refresh_table <- Sys.time()
+      }
     }),
     brain_proxy$localization_table,
     ignoreNULL = TRUE, ignoreInit = TRUE
