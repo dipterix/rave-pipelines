@@ -9,6 +9,8 @@ pipeline <- raveio::pipeline(
   paths = "./modules")
 debug <- TRUE
 
+graphics_matplot_max_points <- 200000
+
 #' Function to check whether data is loaded.
 #' @param first_time whether this function is run for the first time
 #' @details The function will be called whenever \code{data_changed} event is
@@ -19,13 +21,13 @@ debug <- TRUE
 #' resulting in calling function \code{loader_html}.
 #' @return Logical variable of length one.
 check_data_loaded <- function(first_time = FALSE){
+  # if(first_time) { return(FALSE) }
   re <- tryCatch({
     repo <- pipeline$read('repository')
-    if(!inherits(repo, "prepare_subject_with_blocks")) {
+    if(!inherits(repo, "rave_prepare_raw_voltage")) {
       stop("No repository found")
     }
-    short_msg <- sprintf("%s [%s, %s]", repo$subject$subject_id, repo$blocks[[1]], repo$reference_name)
-    ravedash::fire_rave_event('loader_message', short_msg)
+    ravedash::fire_rave_event('loader_message', repo$subject$subject_id)
     TRUE
   }, error = function(e){
     ravedash::fire_rave_event('loader_message', NULL)

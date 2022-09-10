@@ -30,20 +30,20 @@ controllers:
   Show Time: yes
   Highlight Box: yes
   Info Text: yes
-data_source: Saved pipelines/modules
+data_source: Uploads
 data_source_pipeline: power_explorer/power_explorer-22_09_03-22_54_46
-data_source_pipeline_target: reference_name
+data_source_pipeline_target: omnibus_results
 data_source_project: demo
 main_camera:
   position:
-    x: -427.1101347
-    'y': 198.3092923
-    z: 66.2574192
+    x: -455.6191685
+    'y': 195.5884042
+    z: 2.4717834
   zoom: 1
   up:
-    x: 0.1312965
-    'y': 0.0758764
-    z: 0.9884351
+    x: -0.0422324
+    'y': 0.0203749
+    z: 0.9989
 project_name: '[Auto]'
 shiny_outputId: custom_3d_viewer-viewer_ready
 subject_code: YAB

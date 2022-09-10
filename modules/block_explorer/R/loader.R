@@ -2,9 +2,9 @@
 loader_html <- function(session = shiny::getDefaultReactiveDomain()){
 
   ravedash::simple_layout(
-    input_width = 5L,
+    input_width = 4L,
     container_fixed = TRUE,
-    container_style = 'max-width:1444px;',
+    container_style = 'max-width:1200px;',
     input_ui = {
       # project & subject
       ravedash::input_card(
@@ -19,25 +19,31 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
           ),
           shidashi::flex_item(
             loader_subject$ui_func()
-          ),
-          shidashi::flex_item(
-            loader_block$ui_func()
           )
         ),
 
         ravedash::flex_group_box(
-          title = "Electrodes and Reference",
+          title = "Session Blocks and Electrodes",
 
-          loader_reference$ui_func(),
+          shidashi::flex_item(
+            loader_block$ui_func()
+          ),
+
           shidashi::flex_break(),
+
           shidashi::flex_item(
             loader_electrodes$ui_func()
-          ),
-          shidashi::flex_item(
-            shiny::fileInput(
-              inputId = ns("loader_mask_file"),
-              label = "or Mask file"
-            ))
+          )
+
+          #
+          # shidashi::flex_item(
+          #   loader_electrodes$ui_func()
+          # ),
+          # shidashi::flex_item(
+          #   shiny::fileInput(
+          #     inputId = ns("loader_mask_file"),
+          #     label = "or Mask file"
+          #   ))
         ),
 
         footer = shiny::tagList(
@@ -54,7 +60,7 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
     output_ui = {
       ravedash::output_card(
         title = "3D Viewer",
-        class_body = "no-padding min-height-650 height-650",
+        class_body = "no-padding min-height-400 height-450",
         loader_viewer$ui_func()
       )
     }
@@ -76,7 +82,6 @@ loader_server <- function(input, output, session, ...){
           "loader_project_name",
           "loader_subject_code",
           "loader_electrode_text",
-          "loader_reference_name",
           "loader_block"
         )
       )
@@ -84,9 +89,6 @@ loader_server <- function(input, output, session, ...){
 
       # Save the variables into pipeline settings file
       pipeline$set_settings(.list = settings)
-
-      # Check if user has asked to set the reference to be the default
-      default_reference <- isTRUE(loader_reference$get_sub_element_input("default"))
 
       # --------------------- Run the pipeline! ---------------------
 
@@ -117,14 +119,6 @@ loader_server <- function(input, output, session, ...){
         # When data can be imported
         onFulfilled = function(e){
 
-          # Set reference as default
-          if(default_reference){
-            repo <- pipeline$read("repository")
-            if(default_reference) {
-              repo$subject$set_default("reference_name", repo$reference_name)
-            }
-          }
-
           # Let the module know the data has been changed
           ravedash::fire_rave_event('data_changed', Sys.time())
           ravedash::logger("Data has been loaded loaded")
@@ -144,7 +138,7 @@ loader_server <- function(input, output, session, ...){
           dipsaus::shiny_alert2(
             title = "Errors",
             text = paste(
-              "Found an error while loading the power data:\n\n",
+              "Found an error while loading the raw-voltage data:\n\n",
               paste(e$message, collapse = "\n")
             ),
             icon = "error",

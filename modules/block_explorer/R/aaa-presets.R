@@ -12,21 +12,19 @@ component_container <- ravedash::new_rave_shiny_component_container(
 
 # Define components
 loader_project <- ravedash::presets_loader_project()
-loader_subject <- ravedash::presets_loader_subject()
+loader_subject <- ravedash::presets_loader_subject(checks = NULL)
 loader_electrodes <- ravedash::presets_loader_electrodes()
-loader_reference <- ravedash::presets_loader_reference()
-loader_viewer <- ravedash::presets_loader_3dviewer(height = "100%")
-loader_block <- presets_loader_block()
+# loader_reference <- ravedash::presets_loader_reference()
+loader_viewer <- ravedash::presets_loader_3dviewer2(height = "100%")
+loader_block <- presets_loader_block(multiple = TRUE)
 
 import_export_pipeline <- ravedash::presets_import_export_subject_pipeline()
-electrode_selector <- ravedash::presets_analysis_electrode_selector2(start_simple = TRUE, multiple = FALSE)
-comp_analysis_ranges <- ravedash::presets_analysis_ranges()
 
 # Register the components
 component_container$add_components(
   loader_project, loader_subject, loader_block,
-  loader_electrodes, loader_reference, loader_viewer,
-  electrode_selector, import_export_pipeline, comp_analysis_ranges
+  loader_electrodes, loader_viewer,
+  import_export_pipeline
 )
 
 

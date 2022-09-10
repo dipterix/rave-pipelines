@@ -40,211 +40,402 @@ list2env(as.list(.settings), envir = environment())
 
 #### Step 1: Create `RAVE` subject's instances
 
-Noting that all the items in the `settings.yaml` are available as variables.
 
 ```{rave load_subject, language = "R", export = "subject"}
 subject <- RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
 )
-subject
 ```
 
 #### Step 2: Load Block Data
 
-This code chunk always runs because it caches data internally, and only a shell (pointer to the data) is returned. We do not want to cache the shell as the data content could be deleted by the users. Instead, we want the repository to decide whether to use the cache, or to update.
+Create a subject instance, and check if the subject data has been imported
 
-```{rave parse_analysis_electrodes, language = "R", export = "sample_electrode"}
-sample_electrode <- dipsaus::parse_svec(analysis_electrodes)
-if(length(sample_electrode) != 1) {
-  stop("Sample electrode number must have length of one")
+```{rave validate_inputs, language = "R", export = "repository", cue = "always"}
+# Check if the subject data has been imported
+load_electrodes <- unique(as.integer(dipsaus::parse_svec(loaded_electrodes)))
+electrodes <- as.integer(subject$electrodes)
+electrodes <- electrodes[subject$preprocess_settings$data_imported]
+
+load_electrodes <- load_electrodes[load_electrodes %in% electrodes]
+root_path <- file.path(subject$preprocess_path, "voltage")
+
+if(length(load_electrodes)) {
+  data_files <- file.path(root_path, sprintf("electrode_%d.h5", load_electrodes))
+  load_electrodes <- load_electrodes[file.exists(data_files)]
 }
-```
 
-```{rave calculate_electrodes_to_load, language = "R", export = "electrodes_to_load"}
-electrodes_to_load <- sort(
-  c( dipsaus::parse_svec(loaded_electrodes), sample_electrode )
-)
-```
-
-```{rave load_repository, language = "R", export = "repository", cue = "always"}
-repository <- with_future_parallel({
-  prepare_subject_with_blocks(
-    subject = subject,
-    electrodes = loaded_electrodes,
-    reference_name = reference_name,
-    blocks = block
-  )
-})
-
-```
-
-The repository may contain more electrodes than loaded thanks to the internal cache, allowing users may be able to analyze more electrodes than requested, or to reduce the time needed to load.
-
-```{rave extract_loaded_electrodes, language = "R", export = "electrodes_loaded", cue = "always"}
-electrodes_loaded <- repository$block_data[[block]]$voltage$data$get_header("cached_electrodes")
-electrodes_loaded <- sort(electrodes_loaded)
-
-if(!isTRUE(sample_electrode %in% electrodes_loaded)) {
-  stop(sprintf("Sample electrode [%s] has not been loaded successfully", paste(sample_electrode, collapse = ", ")))
+if(!length(load_electrodes)) {
+  stop("None electrode will be loaded. Please make sure at least one electrode is imported.")
 }
-```
 
-```{rave single_out_voltage_data, language = "R", export = "voltage"}
-voltage <- repository$block_data[[block]]$voltage
-```
+sample_rates <- subject$raw_sample_rates[subject$electrodes %in% load_electrodes]
 
-```{rave single_out_wavelet_data, language = "R", export = "wavelet"}
-wavelet <- repository$block_data[[block]]$wavelet
-```
+sample_rate <- unique(sample_rates)
+if(length(sample_rate) == 0) {
+  stop("Cannot find proper sample rate for the selected electrodes")
+}
+if(anyNA(sample_rates)) {
+  stop("Some electrodes have missing sampling frequency. Please make sure all selected electrode channels have been imported.")
+}
+if(length(sample_rate) > 1) {
+  stop("Multiple sample rates are found: [", paste(sprintf("%.1f", sample_rate), collapse = ", "), 
+       "]. Please choose electrode channels with the sample rates.")
+}
 
-## Generate overall plots for one electrode
+blocks <- block[block %in% subject$blocks]
 
-There are three plots to show:
+if(!length(blocks)) {
+  stop("All the blocks are invalid. Please choose one or more blocks from the following choices: ", paste(subject$blocks, collapse = ", "))
+}
 
--   Overall voltage & power plot
-    -   Allow to select time & frequency window from the power plot
-    -   Power can be baseline-corrected by
-        -   Average power of each frequency
-        -   No baseline
-    -   Power is to be displayed in decibel unit by default, but should be able to change to other types if baseline is enabled
--   Welch-Periodogram for the whole block
+sample_electrode <- load_electrodes[[1]]
+sample_instance <- raveio::new_electrode(subject, sample_electrode, quiet = TRUE)
+sample_data <- sample_instance$load_blocks(blocks, type = "raw-voltage", simplify = FALSE)
 
-Each plot has one variation that uses a subset of analysis range, just like the "zoom-in" plot in the epoch module. The footer will be used to display summary statistics of overall vs selected range. A button is needed to sync the selected time x frequency range to a range selector (input)
+electrodes <- as.integer(subject$electrodes)
+cache_root <- file.path(subject$cache_path, "rave2", "raw-voltage")
 
-The affected global inputs are:
-
--   Electrode selector (will change `analysis_electrodes`)
--   2 x Time & Frequency range selector (will be the sync target)
-
-### Prepare sample data for voltage inspection
-
-R may become slow if [number of time points is large](%5Bhttps://dipterix.org/blog/2022/R-plot-capacity%5D(https://dipterix.org/blog/2022/R-plot-capacity/))
-
-Luckily, visually it makes little to no difference when plotting a million points vs. decimating the signal to 10k points and then plot.
-
-```{rave prepare_sample_for_voltage_analysis, language = "R", export = "voltage_sample"}
-sample_rate <- voltage$sample_rate
-
-# filearray subset will add dimnames. which significant increases data size
-voltage_single <- as.vector(subset(voltage$data, Electrode ~ Electrode == sample_electrode, drop = TRUE))
-
-voltage_sample <- list(
-  origin = list(
-    sample_rate = sample_rate,
-    data = voltage_single,
-    range = range(voltage_single),
-    sd = stats::sd(voltage_single)
+progress <- dipsaus::progress2("Loading raw-voltage", max = length(blocks) + 1, 
+                               shiny_auto_close = TRUE, quiet = !dipsaus::shiny_is_running())
+loaded_data <- sapply(blocks, function(block) {
+  progress$inc(sprintf("Loading block %s", block))
+  data_length <- length(sample_data[[block]])
+  dm <- c(data_length, length(electrodes))
+  cache_path <- file.path(cache_root, block)
+  
+  arr <- filearray::filearray_load_or_create(
+    filebase = cache_path, dimension = dm, type = "double", mode = "readwrite", 
+    partition_size = 1L, symlink_ok = FALSE, verbose = FALSE, 
+    electrodes = as.integer(electrodes), block = block
   )
+  
+  loaded_electrodes <- arr$get_header(key = "loaded_electrodes", default = NULL)
+  
+  toload <- load_electrodes[!load_electrodes %in% loaded_electrodes]
+  if(length(toload)) {
+    dipsaus::lapply_async2(toload, function(e) {
+      inst <- raveio::new_electrode(subject = subject, number = e)
+      dat <- inst$load_blocks(blocks = block, type = "raw-voltage", simplify = TRUE)
+      arr[, electrodes == e] <- dat
+      invisible()
+    }, plan = FALSE, callback = function(e) {
+      sprintf("Loading electrode %d", e)
+    })
+    
+    arr$set_header("loaded_electrodes", sort(c(loaded_electrodes, toload)))
+  }
+  arr$.mode <- "readonly"
+  
+  arr
+  
+}, simplify = FALSE, USE.NAMES = TRUE)
+progress$inc("Done")
+
+reference_name <- "noref" %OF% subject$reference_names
+repository <- raveio::prepare_subject_bare0(subject = subject, electrodes = load_electrodes, reference_name = reference_name)
+
+
+repository$data <- loaded_data
+# repository$electrode_list <- load_electrodes
+repository$blocks <- blocks
+repository$sample_rate <- sample_rate
+# repository$subject <- subject
+digest_key <- list(
+  subject_id = subject$subject_id,
+  electrodes = load_electrodes,
+  electrode_signal_types = repository$electrode_signal_types,
+  blocks = blocks,
+  sample_rate = sample_rate
 )
+repository$signature <- structure(dipsaus::digest(digest_key), 
+                                  contents = names(digest_key))
+class(repository) <- c("rave_prepare_raw_voltage", class(repository))
 ```
 
-Plot the channel trace
 
-```{r}
-ravetools::diagnose_channel(
-  voltage_sample$origin$data, 
-  srate = voltage_sample$origin$sample_rate, 
-  which = 1
-)
-```
-
-Calculate Welch-Periodogram of the entire voltage signal
-
-```{rave calculate_Welch-Periodogram, language = "R", export = "pwelch_overall"}
-data <- voltage_sample$origin$data
-srate <- voltage_sample$origin$sample_rate
-pwelch_overall <- ravetools::pwelch(
-  x = data, fs = srate, plot = FALSE,
-  window = srate * 2, noverlap = srate)
-```
-
-"P-Welch" plot example:
-
-```{r}
-plot(pwelch_overall, xlim = c(0, log10(300)))
-```
-
-### Prepare sample data for time-frequency inspection
-
-Get wavelet, calculate power baseline
-
-```{rave prepare_sample_power, language = "R", export = "power_sample"}
-sample_rate <- wavelet$sample_rate
-wavelet_single <- subset(wavelet$data, Electrode ~ Electrode == sample_electrode, drop = FALSE)
-
-dimnames(wavelet_single) <- NULL
-dim(wavelet_single) <- dim(wavelet$data)[c(1, 2)]
-
-wavelet_sample <- list(
-  origin = list(
-    sample_rate = sample_rate,
-    dnames = wavelet$dnames[c(1, 2)],
-    data = wavelet_single
+```{rave check_analysis_inputs, language = "R", export = "cleaned_inputs"}
+sample_rate <- repository$sample_rate
+if(length(sample_rate) != 1) {
+  stop("Cannot find sample rate from the repository. This is code error. Please contact the RAVE development team and report this issue")
+}
+filter_bandpass <- as.list(filter_bandpass)
+if(isTRUE(filter_bandpass$enabled)) {
+  filter_order <- as.integer(filter_bandpass$order)
+  if(length(filter_order) != 1 || is.na(filter_order) || filter_order <= 0) {
+    stop("Band-passing filter order must be postive integers")
+  }
+  if(!isTRUE(filter_order * 3 < sample_rate)) {
+    stop("Band-passing filter order must be less than ", floor((sample_rate - 1) / 3))
+  }
+  filter_range <- as.numeric(filter_bandpass$range)
+  filter_range <- filter_range[!is.na(filter_range) & filter_range >= 0]
+  filter_range <- sort(unique(filter_range))
+  if(length(filter_range)) {
+    if(filter_range[[1]] == 0) {
+      filter_range[[1]] <- 1e-3
+    }
+    filter_range <- sort(unique(filter_range))
+  }
+  if(length(filter_range) != 2) {
+    stop("Band-passing filter must have a postive frequency range with lower-bound smaller than the upper-bound")
+  }
+  if(any(filter_range > sample_rate / 2)) {
+    stop("Band-passing filter range must not exceed half sample-rate (Nyquist frequency) to avoid aliasing.")
+  }
+  filter_bandpass <- list(
+    enabled = TRUE,
+    order = filter_order,
+    range = filter_range
   )
+} else {
+  filter_bandpass <- list(enabled = FALSE)
+}
+
+filter_notch <- as.list(filter_notch)
+if(isTRUE(filter_notch$enabled)) {
+  lower_bounds <- filter_notch$lower_bounds
+  lower_bounds <- lower_bounds[!is.na(lower_bounds) & lower_bounds > 0]
+  upper_bounds <- filter_notch$upper_bounds
+  upper_bounds <- upper_bounds[!is.na(upper_bounds) & upper_bounds > 0]
+  if(!length(lower_bounds) || length(upper_bounds) != length(lower_bounds)) {
+    stop(sprintf(
+      "Notch filter lower-bounds [%s] have unequal/zero lengths compared to the upper-bounds [%s]. Please make sure the frequencies have equal positive lengths.",
+      paste(sprintf("%.1fHz", lower_bounds), collapse = ","),
+      paste(sprintf("%.1fHz", upper_bounds), collapse = ",")
+    ))
+  }
+  if(any(lower_bounds >= upper_bounds)) {
+    stop(sprintf(
+      "Notch filter lower-bounds [%s] must be smaller than upper-bounds [%s], respectively.",
+      paste(sprintf("%.1fHz", lower_bounds), collapse = ","),
+      paste(sprintf("%.1fHz", upper_bounds), collapse = ",")
+    ))
+  }
+  if(any(upper_bounds > sample_rate / 2)) {
+    stop("Notch filter upper-bounds [%s] must not exceed the half sample-rate (Nyquist frequency) to avoid aliasing.")
+  }
+  filter_notch <- list(
+    enabled = TRUE, 
+    lower_bounds = lower_bounds, 
+    upper_bounds = upper_bounds
+  )
+} else { filter_notch <- list(enabled = FALSE) }
+
+cleaned_inputs <- list(
+  filter_bandpass = filter_bandpass,
+  filter_notch = filter_notch,
+  sample_rate = sample_rate
 )
 
+```
 
-power_sample <- wavelet_sample
-switch (
-  baseline_method,
-  "Welch-Periodogram" = {
-    apf <- approxfun(
-      x = pwelch_overall$freq, 
-      y = pwelch_overall$spec_db)
-    bl <- apf(wavelet_sample$origin$dnames$Frequency)
-    bl <- 10^(bl / 20)
-  }, 
-  "Block-Average" = {
-    bl <- rowMeans(Mod(wavelet_sample$origin$data)^2)
-  }, 
-  "Block-Median" = {
-    bl <- apply(Mod(wavelet_sample$origin$data)^2, 1, median)
-  },
-  {
-    bl <- 1
+```{rave check_pwelch_params, language = "R", export = "pwelch_params2"}
+pwelch_params <- as.list(pwelch_params)
+window_size <- as.integer(pwelch_params$window_size)
+if(!length(window_size) || !isTRUE(window_size > 0)) {
+  stop("Welch-Periodogram window size must be an integer greater than 1")
+}
+noverlap <- as.integer(pwelch_params$noverlap)
+if(!length(noverlap) || is.na(noverlap) || noverlap < 0 ) {
+  stop("Welch-Periodogram window overlap size must be a positive integer")
+}
+if(noverlap / window_size > 0.95) {
+  ravedash::logger("Welch-Periodogram window overlap size exceeds 0.95 x window size. The `pwelch` calculation will be slow.")
+}
+pwelch_params2 <- list(
+  window_size = window_size,
+  noverlap = noverlap
+)
+```
+
+```{rave get_analysis_electrodes, language = "R", export = "analysis_electrodes2"}
+analysis_electrodes <- dipsaus::parse_svec(analysis_electrodes)
+if(!length(analysis_electrodes)) {
+  analysis_electrodes <- repository$electrode_list
+}
+analysis_electrodes2 <- analysis_electrodes[analysis_electrodes %in% repository$electrode_list]
+analysis_electrodes2 <- unique(sort(analysis_electrodes2))
+```
+
+Filter signals
+
+```{rave filter_signals, language = "R", export = "filtered_data", cue = "always"}
+
+force(analysis_electrodes2)
+
+tmpdir <- ravedash::temp_dir(persist = "app-session")
+input_data <- repository$data[[analysis_block]]
+
+filtered_data <- filearray::filearray_load_or_create(
+  filebase = file.path(tmpdir, "block_explorer", repository$signature, "filtered", analysis_block),
+  dimension = dim(input_data),
+  type = "double",
+  symlink_ok = FALSE,
+  mode = "readwrite",
+  initialize = FALSE,
+  partition_size = 1L,
+  verbose = FALSE,
+  
+  # cache
+  repository_signature = repository$signature,
+  block = analysis_block,
+  filters = cleaned_inputs[c("filter_bandpass", "filter_notch" )],
+  on_missing = function(arr) {
+    dimnames(arr) <- list(
+      NULL,
+      Electrode = repository$subject$electrodes
+    )
   }
 )
 
-power_sample$origin$data <- Mod(wavelet_sample$origin$data)^2 / bl
+filtered_electrodes <- filtered_data$get_header("filtered_electrodes", NULL)
 
-switch (
-  baseline_unit,
-  "Decibel" = {
-    power_sample$origin$data <- 10 * log10(power_sample$origin$data)
-  }, 
-  "Percentage-Change" = {
-    power_sample$origin$data <- 100 * power_sample$origin$data - 100
-  },
-  {
-    stop("Unsupported baseline unit")
+# get list of electrodes to be filtered
+electrodes_to_filter <- analysis_electrodes2[!analysis_electrodes2 %in% filtered_electrodes]
+electrodes <- subject$electrodes
+sample_rate <- repository$sample_rate
+if(length(electrodes_to_filter)) {
+  dipsaus::lapply_async2(electrodes_to_filter, function(e) {
+    sel <- which(electrodes == e)
+    if(!length(sel)) {
+      stop("cannot find data of the electrode ", e)
+    }
+    sel <- sel[[1]]
+    signal <- input_data[, sel]
+    
+    filter_bandpass <- cleaned_inputs$filter_bandpass
+    if(isTRUE(filter_bandpass$enabled)) {
+      # signal <- ravetools::band_pass2(x = signal, sample_rate = sample_rate, 
+      #                                 order = filter_bandpass$order, 
+      #                                 method = "fir", window = "hanning",
+      #                                 lb = filter_bandpass$range[[1]],
+      #                                 ub = filter_bandpass$range[[2]])
+      signal <- ravetools::band_pass1(x = signal, sample_rate = sample_rate, 
+                                      lb = filter_bandpass$range[[1]],
+                                      ub = filter_bandpass$range[[2]])
+    }
+    
+    if(isTRUE(filter_notch$enabled)) {
+      signal <- ravetools::notch_filter(signal, sample_rate = sample_rate, 
+                                        lb = filter_notch$lower_bounds,
+                                        ub = filter_notch$upper_bounds)
+    }
+    
+    filtered_data[, sel] <- signal
+    
+    return()
+  }, plan = FALSE, callback = function(e) {
+    sprintf("Filter signals | Electrode channel %.0f", e)
+  })
+  
+  filtered_electrodes <- sort(c(filtered_electrodes, electrodes_to_filter))
+  filtered_data$set_header(key = "filtered_electrodes", value = filtered_electrodes)
+}
+```
+
+Generate Welch-Periodogram
+
+```{rave calculate_pwelch, language = "R", export = "pwelch_data", cue = "always"}
+
+force(analysis_electrodes2)
+input_data <- repository$data[[analysis_block]]
+
+# calculate pwelch frequencies
+sample_rate <- repository$sample_rate
+window_len <- pwelch_params2$window_size
+noverlap <- pwelch_params2$noverlap
+x_len <- nrow(input_data)
+nfft <- max(min(256, x_len), window_len)
+NN <- floor((nfft + 1)/2)
+dm <- c(NN, ncol(input_data))
+freq <- seq(1, sample_rate / 2, length.out = NN)
+
+tmpdir <- ravedash::temp_dir(persist = "app-session")
+pwelch_data <- filearray::filearray_load_or_create(
+  filebase = file.path(tmpdir, "block_explorer", repository$signature, "pwelch", analysis_block),
+  dimension = dm,
+  type = "double",
+  symlink_ok = FALSE,
+  mode = "readwrite",
+  initialize = FALSE,
+  partition_size = 1L,
+  verbose = FALSE,
+  
+  # cache
+  repository_signature = repository$signature,
+  block = analysis_block,
+  inputs = cleaned_inputs,
+  
+  on_missing = function(arr) {
+    dimnames(arr) <- list(
+      Frequency = freq,
+      Electrode = repository$subject$electrodes
+    )
   }
 )
 
+processed_electrodes <- pwelch_data$get_header("processed_electrodes", NULL)
+
+# get list of electrodes to be filtered
+electrodes_to_pwelch <- analysis_electrodes2[!analysis_electrodes2 %in% processed_electrodes]
+electrodes <- subject$electrodes
+
+if(length(electrodes_to_pwelch)) {
+  dipsaus::lapply_async2(electrodes_to_pwelch, function(e) {
+    sel <- which(electrodes == e)
+    if(!length(sel)) {
+      stop("cannot find data of the electrode ", e)
+    }
+    sel <- sel[[1]]
+    signal <- input_data[, sel]
+    
+    pwelch_result <- ravetools::pwelch(
+      x = signal, fs = sample_rate, window = pwelch_params2$window_size, 
+      noverlap = pwelch_params2$noverlap)
+    pwelch_data[,sel] <- pwelch_result$spec
+    return()
+  }, plan = FALSE, callback = function(e) {
+    sprintf("Welch-Periodogram | Electrode channel %.0f", e)
+  })
+  
+  processed_electrodes <- sort(c(processed_electrodes, electrodes_to_pwelch))
+  pwelch_data$set_header(key = "processed_electrodes", value = processed_electrodes)
+}
 ```
 
-Visualize power (with baseline) data in heatmap
 
-```{r}
-time <- power_sample$origin$dnames$Time
-freq <- power_sample$origin$dnames$Frequency
-data <- t(power_sample$origin$data)
+## Figures
 
-sd <- stats::sd(data)
-zlim <- sd * c(-1, 1) * 4
+```{r plot_filtered_signals, language = "R", export = "plot_filtered"}
+# Dummy return
+plot_filtered <- invisible(Sys.time())
 
-# pal <- c("#FFFFFF", "#FFFFFF", "#FFFFFF", "purple3", "orange")
-pal <- c("#053060", "darkgreen", "#FFFFFF", "orange", "#66001F")
-zlim <-
-bias <- log(2 * sd / zlim[2]) / log(0.5)
-col <- c(
-  rev(colorRampPalette(pal[c(3,2,1)], bias = bias)(100)),
-  pal[[3]],
-  colorRampPalette(pal[c(3,4,5)], bias = bias)(100)
-)
+# make sure down-sample
+ntp <- nrow(filtered_data)
+nelec <- length(analysis_electrodes2)
+limit <- 200000
+sample_rate <- repository$sample_rate
 
-fastplot_power_over_freq_time(data, time, freq, col)
+if(ntp * nelec > limit) {
+  dsample <- ntp * nelec / limit
+  tidx <- round(seq(1, ntp, by = dsample))
+  sample_rate <- sample_rate / dsample
+} else {
+  tidx <- seq_len(ntp)
+}
+
+col_sel <- repository$subject$electrodes %in% analysis_electrodes2
+
+plot_data <- filtered_data[tidx, col_sel, drop = FALSE]
+
+ravetools::plot_signals(t(plot_data), sample_rate = sample_rate)
 ```
+
+
+
+
 
 ## Build, Visualize, & Run
 

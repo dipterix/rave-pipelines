@@ -1,9 +1,20 @@
-analysis_electrodes: '14'
-analysis_electrodes__category: Electrode
-baseline_method: Block-Median
-baseline_unit: Decibel
-block: 008
-loaded_electrodes: '14'
-project_name: congruency
-reference_name: default_CAR
-subject_code: YAB
+analysis_block: block006
+analysis_electrodes: 1-116
+block:
+- block006
+- block007
+- block008
+filter_bandpass:
+  enabled: yes
+  order: 665
+  range:
+  - 7
+  - 12
+filter_notch:
+  enabled: no
+loaded_electrodes: 1-116
+project_name: devel
+pwelch_params:
+  window_size: 4000
+  noverlap: 2000.0
+subject_code: PAV006

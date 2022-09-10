@@ -6,6 +6,6 @@ electrode_group:
   '2':
     name: NoLabel
     electrodes: 254-256
-project_name: test
-reference_name: _unsaved
-subject_code: PAV004
+project_name: devel
+reference_name: '[Blank profile]'
+subject_code: PAV005
