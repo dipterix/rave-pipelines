@@ -592,11 +592,16 @@ lapply(sort(list.files(
                       }
                     }
                     freq_sel <- !freq_sel
+                    tmp <- NULL
                     if (any(freq_sel)) {
-                      ylim <- range(plot_data[freq_sel, ], na.rm = TRUE)
-                    } else {
-                      ylim <- range(plot_data, na.rm = TRUE)
+                      tmp <- plot_data[freq_sel, ]
+                      tmp <- tmp[is.finite(tmp)]
                     }
+                    if (!length(tmp)) {
+                      tmp <- plot_data
+                      tmp <- tmp[is.finite(tmp)]
+                    }
+                    ylim <- range(tmp, na.rm = FALSE)
                     has_highlight <- any(sel_highlights)
                     mean1 <- rowMeans(plot_data, na.rm = TRUE)
                     if (has_highlight) {

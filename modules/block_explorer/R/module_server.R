@@ -36,11 +36,13 @@ module_server <- function(input, output, session, ...){
         ravedash::error_notification(
           list(message = "Please check the band-passing filter settings and correct the inputs as suggested.")
         )
+        return()
       }
       if(!sv_notch$is_valid()) {
         ravedash::error_notification(
           list(message = "Please check the Notch filter settings and correct the inputs as suggested.")
         )
+        return()
       }
 
       local_data$results <- list(valid = FALSE)
@@ -48,7 +50,6 @@ module_server <- function(input, output, session, ...){
       if(isTRUE(input$filter_bandpass__enabled)) {
         filter_bandpass <- list(
           enabled = TRUE,
-          order = input$filter_bandpass__filter_order,
           range = sort(c(
             input$filter_bandpass__freq_lb,
             input$filter_bandpass__freq_ub
@@ -195,17 +196,6 @@ module_server <- function(input, output, session, ...){
 
 
       # set input group - band-passing
-      current_order <- as.integer(input$filter_bandpass__filter_order)
-      max_order <- floor((srate - 1) / 3)
-      if(!length(current_order) || is.na(current_order) || current_order <= 0 || current_order > max_order) {
-        current_order <- max_order
-      }
-      shiny::updateNumericInput(
-        session = session,
-        inputId = "filter_bandpass__filter_order",
-        max = max_order,
-        value = current_order
-      )
       bp_lb <- input$filter_bandpass__freq_lb
       bp_ub <- input$filter_bandpass__freq_ub
       max_bp_rate <- floor(srate / 2)
@@ -593,10 +583,13 @@ module_server <- function(input, output, session, ...){
         pwelch_subset_clickinfo <- get_pwelch_click(plot_env$plot_data_pwelch_subset, input$plot_pwelch_subset__click)
         analysis_time2 <- plot_env$analysis_time2
 
+        plot_data <- plot_env$plot_data_filtered_voltage_overall
+
         list(
           pwelch_clickinfo = pwelch_clickinfo,
           pwelch_subset_clickinfo = pwelch_subset_clickinfo,
-          analysis_time2 = analysis_time2
+          analysis_time2 = analysis_time2,
+          displayed_electrodes = dipsaus::deparse_svec(plot_data$labels)
         )
       }),
       input$plot_pwelch__click,
@@ -614,6 +607,8 @@ module_server <- function(input, output, session, ...){
     voltage_brush <- summary$analysis_time2
     pwelch_clickinfo <- summary$pwelch_clickinfo
     pwelch_subset_clickinfo <- summary$pwelch_subset_clickinfo
+
+    info_displayed <- summary$displayed_electrodes
 
     # brush selection
     if(length(voltage_brush) < 2) {
@@ -664,9 +659,14 @@ module_server <- function(input, output, session, ...){
     shiny::tags$dl(
       class = "row",
 
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Displayed:",
+                     title = "Electrode channels being displayed in the plots"),
+      shiny::tags$dd(class = "col-sm-6 text-nowrap overflow-hidden shidashi-clipboard-output clipboard-btn",
+                     info_displayed, title = info_displayed, `data-clipboard-text` = info_displayed, role = "button"),
+
       shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Subset time:",
                      title = "Draw a range on the left voltage plot"),
-      shiny::tags$dd(class = "col-sm-10 text-nowrap overflow-hidden", info_brush, title = info_brush),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_brush, title = info_brush),
 
       shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Frequency (left):",
                      title = "Click on the either Welch-Periodogram"),

@@ -1,35 +1,16 @@
-analysis_block: block007
-analysis_electrodes: 1-116
+analysis_block: block006
+analysis_electrodes: 1-10,13-22,24-27,29-52,54-56,61-65,73-77,79-91,93-107,109-129,133-150
 analysis_time:
-- 287.0339319
-- 293.6480685
-block:
-- block006
-- block007
-- block008
+- 88.2939399
+- 102.1444794
+block: block006
 filter_bandpass:
-  enabled: yes
-  order: 666
-  range:
-  - 4
-  - 8
+  enabled: no
 filter_notch:
-  enabled: yes
-  lower_bounds:
-  - 59.0
-  - 118.0
-  - 178.0
-  - 237.0
-  - 297.0
-  upper_bounds:
-  - 61.0
-  - 122.0
-  - 182.0
-  - 243.0
-  - 303.0
-hide_electrodes: 7,34,108,115-116
-highlight_electrodes: 1-6,8-10,35,73
-loaded_electrodes: 1-116
+  enabled: no
+hide_electrodes: ''
+highlight_electrodes: ''
+loaded_electrodes: 1-152
 project_name: devel
 pwelch_frequency_limit:
 - 0
@@ -37,5 +18,5 @@ pwelch_frequency_limit:
 pwelch_params:
   window_size: 4000
   noverlap: 2000.0
-subject_code: PAV006
+subject_code: PAV005
 vertical_spacing: ~

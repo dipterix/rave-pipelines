@@ -2,17 +2,17 @@
 
 validator_bandpass <- function(input, output, session) {
   sv <- shinyvalidate::InputValidator$new(session = session)
-  sv$add_rule(inputId = "filter_bandpass__filter_order", rule = function(value) {
-    sample_rate <- component_container$data$sample_rate
-    if(length(sample_rate) != 1) { return() }
-    max_rate <- floor((sample_rate - 1) / 3)
-    if(!length(value) || is.na(value) || value < 1 || value != round(value)) {
-      return("Filter order must be a positive integer")
-    }
-    if(value > max_rate) {
-      return(sprintf("Filter order must be smaller or equal to 1/3 of sample rate [%s]", sample_rate))
-    }
-  }, session. = session)
+  # sv$add_rule(inputId = "filter_bandpass__filter_order", rule = function(value) {
+  #   sample_rate <- component_container$data$sample_rate
+  #   if(length(sample_rate) != 1) { return() }
+  #   max_rate <- floor((sample_rate - 1) / 3)
+  #   if(!length(value) || is.na(value) || value < 1 || value != round(value)) {
+  #     return("Filter order must be a positive integer")
+  #   }
+  #   if(value > max_rate) {
+  #     return(sprintf("Filter order must be smaller or equal to 1/3 of sample rate [%s]", sample_rate))
+  #   }
+  # }, session. = session)
   sv$add_rule(inputId = "filter_bandpass__freq_lb", rule = function(value) {
     sample_rate <- component_container$data$sample_rate
     if(length(sample_rate) != 1) { return() }

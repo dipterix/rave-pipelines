@@ -103,15 +103,6 @@ module_html <- function(){
 
                   shiny::fluidRow(
                     shiny::column(
-                      width = 12L,
-                      shiny::numericInput(
-                        inputId = ns("filter_bandpass__filter_order"),
-                        label = "FIR filter order",
-                        min = 0, step = 1,
-                        value = 0
-                      )
-                    ),
-                    shiny::column(
                       width = 6L,
                       shiny::numericInput(
                         inputId = ns("filter_bandpass__freq_lb"),
