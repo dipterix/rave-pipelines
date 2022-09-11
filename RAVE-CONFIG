@@ -47,7 +47,8 @@ SubPipelines:
     modules/wavelet_module,
     modules/reference_module,
     modules/surface_reconstruction,
-    modules/custom_3d_viewer
+    modules/custom_3d_viewer,
+    modules/block_explorer
 InteractiveModules:
     modules/import_lfp_native,
     modules/notch_filter,
