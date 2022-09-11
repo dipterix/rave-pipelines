@@ -60,3 +60,4 @@ InteractiveModules:
     modules/compatibility_rave1,
     modules/standalone_viewer,
     modules/custom_3d_viewer
+    modules/block_explorer

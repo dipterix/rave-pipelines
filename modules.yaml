@@ -44,6 +44,7 @@ modules:
     hidden: yes
   block_explorer:
     label: Block Explorer
+    badge: Experimental|badge-warning
   custom_3d_viewer:
     label: "Subject 3D Viewer"
     order: 11
