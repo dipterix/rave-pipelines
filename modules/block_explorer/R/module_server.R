@@ -23,6 +23,23 @@ module_server <- function(input, output, session, ...){
     ))
   )
 
+  # 3D viewer controller
+  local_data$viewer_controller <- list(
+    `Display Coordinates` = FALSE, `Show Panels` = FALSE,
+    `Overlay Coronal` = TRUE, `Overlay Axial` = TRUE, `Overlay Sagittal` = TRUE,
+    `Left Hemisphere` = "normal", `Right Hemisphere` = "normal",
+    `Left Opacity` = 0.3, `Right Opacity` = 0.3,
+    `Voxel Display` = "hidden", `Voxel Opacity` = 0L, `Voxel Label` = "0",
+    `Display Data` = "Filtered", `Display Range` = "70",
+    Speed = 0.05, `Show Legend` = TRUE, `Show Time` = TRUE, `Highlight Box` = TRUE,
+    `Info Text` = TRUE)
+
+  local_data$viewer_camera <- list(
+    position = c(0, 500, 0), up = c(0, 0, 1), zoom = 1
+  )
+  local_data$has_viewer <- FALSE
+  local_data$viewer_card_initialized <- FALSE
+
 
   # Input validators
   sv_bandpass <- validator_bandpass(input, output, session)
@@ -135,6 +152,13 @@ module_server <- function(input, output, session, ...){
               inputId = "viewer_timestart",
               max = max_time
             )
+
+            if(isTRUE(local_data$has_viewer) && isFALSE(local_data$viewer_card_initialized)) {
+              shidashi::card_operate(inputId = "card_3dviewer", method = "expand")
+              shidashi::card_operate(inputId = "card_viewer_setting", method = "expand")
+              local_data$viewer_card_initialized <- TRUE
+            }
+
           })
 
           local_reactives$update_outputs <- Sys.time()
@@ -249,13 +273,26 @@ module_server <- function(input, output, session, ...){
 
       # check if the brain exists
       brain <- raveio::rave_brain(new_repository$subject)
+      shidashi::card_operate(inputId = "card_3dviewer", method = "collapse")
+      shidashi::card_operate(inputId = "card_viewer_setting", method = "collapse")
+
       if(inherits(brain, "rave-brain")) {
-        shidashi::card_operate(inputId = "card_3dviewer", method = "expand")
+        local_data$has_viewer <- TRUE
       } else {
-        shidashi::card_operate(inputId = "card_3dviewer", method = "collapse")
+        local_data$has_viewer <- FALSE
       }
 
+      local_data$viewer_card_initialized <- FALSE
       local_reactives$update_outputs <- FALSE
+      local_reactives$brain_widget <- NULL
+
+      try({
+        promise2 <- local_reactives$pipeline_promise2
+        if(!is.null(promise2)) {
+          promise2$invalidate()
+        }
+      }, silent = TRUE)
+
 
       # Reset outputs
       # shidashi::reset_output("collapse_over_trial")
@@ -797,6 +834,7 @@ module_server <- function(input, output, session, ...){
         value = duration
       )
 
+
     }),
     input$viewer_sync,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -853,6 +891,18 @@ module_server <- function(input, output, session, ...){
         status <- factor(status, levels = c("Inactive", "Displayed", "Highlighted"))
 
 
+        render_start <- Sys.time()
+        dipsaus::shiny_alert2(title = "Generating viewer", icon = "info", auto_close = FALSE, buttons = FALSE,
+                              text = "Rendering animation in progress...")
+        on.exit({
+          render_stop <- Sys.time()
+          delta <- dipsaus::time_delta(render_start, render_stop)
+          if(delta < 1) {
+            Sys.sleep(1 - delta)
+          }
+          dipsaus::close_alert2()
+        }, add = TRUE, after = TRUE)
+
         # Get filtered data
         has_signals <- FALSE
         tidx_start <- round(time_start * sample_rate) + 1
@@ -889,20 +939,123 @@ module_server <- function(input, output, session, ...){
 
         brain$set_electrode_values(data_table)
 
-        local_reactives$brain_widget <- brain$plot()
+        # get current viewer data
+        background <- proxy$background
+        if(length(background) != 1) {
+          theme <- ravedash::current_shiny_theme()
+          background <- theme$background
+        }
+        background <- dipsaus::col2hexStr(background)
+
+        controllers <- local_data$viewer_controller
+        zoom_level <- local_data$viewer_camera$zoom
+        position <- local_data$viewer_camera$position
+        up <- local_data$viewer_camera$up
+
+        local_reactives$brain_widget <- brain$plot(
+          show_modal = FALSE,
+          background = background,
+          controllers = controllers,
+          start_zoom = zoom_level,
+          # send signals to update parameters such as camera, zoom-level...
+          custom_javascript = raveio::glue(
+            '
+            // Remove the focus box
+            if( canvas.focus_box ) {
+              canvas.focus_box.visible = false;
+            }
+
+            // set camera
+            canvas.main_camera.position.set(
+              {{ position[[1]] }} ,
+              {{ position[[2]] }} ,
+              {{ position[[3]] }}
+            );
+            canvas.main_camera.up.set(
+              {{ up[[1]] }} ,
+              {{ up[[2]] }} ,
+              {{ up[[3]] }}
+            )
+            canvas.main_camera.updateProjectionMatrix();
+
+            // Force render one frame (update the canvas)
+            canvas.start_animation(0);
+            ',
+            .open = "{{", .close = "}}"
+          )
+        )
+
       })
+
+      dipsaus::close_alert2()
 
     }),
     input$viewer_generate,
-    ignoreNULL = TRUE, ignoreInit = TRUE
+    ignoreNULL = TRUE, ignoreInit = FALSE
   )
+
+  proxy <- threeBrain::brain_proxy("3dviewer")
 
   ravedash::register_output(
     outputId = "3dviewer",
+    export_type = "3dviewer",
     render_function = threeBrain::renderBrain({
-      local_reactives$brain_widget
+      wg <- local_reactives$brain_widget
+      shiny::validate(
+        shiny::need(!is.null(wg),
+                    message = "Please click the [Generate viewer] button in the [3D Viewer Configurations] input panel")
+      )
+      wg
     })
   )
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
 
+      theme <- ravedash::current_shiny_theme()
+      proxy$set_background(col = theme$background)
+    }),
+    ravedash::current_shiny_theme()
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      controllers <- proxy$controllers
+      if(is.list(controllers) && length(controllers)) {
+        local_data$viewer_controller <- controllers
+      }
+
+    }),
+    proxy$controllers
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      main_camera <- proxy$main_camera
+      if(all(c("position", "zoom", "up") %in% names(main_camera))) {
+
+        zoom_level <- main_camera$zoom
+        if(length(zoom_level) == 1 && is.numeric(zoom_level) && isTRUE(zoom_level > 0)) {
+          local_data$viewer_camera$zoom <- zoom_level
+        }
+
+        position <- unname(unlist(main_camera$position))
+        up <- unname(unlist(main_camera$up))
+        if(length(position) == 3 && length(up) == 3 &&
+           is.numeric(position) && is.numeric(up) && !anyNA(c(position, up))) {
+          local_data$viewer_camera$position <- position
+          local_data$viewer_camera$up <- up
+        }
+
+
+
+      }
+
+    }),
+    proxy$main_camera
+  )
+
+  shiny::outputOptions(output, "3dviewer", suspendWhenHidden = FALSE)
 }

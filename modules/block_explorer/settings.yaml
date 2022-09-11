@@ -1,8 +1,8 @@
 analysis_block: block006
 analysis_electrodes: 1-116
 analysis_time:
-- 239.105948
-- 257.0421901
+- 261.4143719
+- 263.7767911
 block:
 - block006
 - block007
@@ -14,7 +14,7 @@ filter_notch:
 hide_electrodes: ''
 highlight_electrodes: ''
 loaded_electrodes: 1-116
-project_name: test
+project_name: devel
 pwelch_frequency_limit:
 - 0
 - 300

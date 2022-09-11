@@ -181,6 +181,7 @@ module_html <- function(){
 
 
             ravedash::input_card(
+              inputId = ns("card_viewer_setting"),
               title = "3D Viewer Configurations",
               class_body = "padding-5",
 
