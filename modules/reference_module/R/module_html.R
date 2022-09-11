@@ -17,7 +17,7 @@ module_html <- function(){
               title = "Electrode groups",
 
               dipsaus::compoundInput2(
-                inputId = ns("electrode_group"), min_ncomp = 1, max_ncomp = 40,
+                inputId = ns("electrode_group"), min_ncomp = 1, max_ncomp = 100,
                 label_color = "#c8c9ca", label = NULL,
                 components = {
                   shidashi::flex_container(

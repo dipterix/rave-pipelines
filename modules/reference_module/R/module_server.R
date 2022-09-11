@@ -679,17 +679,20 @@ module_server <- function(input, output, session, ...){
       invalids <- ref_names == ""
       can_show_refs <- TRUE
 
+
       if( is_bipolar ) {
+        elec_idx2 <- which(elec_idx)
         refed_signals <- sapply(seq_along(ref_names), function(ii){
           name <- ref_names[[ii]]
+          eidx <- elec_idx2[[ii]]
           name2 <- dipsaus::parse_svec(gsub("^ref_", "", name))
           if(name %in% c("", "noref") || !length(name2)) {
-            return(signals[,ii])
+            return(signals[,eidx])
           }
 
           if(length(name2) == 1 && isTRUE(name2 %in% vdata$electrodes)) {
             ref_data <- signals[, vdata$electrodes %in% name2, drop = FALSE]
-            return(signals[,ii] - ref_data)
+            return(signals[,eidx] - ref_data)
           }
 
           if(name %in% existing_refs) {
@@ -699,11 +702,15 @@ module_server <- function(input, output, session, ...){
             } else {
               ref_data <- ref_data$voltage[[block]][tp_idx]
             }
-            return(signals[,ii] - ref_data)
+            return(signals[,eidx] - ref_data)
           }
-          return(signals[,ii])
+          return(signals[,eidx])
         })
-        refed_signals <- t(refed_signals[, elec_idx, drop = FALSE])
+        if(!is.matrix(refed_signals)) {
+          dim(refed_signals) <- c(length(refed_signals) / length(ref_names), length(ref_names))
+        }
+        # refed_signals <- t(refed_signals[, elec_idx, drop = FALSE])
+        refed_signals <- t(refed_signals)
         signals <- t(signals[, elec_idx, drop = FALSE])
         channel_names <- electrodes
         main <- "Reference: Bi-polar"
