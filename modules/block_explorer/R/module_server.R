@@ -9,6 +9,7 @@ module_server <- function(input, output, session, ...){
 
   # Local non-reactive values, used to store static variables
   local_data <- dipsaus::fastmap2()
+  plot_env <- new.env()
 
   # get server tools to tweek
   server_tools <- get_default_handlers(session = session)
@@ -111,7 +112,7 @@ module_server <- function(input, output, session, ...){
       time_end <- Sys.time()
       delta <- dipsaus::time_delta(time_start, time_end)
       if(!async && delta < 0.5) {
-        Sys.sleep(0.5 - delta)
+        Sys.sleep(1.0 - delta)
       }
 
       promises::then(
@@ -120,10 +121,12 @@ module_server <- function(input, output, session, ...){
           shidashi::clear_notifications(class = "pipeline-error")
           dipsaus::close_alert2()
           local_reactives$update_outputs <- Sys.time()
+          local_reactives$update_selection <- Sys.time()
           local_data$results <- list(valid = TRUE)
         },
         onRejected = function(e) {
           ravedash::error_notification(e, title = "Pipeline error!", class = "pipeline-error")
+          dipsaus::close_alert2()
           local_data$results <- list(valid = FALSE)
         }
       )
@@ -310,6 +313,127 @@ module_server <- function(input, output, session, ...){
     )
   }
 
+  # gather plot parameters
+  get_subset_details <- shiny::debounce(
+    millis = 300,
+    shiny::bindEvent(
+      shiny::reactive({
+        loaded_flag <- ravedash::watch_data_loaded()
+        if(!loaded_flag){ return() }
+
+        tryCatch({
+          # analysis_time - subset
+          analysis_time <- NULL
+          brush <- input$plot_filtered_signals__brush
+          if(is.list(brush)) {
+            time_min <- max(brush$xmin, 0)
+            time_max <- brush$xmax
+            if(isTRUE(time_min < time_max)) {
+              analysis_time <- c(time_min, time_max)
+            }
+          }
+
+          # get vertical spacing
+          vspacing <- as.numeric(input$vertical_spacing)
+          if(length(vspacing) != 1 || is.na(vspacing) || vspacing <= 0) {
+            vspacing <- 0.999
+          }
+
+          # Get display & hide electrodes
+          highlight_electrodes <- dipsaus::parse_svec(input$highlight_channels, sort = TRUE)
+          hide_electrodes <- dipsaus::parse_svec(input$hide_channels, sort = TRUE)
+
+          if(length(hide_electrodes)) {
+            hide_electrodes <- hide_electrodes[hide_electrodes == round(hide_electrodes)]
+          }
+
+          if(length(highlight_electrodes)) {
+            highlight_electrodes <- highlight_electrodes[highlight_electrodes == round(highlight_electrodes)]
+            highlight_electrodes <- highlight_electrodes[!highlight_electrodes %in% hide_electrodes]
+          }
+
+          pwelch_frequency_limit <- input$pwelch_frequency_limit
+
+          return(list(analysis_time = analysis_time,
+                      vertical_spacing = vspacing,
+                      highlight_electrodes = highlight_electrodes,
+                      pwelch_frequency_limit = pwelch_frequency_limit,
+                      hide_electrodes = hide_electrodes))
+        }, error = function(e) {
+          ravedash::error_notification(e)
+          NULL
+        })
+      }),
+      ignoreNULL = FALSE, ignoreInit = FALSE,
+      ravedash::watch_data_loaded(),
+      input$plot_filtered_signals__brush,
+      input$vertical_spacing,
+      input$highlight_channels,
+      input$hide_channels,
+      input$pwelch_frequency_limit
+    )
+  )
+
+  # Update pipeline plot data
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      settings <- get_subset_details()
+      if(!is.list(settings) || !length(settings)) { return() }
+      loaded_flag <- ravedash::watch_data_loaded()
+      if(!loaded_flag){ return() }
+      if(!length(local_reactives$update_outputs) || isFALSE(local_reactives$update_outputs)) { return() }
+
+      pipeline$set_settings(
+        analysis_time = settings$analysis_time,
+        vertical_spacing = settings$vspacing,
+        highlight_electrodes = dipsaus::deparse_svec(settings$highlight_electrodes),
+        hide_electrodes = dipsaus::deparse_svec(settings$hide_electrodes),
+        pwelch_frequency_limit = settings$pwelch_frequency_limit
+      )
+      if(!is.null(local_reactives$pipeline_promise2)) {
+        local_reactives$pipeline_promise2$invalidate()
+      }
+      local_reactives$pipeline_promise2 <- pipeline$run(
+        scheduler = "none", type = "vanilla",
+        names = c("settings_path", "settings", "pwelch_frequency_limit", "analysis_time",
+                  "analysis_electrodes", "analysis_electrodes2",
+                  "highlight_electrodes", "vertical_spacing", "hide_electrodes", "hide_electrodes2",
+                  "highlight_electrodes2", "sel_electrodes", "sel_highlights",
+                  "analysis_time2", "plot_data_label_colors", "plot_data_filtered_voltage_overall",
+                  "vertical_spacing2", "plot_data_filtered_voltage_subset", "plot_data_pwelch",
+                  "plot_data_pwelch_subset"),
+        shortcut = TRUE,
+        async = TRUE, as_promise = TRUE
+      )
+
+      promises::then(
+        local_reactives$pipeline_promise2,
+        onFulfilled = function(...) {
+
+          vnames <- c("settings_path", "settings", "analysis_block", "pwelch_frequency_limit",
+                      "analysis_electrodes", "filter_notch", "loaded_electrodes", "analysis_time",
+                      "highlight_electrodes", "subject_code", "vertical_spacing", "filter_bandpass",
+                      "project_name", "block", "hide_electrodes", "pwelch_params",
+                      "subject", "repository", "cleaned_inputs", "pwelch_params2",
+                      "analysis_electrodes2", "filtered_data", "pwelch_data", "hide_electrodes2",
+                      "highlight_electrodes2", "sel_electrodes", "sel_highlights",
+                      "analysis_time2", "plot_data_label_colors", "plot_data_filtered_voltage_overall",
+                      "vertical_spacing2", "plot_data_filtered_voltage_subset", "plot_data_pwelch",
+                      "plot_data_pwelch_subset")
+          res <- pipeline$read(vnames)
+          list2env(res, envir = plot_env)
+          local_reactives$update_outputs <- Sys.time()
+        },
+        onRejected = function(e) {
+          ravedash::error_notification(e)
+        }
+      )
+    }),
+    get_subset_details(),
+    local_reactives$update_selection,
+    ignoreInit = FALSE, ignoreNULL = TRUE
+  )
+
   # get brush
   get_brush <- shiny::reactive({
     brush <- input$plot_filtered_signals__brush
@@ -320,52 +444,52 @@ module_server <- function(input, output, session, ...){
     return(c(time_min, time_max))
   })
 
-  get_show_hide_electrodes <- shiny::debounce(
-    millis = 200,
-    shiny::reactive({
-      loaded_flag <- ravedash::watch_data_loaded()
-      if(!loaded_flag){
-        return(list(
-          highlight = NULL,
-          hide = NULL
-        ))
-      }
-      highlight_electrodes <- dipsaus::parse_svec(input$highlight_channels, sort = TRUE)
-      hide_electrodes <- dipsaus::parse_svec(input$hide_channels, sort = TRUE)
-
-      if(!length(highlight_electrodes) && !length(hide_electrodes)) {
-        return(list(
-          highlight = NULL,
-          hide = NULL
-        ))
-      }
-
-      electrode_list <- tryCatch({
-        pipeline$read("analysis_electrodes2")
-      }, error = function(e) {
-        component_container$data$repository$electrode_list
-      })
-
-      highlight_electrodes <- highlight_electrodes[highlight_electrodes %in% electrode_list]
-      hide_electrodes <- hide_electrodes[hide_electrodes %in% electrode_list]
-
-      return(list(
-        highlight = highlight_electrodes,
-        hide = hide_electrodes
-      ))
-    })
-  )
-
-  get_vspacing <- shiny::debounce(
-    millis = 200,
-    shiny::reactive({
-      vspacing <- as.numeric(input$vertical_spacing)
-      if(length(vspacing) != 1 || is.na(vspacing) || vspacing <= 0) {
-        vspacing <- 1
-      }
-      vspacing
-    })
-  )
+  # get_show_hide_electrodes <- shiny::debounce(
+  #   millis = 200,
+  #   shiny::reactive({
+  #     loaded_flag <- ravedash::watch_data_loaded()
+  #     if(!loaded_flag){
+  #       return(list(
+  #         highlight = NULL,
+  #         hide = NULL
+  #       ))
+  #     }
+  #     highlight_electrodes <- dipsaus::parse_svec(input$highlight_channels, sort = TRUE)
+  #     hide_electrodes <- dipsaus::parse_svec(input$hide_channels, sort = TRUE)
+  #
+  #     if(!length(highlight_electrodes) && !length(hide_electrodes)) {
+  #       return(list(
+  #         highlight = NULL,
+  #         hide = NULL
+  #       ))
+  #     }
+  #
+  #     electrode_list <- tryCatch({
+  #       pipeline$read("analysis_electrodes2")
+  #     }, error = function(e) {
+  #       component_container$data$repository$electrode_list
+  #     })
+  #
+  #     highlight_electrodes <- highlight_electrodes[highlight_electrodes %in% electrode_list]
+  #     hide_electrodes <- hide_electrodes[hide_electrodes %in% electrode_list]
+  #
+  #     return(list(
+  #       highlight = highlight_electrodes,
+  #       hide = hide_electrodes
+  #     ))
+  #   })
+  # )
+  #
+  # get_vspacing <- shiny::debounce(
+  #   millis = 200,
+  #   shiny::reactive({
+  #     vspacing <- as.numeric(input$vertical_spacing)
+  #     if(length(vspacing) != 1 || is.na(vspacing) || vspacing <= 0) {
+  #       vspacing <- 1
+  #     }
+  #     vspacing
+  #   })
+  # )
 
 
   # Register outputs
@@ -374,54 +498,11 @@ module_server <- function(input, output, session, ...){
     render_function = shiny::renderPlot({
       outputs_need_update()
 
-      show_hide <- get_show_hide_electrodes()
-      highlight_electrodes <- show_hide$highlight
-      hide_electrodes <- show_hide$hide
-      vspacing <- get_vspacing()
-
-      repository <- component_container$data$repository
-      analysis_electrodes2 <- pipeline$read("analysis_electrodes2")
-      col_sel <- repository$subject$electrodes %in% analysis_electrodes2 &
-        (!repository$subject$electrodes %in% hide_electrodes)
-
+      env <- pipeline$eval(names = "plot_filtered_signals", env = plot_env, clean = FALSE)
+      msg <- env$plot_filtered_signals
       shiny::validate(
-        shiny::need(
-          any(col_sel),
-          message = "No electrode channel to display"
-        )
+        shiny::need(isTRUE(msg), message = paste(msg, collapse = ""))
       )
-
-      filtered_data <- pipeline$read("filtered_data")
-      # make sure down-sample
-      ntp <- nrow(filtered_data)
-      nelec <- sum(col_sel)
-      limit <- graphics_matplot_max_points
-      sample_rate <- repository$sample_rate
-
-      if(ntp * nelec > limit) {
-        dsample <- ntp * nelec / limit
-        tidx <- round(seq(1, ntp, by = dsample))
-        sample_rate <- sample_rate / dsample
-      } else {
-        tidx <- seq_len(ntp)
-      }
-
-      plot_data <- filtered_data[tidx, col_sel, drop = FALSE]
-
-      # construct colors, ylabels
-      channels <- repository$subject$electrodes[col_sel]
-      sel <- channels %in% highlight_electrodes
-      if(any(sel)) {
-        col <- rep("gray60", length(channels))
-        col[sel] <- "orange"
-      } else {
-        col <- graphics::par("fg")
-      }
-
-
-      params <- ravetools::plot_signals(t(plot_data), sample_rate = sample_rate, tck = -0.005,
-                              yaxs = "r", channel_names = channels, col = col, space = vspacing)
-      local_reactives$channel_plot_params <- params
     }),
     output_opts = list(
       brush = shiny::brushOpts(
@@ -440,119 +521,12 @@ module_server <- function(input, output, session, ...){
     outputId = "plot_filtered_signals_subset",
     render_function = shiny::renderPlot({
       outputs_need_update(message = "")
-      brush <- get_brush()
-      shiny::validate(shiny::need(length(brush) == 2, message = "Please draw a range from figure to my left."))
 
-      show_hide <- get_show_hide_electrodes()
-      highlight_electrodes <- show_hide$highlight
-      hide_electrodes <- show_hide$hide
-      vspacing <- local_reactives$channel_plot_params$space
-
-      repository <- component_container$data$repository
-      analysis_electrodes2 <- pipeline$read("analysis_electrodes2")
-      col_sel <- repository$subject$electrodes %in% analysis_electrodes2 &
-        (!repository$subject$electrodes %in% hide_electrodes)
-
+      env <- pipeline$eval(names = "plot_filtered_signals_subset", env = plot_env, clean = FALSE)
+      msg <- env$plot_filtered_signals_subset
       shiny::validate(
-        shiny::need(
-          any(col_sel),
-          message = "No electrode channel to display"
-        )
+        shiny::need(isTRUE(msg), message = paste(msg, collapse = "Please draw a range from figure to my left."))
       )
-
-      analysis_electrodes2 <- pipeline$read("analysis_electrodes2")
-      filtered_data <- pipeline$read("filtered_data")
-      sample_rate <- repository$sample_rate
-
-      # make sure down-sample
-      ntp <- nrow(filtered_data)
-      timepoint_range <- brush * sample_rate
-      timepoint_range[timepoint_range < 1] <- 1
-      timepoint_range[timepoint_range > ntp] <- ntp
-
-      ntp <- timepoint_range[2] - timepoint_range[1] + 1
-      nelec <- length(analysis_electrodes2)
-      limit <- graphics_matplot_max_points
-      brush <- (timepoint_range - 1) / sample_rate
-
-      if(ntp * nelec > limit) {
-        dsample <- ntp * nelec / limit
-        tidx <- round(seq(timepoint_range[1], timepoint_range[2], by = dsample))
-        sample_rate <- sample_rate / dsample
-      } else {
-        tidx <- seq.int(timepoint_range[1], timepoint_range[2])
-      }
-
-      plot_data <- filtered_data[tidx, col_sel, drop = FALSE]
-
-      # construct colors, ylabels
-      channels <- repository$subject$electrodes[col_sel]
-      sel <- channels %in% highlight_electrodes
-      if(any(sel)) {
-        col <- rep("gray60", length(channels))
-        col[sel] <- "orange"
-      } else {
-        col <- graphics::par("fg")
-      }
-
-      ravetools::plot_signals(
-        t(plot_data), sample_rate = sample_rate,
-        tck = -0.005, yaxs = "r", time_shift = brush[[1]],
-        main = sprintf("Data slice: %.2f sec", brush[[2]] - brush[[1]]),
-        channel_names = channels, col = col, space = vspacing, space_mode = "absolute"
-      )
-
-    })
-  )
-
-  get_pwelch_data <- shiny::debounce(
-    millis = 100,
-    shiny::reactive({
-
-      if(!length(local_reactives$update_outputs)) { return() }
-      if(isFALSE(local_reactives$update_outputs)) { return() }
-      if(!isTRUE(local_data$results$valid)) { return() }
-
-      show_hide <- as.list(get_show_hide_electrodes())
-      highlight_electrodes <- show_hide$highlight
-      hide_electrodes <- show_hide$hide
-      freq_range <- sort(c(input$pwelch_frequency_limit, 0, 300)[c(1,2)])
-
-      analysis_electrodes2 <- pipeline$read("analysis_electrodes2")
-      if(!length(analysis_electrodes2)) { return() }
-
-      pwelch_data <- pipeline$read("pwelch_data")
-      if(!inherits(pwelch_data, "FileArray")) { return() }
-
-      dnames <- dimnames(pwelch_data)
-
-      col_sel <- dnames$Electrode %in% analysis_electrodes2 & !dnames$Electrode %in% hide_electrodes
-      row_sel <- dnames$Frequency >= freq_range[[1]] & dnames$Frequency <= freq_range[[2]]
-
-      if(!any(row_sel)) {
-        return("Frequency range is too small. Please adjust the input in '
-Welch Periodogram Settings'.")
-      }
-      if(!any(col_sel)) {
-        return()
-      }
-
-      display_electrodes <- dnames$Electrode[col_sel]
-      highlight_sel <- display_electrodes %in% highlight_electrodes
-
-      plot_data <- pwelch_data[row_sel, col_sel, drop = FALSE, dimnames = FALSE]
-
-      list(
-        highlight = display_electrodes[highlight_sel],
-        hide = hide_electrodes,
-        dnames = dnames,
-        plot_data = 10*log10(plot_data),
-        display_electrodes = display_electrodes,
-        highlight_sel = highlight_sel,
-        frequencies = dnames$Frequency[row_sel],
-        has_highlight = length(display_electrodes) && any(highlight_sel)
-      )
-
     })
   )
 
@@ -561,114 +535,34 @@ Welch Periodogram Settings'.")
     render_function = shiny::renderPlot({
       outputs_need_update(message = "")
 
-      pwelch_plot_data <- get_pwelch_data()
-
-      shiny::validate(shiny::need(
-        is.list(pwelch_plot_data) && length(pwelch_plot_data),
-        message = paste(pwelch_plot_data, collapse = "")
-      ))
-
-      cleaned_inputs <- pipeline$read("cleaned_inputs")
-
-      cex <- 1
-      mar <- c(2.6, 3.8, 2.1, 0.6) * (0.5 + cex / 2)
-      mgp <- cex * c(2, 0.5, 0)
-      tck <- -0.02
-      xline <- 1.2 * cex
-      yline <- 2.0 * cex
-      xaxs <- "i"
-      yaxs <- "i"
-      main <- 'Welch periodogram (no filter)'
-
-      # themes <- ravedash::current_shiny_theme()
-      cex_params <- graphics::par("fg", "bg", "mgp", "mar", "mai", "cex.main", "cex.lab", "cex.axis", "cex.sub")
-      graphics::par(mar = mar, mgp = mgp)
-      on.exit({
-        do.call(graphics::par, cex_params)
-      }, add = TRUE, after = FALSE)
-
-      # Do not preserve dimnames to save time and space
-      plot_data <- pwelch_plot_data$plot_data
-      freq <- pwelch_plot_data$frequencies
-
-      display_electrodes <- pwelch_plot_data$display_electrodes
-      highlight_sel <- pwelch_plot_data$highlight_sel
-      has_highlight <- any(highlight_sel)
-      col <- dipsaus::col2hexStr(rep("gray60", length(display_electrodes)), alpha = 0.3)
-      col[highlight_sel] <- "orange"
-
-      # calculate mean-values
-      mean1 <- rowMeans(plot_data, na.rm = TRUE)
-      if(any(highlight_sel)) {
-        mean2 <- rowMeans(plot_data[, highlight_sel, drop = FALSE], na.rm = TRUE)
-      } else {
-        mean2 <- NULL
-      }
-
-      graphics::matplot(
-        x = freq, y = plot_data, col = col,
-        type = 'l', cex = cex, lty = 1, lwd = 0.5, las = 1,
-        axes = FALSE, xaxs = xaxs, yaxs = yaxs, cex.main = cex_params$cex.main * cex,
-        main = main, log = "x", xlab = "", ylab = ""
+      env <- pipeline$eval(names = "plot_pwelch", env = plot_env, clean = FALSE)
+      msg <- env$plot_pwelch
+      shiny::validate(
+        shiny::need(isTRUE(msg), message = paste(msg, collapse = ""))
       )
-      if(isTRUE(cleaned_inputs$filter_bandpass$enabled)) {
-        filter_range <- cleaned_inputs$filter_bandpass$range
-        graphics::abline(v = filter_range, lty = 2)
-        graphics::text(x = mean(filter_range), y = max(plot_data), labels = "Bandpass filter", adj = c(0.55, 1))
-      }
-
-      graphics::lines(x = freq, y = mean1, col = "dodgerblue3", lty = 1, lwd = 2)
-      if(has_highlight) {
-        graphics::lines(x = freq, y = mean2, col = "orangered", lty = 1, lwd = 3)
-      }
-      graphics::axis(1, at = pretty(freq), tck = -0.02,
-                     cex = cex, cex.main = cex_params$cex.main * cex,
-                     cex.lab = cex_params$cex.lab * cex,
-                     cex.axis = cex_params$cex.axis * cex)
-      graphics::axis(2, at = pretty(plot_data), tck = -0.02,
-                     cex = cex, cex.main = cex_params$cex.main * cex,
-                     cex.lab = cex_params$cex.lab * cex,
-                     cex.axis = cex_params$cex.axis * cex)
-      graphics::mtext(side = 2, text = "Power (dB)", line = yline,
-                      cex = cex_params$cex.lab * cex)
-      graphics::mtext(side = 1, text = "log(Frequency)", line = xline,
-                      cex = cex_params$cex.lab * cex)
-
-      if( has_highlight ) {
-        lg_text <- c("Highlighted", "Mean of all displayed", "Mean of highlighted")
-        lg_col <- c("orange", "dodgerblue3", "orangered")
-        lg_lwd <- c(0.5, 2, 3)
-      } else {
-        lg_text <- c("Mean of all displayed")
-        lg_col <- "dodgerblue3"
-        lg_lwd <- 2
-      }
-
-      graphics::legend(
-        "topright", lg_text, lty = 1, col = lg_col,
-        lwd = lg_lwd, bty = "n", text.col = lg_col
-      )
-
 
 
     })
   )
 
-  get_pwelch_clickinfo <- shiny::reactive({
-    info <- input$plot_pwelch__click
-    if(!is.list(info) || length(info$x) != 1 || length(info$y) != 1) { return() }
-    pwelch_plot_data <- get_pwelch_data()
-    if(!(is.list(pwelch_plot_data) && length(pwelch_plot_data))) { return() }
+  get_pwelch_click <- function(plot_data, click) {
+    if(!is.list(click) || length(click$x) != 1 || length(click$y) != 1) { return() }
+    # plot_data <- pipeline$read("plot_data_pwelch")
+    # plot_data <- plot_env[[name]]
+    if(!is.list(plot_data) || !length(plot_data)) { return() }
 
-    x <- info$x
-    y <- info$y
+    x <- click$x
+    y <- click$y
+
     # find nearest frequency
-    fidx <- which.min(abs(pwelch_plot_data$frequencies - x))[[1]]
-    nearest_freq <- pwelch_plot_data$frequencies[fidx]
+    fidx <- which.min(abs(plot_data$frequencies - x))[[1]]
+    nearest_freq <- plot_data$frequencies[fidx]
 
-    power <- pwelch_plot_data$plot_data[fidx, ]
+    power <- plot_data$data[fidx, ]
+    if(!length(power)) { return() }
+
     pidx1 <- which.min(abs(power - y))[[1]]
-    nearest_electrode1 <- pwelch_plot_data$display_electrodes[pidx1]
+    nearest_electrode1 <- plot_data$electrodes[pidx1]
     power1 <- power[pidx1]
 
     re <- list(
@@ -678,9 +572,9 @@ Welch Periodogram Settings'.")
       power1 = power1
     )
 
-    if(pwelch_plot_data$has_highlight) {
-      highlighted_electrode <- pwelch_plot_data$display_electrodes[pwelch_plot_data$highlight_sel]
-      tmp <- power[pwelch_plot_data$highlight_sel]
+    if(plot_data$has_highlight) {
+      highlighted_electrode <- plot_data$highlights
+      tmp <- power[plot_data$electrodes %in% highlighted_electrode]
       pidx2 <- which.min(abs(tmp - y))[[1]]
       nearest_electrode2 <- highlighted_electrode[pidx2]
       power2 <- tmp[pidx2]
@@ -688,18 +582,42 @@ Welch Periodogram Settings'.")
       re$nearest_electrode2 <- nearest_electrode2
       re$power2 <- power2
     }
-    return(re)
-  })
+    re
+  }
+
+  interactive_summary <- shiny::debounce(
+    millis = 100,
+    shiny::bindEvent(
+      shiny::reactive({
+        pwelch_clickinfo <- get_pwelch_click(plot_env$plot_data_pwelch, input$plot_pwelch__click)
+        pwelch_subset_clickinfo <- get_pwelch_click(plot_env$plot_data_pwelch_subset, input$plot_pwelch_subset__click)
+        analysis_time2 <- plot_env$analysis_time2
+
+        list(
+          pwelch_clickinfo = pwelch_clickinfo,
+          pwelch_subset_clickinfo = pwelch_subset_clickinfo,
+          analysis_time2 = analysis_time2
+        )
+      }),
+      input$plot_pwelch__click,
+      input$plot_pwelch_subset__click,
+      local_reactives$update_outputs,
+      local_reactives$update_selection,
+      ignoreNULL = FALSE, ignoreInit = FALSE
+    )
+  )
 
   output$graphic_summary <- shiny::renderUI({
 
-    voltage_brush <- get_brush()
-    pwelch_clickinfo <- get_pwelch_clickinfo()
-    print(pwelch_clickinfo)
+    summary <- interactive_summary()
+
+    voltage_brush <- summary$analysis_time2
+    pwelch_clickinfo <- summary$pwelch_clickinfo
+    pwelch_subset_clickinfo <- summary$pwelch_subset_clickinfo
 
     # brush selection
     if(length(voltage_brush) < 2) {
-      info_brush <- "No subset has been made"
+      info_brush <- "(No selection)"
     } else {
       voltage_brush <- sort(as.numeric(voltage_brush))
       info_brush <- sprintf("%.1f ~ %.1f (%.2f sec)",
@@ -707,7 +625,7 @@ Welch Periodogram Settings'.")
     }
 
     if(!is.list(pwelch_clickinfo) || !length(pwelch_clickinfo)) {
-      info_pwelch1 <- "(Please click on the left Welch-Periodogram)"
+      info_pwelch1 <- "(No selection)"
       info_pwelch2 <- ""
       info_pwelch3 <- ""
     } else {
@@ -724,24 +642,98 @@ Welch Periodogram Settings'.")
       }
     }
 
+    if(!is.list(pwelch_subset_clickinfo) || !length(pwelch_subset_clickinfo)) {
+      info_pwelch_subset1 <- "(No selection)"
+      info_pwelch_subset2 <- ""
+      info_pwelch_subset3 <- ""
+    } else {
+      info_pwelch_subset1 <- sprintf("%.1fHz", pwelch_subset_clickinfo$nearest_freq)
+      info_pwelch_subset2 <- sprintf("%.0f (%.2f dB)",
+                              pwelch_subset_clickinfo$nearest_electrode1,
+                              pwelch_subset_clickinfo$power1)
+      if(length(pwelch_subset_clickinfo$nearest_electrode2)) {
+        info_pwelch_subset3 <- sprintf("%.0f (%.2f dB)",
+                                pwelch_subset_clickinfo$nearest_electrode2,
+                                pwelch_subset_clickinfo$power2)
+      } else {
+        info_pwelch_subset3 <- "None"
+      }
+    }
+
+
     shiny::tags$dl(
       class = "row",
 
-      shiny::tags$dt(class = "col-sm-2", "Subset time"),
-      shiny::tags$dd(class = "col-sm-4", info_brush),
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Subset time:",
+                     title = "Draw a range on the left voltage plot"),
+      shiny::tags$dd(class = "col-sm-10 text-nowrap overflow-hidden", info_brush, title = info_brush),
 
-      shiny::tags$dt(class = "col-sm-2", "Frequency"),
-      shiny::tags$dd(class = "col-sm-4", info_pwelch1),
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Frequency (left):",
+                     title = "Click on the either Welch-Periodogram"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch1, title = info_pwelch1),
 
-      shiny::tags$dt(class = "col-sm-2", "Nearest pick"),
-      shiny::tags$dd(class = "col-sm-4", info_pwelch2),
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Nearest pick (left):",
+                     title = "Nearest electrode & power to your mouse click"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch2, title = info_pwelch2),
 
-      shiny::tags$dt(class = "col-sm-2", "Highlighted"),
-      shiny::tags$dd(class = "col-sm-4", info_pwelch3)
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Highlighted (left):",
+                     title = "Nearest highlighted electrode & power to your mouse click"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch3, title = info_pwelch3),
+
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Frequency (right):",
+                     title = "Click on the either Welch-Periodogram"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch_subset1, title = info_pwelch_subset1),
+
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Nearest pick (right):",
+                     title = "Nearest electrode & power to your mouse click"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch_subset2, title = info_pwelch_subset2),
+
+      shiny::tags$dt(class = "col-sm-2 text-nowrap overflow-hidden", "Highlighted (right):",
+                     title = "Nearest highlighted electrode & power to your mouse click"),
+      shiny::tags$dd(class = "col-sm-2 text-nowrap overflow-hidden", info_pwelch_subset3, title = info_pwelch_subset3)
 
     )
 
   })
+
+
+
+  # get_pwelch_subset_clickinfo <- shiny::reactive({
+  #   info <- input$plot_pwelch_subset__click
+  #   if(!is.list(info) || length(info$x) != 1 || length(info$y) != 1) { return() }
+  #   pwelch_subset_data <- get_subset_pwelch()
+  #   if(!(is.list(pwelch_subset_data) && length(pwelch_subset_data))) { return() }
+  #
+  #   x <- info$x
+  #   y <- info$y
+  #   # find nearest frequency
+  #   fidx <- which.min(abs(pwelch_subset_data$freq - x))[[1]]
+  #   nearest_freq <- pwelch_subset_data$freq[fidx]
+  #
+  #   power <- pwelch_subset_data$spec[fidx, ]
+  #   pidx1 <- which.min(abs(power - y))[[1]]
+  #   nearest_electrode1 <- pwelch_subset_data$display_electrodes[pidx1]
+  #   power1 <- power[pidx1]
+  #
+  #   re <- list(
+  #     x = x, y = y,
+  #     nearest_freq = nearest_freq,
+  #     nearest_electrode1 = nearest_electrode1,
+  #     power1 = power1
+  #   )
+  #
+  #   if(pwelch_subset_data$has_highlight) {
+  #     highlighted_electrode <- pwelch_subset_data$display_electrodes[pwelch_subset_data$highlight_sel]
+  #     tmp <- power[pwelch_subset_data$highlight_sel]
+  #     pidx2 <- which.min(abs(tmp - y))[[1]]
+  #     nearest_electrode2 <- highlighted_electrode[pidx2]
+  #     power2 <- tmp[pidx2]
+  #
+  #     re$nearest_electrode2 <- nearest_electrode2
+  #     re$power2 <- power2
+  #   }
+  #   return(re)
+  # })
 
   ravedash::register_output(
     outputId = "plot_pwelch_subset",
@@ -749,14 +741,11 @@ Welch Periodogram Settings'.")
 
       outputs_need_update(message = "")
 
-      pwelch_plot_data <- get_pwelch_data()
-      brush <- get_brush()
-
+      env <- pipeline$eval(names = "plot_pwelch_subset", env = plot_env, clean = FALSE)
+      msg <- env$plot_pwelch_subset
       shiny::validate(
-        shiny::need(is.list(pwelch_plot_data) && length(pwelch_plot_data),message = ""),
-        shiny::need(length(brush) == 2, message = "")
+        shiny::need(isTRUE(msg), message = paste(msg, collapse = ""))
       )
-
 
     })
   )

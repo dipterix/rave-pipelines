@@ -11,4 +11,8 @@ library(dipsaus)
 library(raveio)
 loadNamespace("filearray")
 loadNamespace("ravetools")
+
+# plot option
+graphics_matplot_max_points <- 200000
+
 # options(shiny.reactlog = TRUE)

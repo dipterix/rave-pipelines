@@ -192,6 +192,7 @@ module_html <- function(){
             ravedash::input_card(
               title = "Welch Periodogram Settings",
               class_body = "padding-5",
+              start_collapsed = TRUE,
 
               shidashi::flex_container(
 
@@ -249,33 +250,40 @@ module_html <- function(){
               class_body = "fill-height min-height-vh70 height-700 resize-vertical padding-5",
               class_foot = "padding-5",
 
-              footer = shiny::fluidRow(
+              footer = shiny::div(
+                class = "row text-small",
                 shiny::column(
-                  width = 2L,
-                  shiny::textInput(
-                    inputId = ns("highlight_channels"),
-                    label = "Highlight",
-                    value = ""
+                  width = 4L,
+                  shidashi::flex_container(
+
+                    shidashi::flex_item(
+                      size = 2L,
+                      shiny::textInput(
+                        inputId = ns("highlight_channels"),
+                        label = "Highlight",
+                        value = ""
+                      )
+                    ),
+                    shidashi::flex_item(
+                      size = 2L,
+                      shiny::textInput(
+                        inputId = ns("hide_channels"),
+                        label = "Hide channels",
+                        value = ""
+                      )
+                    ),
+                    shidashi::flex_item(
+                      class = "overflow-hidden text-nowrap",
+                      shiny::numericInput(
+                        inputId = ns("vertical_spacing"),
+                        label = "Spacing",
+                        value = 0.999
+                      )
+                    )
                   )
                 ),
                 shiny::column(
-                  width = 2L,
-                  shiny::textInput(
-                    inputId = ns("hide_channels"),
-                    label = "Hide channels",
-                    value = ""
-                  )
-                ),
-                shiny::column(
-                  width = 2L,
-                  shiny::numericInput(
-                    inputId = ns("vertical_spacing"),
-                    label = "Vertical spacing",
-                    value = 0.999
-                  )
-                ),
-                shiny::column(
-                  width = 6L,
+                  width = 8L,
                   shiny::uiOutput(ns("graphic_summary"))
                 )
               ),
@@ -344,7 +352,8 @@ module_html <- function(){
                         ravedash::output_gadget_container(
                           shiny::plotOutput(
                             ns("plot_pwelch_subset"), width = '100%',
-                            height = "100%"
+                            height = "100%",
+                            click = shiny::clickOpts(id = ns("plot_pwelch_subset__click"))
                           )
                         )
                       )

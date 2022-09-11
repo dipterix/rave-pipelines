@@ -16,6 +16,9 @@ lapply(sort(list.files(
     input_analysis_block = targets::tar_target_raw("analysis_block", 
         quote({
             settings[["analysis_block"]]
+        }), deps = "settings"), input_pwelch_frequency_limit = targets::tar_target_raw("pwelch_frequency_limit", 
+        quote({
+            settings[["pwelch_frequency_limit"]]
         }), deps = "settings"), input_analysis_electrodes = targets::tar_target_raw("analysis_electrodes", 
         quote({
             settings[["analysis_electrodes"]]
@@ -25,9 +28,18 @@ lapply(sort(list.files(
         }), deps = "settings"), input_loaded_electrodes = targets::tar_target_raw("loaded_electrodes", 
         quote({
             settings[["loaded_electrodes"]]
+        }), deps = "settings"), input_analysis_time = targets::tar_target_raw("analysis_time", 
+        quote({
+            settings[["analysis_time"]]
+        }), deps = "settings"), input_highlight_electrodes = targets::tar_target_raw("highlight_electrodes", 
+        quote({
+            settings[["highlight_electrodes"]]
         }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
         quote({
             settings[["subject_code"]]
+        }), deps = "settings"), input_vertical_spacing = targets::tar_target_raw("vertical_spacing", 
+        quote({
+            settings[["vertical_spacing"]]
         }), deps = "settings"), input_filter_bandpass = targets::tar_target_raw("filter_bandpass", 
         quote({
             settings[["filter_bandpass"]]
@@ -37,6 +49,9 @@ lapply(sort(list.files(
         }), deps = "settings"), input_block = targets::tar_target_raw("block", 
         quote({
             settings[["block"]]
+        }), deps = "settings"), input_hide_electrodes = targets::tar_target_raw("hide_electrodes", 
+        quote({
+            settings[["hide_electrodes"]]
         }), deps = "settings"), input_pwelch_params = targets::tar_target_raw("pwelch_params", 
         quote({
             settings[["pwelch_params"]]
@@ -139,6 +154,7 @@ lapply(sort(list.files(
                   blocks = blocks, sample_rate = sample_rate)
                 repository$signature <- structure(dipsaus::digest(digest_key), 
                   contents = names(digest_key))
+                repository$`@remove`("electrode_instances")
                 class(repository) <- c("rave_prepare_raw_voltage", 
                   class(repository))
             }
@@ -154,15 +170,6 @@ lapply(sort(list.files(
                 }
                 filter_bandpass <- as.list(filter_bandpass)
                 if (isTRUE(filter_bandpass$enabled)) {
-                  filter_order <- as.integer(filter_bandpass$order)
-                  if (length(filter_order) != 1 || is.na(filter_order) || 
-                    filter_order <= 0) {
-                    stop("Band-passing filter order must be postive integers")
-                  }
-                  if (!isTRUE(filter_order * 3 < sample_rate)) {
-                    stop("Band-passing filter order must be less than ", 
-                      floor((sample_rate - 1)/3))
-                  }
                   filter_range <- as.numeric(filter_bandpass$range)
                   filter_range <- filter_range[!is.na(filter_range) & 
                     filter_range >= 0]
@@ -179,8 +186,7 @@ lapply(sort(list.files(
                   if (any(filter_range > sample_rate/2)) {
                     stop("Band-passing filter range must not exceed half sample-rate (Nyquist frequency) to avoid aliasing.")
                   }
-                  filter_bandpass <- list(enabled = TRUE, order = filter_order, 
-                    range = filter_range)
+                  filter_bandpass <- list(enabled = TRUE, range = filter_range)
                 } else {
                   filter_bandpass <- list(enabled = FALSE)
                 }
@@ -331,7 +337,7 @@ lapply(sort(list.files(
                   analysis_block), dimension = dm, type = "double", 
                   symlink_ok = FALSE, mode = "readwrite", initialize = FALSE, 
                   partition_size = 1L, verbose = FALSE, repository_signature = repository$signature, 
-                  block = analysis_block, inputs = cleaned_inputs, 
+                  block = analysis_block, pwelch_params = pwelch_params2, 
                   on_missing = function(arr) {
                     dimnames(arr) <- list(Frequency = freq, Electrode = repository$subject$electrodes)
                   })
@@ -367,5 +373,541 @@ lapply(sort(list.files(
             }
             return(pwelch_data)
         }), deps = c("analysis_electrodes2", "repository", "analysis_block", 
-        "pwelch_params2", "cleaned_inputs", "subject"), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"))
+        "pwelch_params2", "subject"), cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), returns_hidden_electrodes = targets::tar_target_raw(name = "hide_electrodes2", 
+        command = quote({
+            {
+                hide_electrodes2 <- dipsaus::parse_svec(hide_electrodes, 
+                  sort = TRUE)
+                if (length(hide_electrodes2)) {
+                  hide_electrodes2 <- hide_electrodes2[hide_electrodes2 == 
+                    round(hide_electrodes2)]
+                  hide_electrodes2 <- hide_electrodes2[hide_electrodes2 %in% 
+                    repository$electrode_list]
+                }
+            }
+            return(hide_electrodes2)
+        }), deps = c("hide_electrodes", "repository"), cue = targets::tar_cue("thorough"), 
+        pattern = NULL, iteration = "list"), find_highlighted_electrodes = targets::tar_target_raw(name = "highlight_electrodes2", 
+        command = quote({
+            {
+                highlight_electrodes2 <- dipsaus::parse_svec(highlight_electrodes, 
+                  sort = TRUE)
+                if (length(highlight_electrodes2)) {
+                  highlight_electrodes2 <- highlight_electrodes2[highlight_electrodes2 == 
+                    round(highlight_electrodes2)]
+                  highlight_electrodes2 <- highlight_electrodes2[highlight_electrodes2 %in% 
+                    repository$electrode_list]
+                  highlight_electrodes2 <- highlight_electrodes2[!highlight_electrodes2 %in% 
+                    hide_electrodes2]
+                }
+            }
+            return(highlight_electrodes2)
+        }), deps = c("highlight_electrodes", "repository", "hide_electrodes2"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), calculate_electrode_selection_index = targets::tar_target_raw(name = "sel_electrodes", 
+        command = quote({
+            {
+                electrodes <- repository$subject$electrodes
+                sel_electrodes <- (!electrodes %in% hide_electrodes2) & 
+                  (electrodes %in% repository$electrode_list) & 
+                  (electrodes %in% analysis_electrodes2)
+            }
+            return(sel_electrodes)
+        }), deps = c("repository", "hide_electrodes2", "analysis_electrodes2"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), calculate_electrode_highlight_index = targets::tar_target_raw(name = "sel_highlights", 
+        command = quote({
+            {
+                electrodes <- repository$subject$electrodes
+                sel_highlights <- (electrodes %in% highlight_electrodes2) & 
+                  (electrodes %in% repository$electrode_list) & 
+                  (electrodes %in% analysis_electrodes2)
+            }
+            return(sel_highlights)
+        }), deps = c("repository", "highlight_electrodes2", "analysis_electrodes2"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), calculate_analysis_time_points = targets::tar_target_raw(name = "analysis_time2", 
+        command = quote({
+            {
+                if (length(analysis_time) != 2 || !is.numeric(analysis_time) || 
+                  any(is.na(analysis_time)) || length(unique(analysis_time)) != 
+                  2) {
+                  analysis_time2 <- NULL
+                } else {
+                  sample_rate <- repository$sample_rate
+                  ntp <- nrow(filtered_data)
+                  timepoint_range <- round(analysis_time * sample_rate)
+                  timepoint_range[timepoint_range < 1] <- 1
+                  timepoint_range[timepoint_range > ntp] <- ntp
+                  if (length(timepoint_range) != 2 || !is.numeric(timepoint_range) || 
+                    any(is.na(timepoint_range)) || !isTRUE(timepoint_range[1] < 
+                    timepoint_range[2])) {
+                    analysis_time2 <- NULL
+                  } else {
+                    analysis_time2 <- structure((timepoint_range - 
+                      1)/sample_rate, timepoint_range = timepoint_range)
+                  }
+                }
+            }
+            return(analysis_time2)
+        }), deps = c("analysis_time", "repository", "filtered_data"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), calculate_channel_labels_and_colors = targets::tar_target_raw(name = "plot_data_label_colors", 
+        command = quote({
+            {
+                electrodes <- repository$subject$electrodes
+                cols <- rep(1, length(electrodes))
+                cols[sel_highlights] <- 2
+                display_electrodes <- electrodes[sel_electrodes]
+                display_color <- cols[sel_electrodes]
+                plot_data_label_colors <- list(labels = display_electrodes, 
+                  colors = display_color)
+            }
+            return(plot_data_label_colors)
+        }), deps = c("repository", "sel_highlights", "sel_electrodes"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), plot_data_filtered_voltage_overall = targets::tar_target_raw(name = "plot_data_filtered_voltage_overall", 
+        command = quote({
+            {
+                if (!any(sel_electrodes)) {
+                  plot_data_filtered_voltage_overall <- "No electrode channel to display"
+                } else {
+                  ntp <- nrow(filtered_data)
+                  nelec <- sum(sel_electrodes)
+                  limit <- graphics_matplot_max_points
+                  sample_rate <- repository$sample_rate
+                  time_range <- c(0, (ntp - 1)/sample_rate)
+                  if (ntp * nelec > limit) {
+                    dsample <- ntp * nelec/limit
+                    tidx <- round(seq(1, ntp, by = dsample))
+                    sample_rate <- sample_rate/dsample
+                  } else {
+                    tidx <- seq_len(ntp)
+                  }
+                  plot_data <- filtered_data[tidx, sel_electrodes, 
+                    drop = FALSE, dimnames = FALSE]
+                  if (length(vertical_spacing) != 1 || is.na(vertical_spacing) || 
+                    vertical_spacing <= 0) {
+                    vertical_spacing <- 0.999
+                  }
+                  if (vertical_spacing <= 1) {
+                    if (length(plot_data) > 1e+05) {
+                      space <- stats::quantile(plot_data[sample(length(plot_data), 
+                        1e+05)], vertical_spacing, na.rm = TRUE) * 
+                        2
+                    } else {
+                      space <- stats::quantile(plot_data, vertical_spacing, 
+                        na.rm = TRUE) * 2
+                    }
+                  } else {
+                    space <- vertical_spacing
+                  }
+                  plot_data_filtered_voltage_overall <- list(data = t(plot_data), 
+                    sample_rate = sample_rate, spacing = space, 
+                    labels = plot_data_label_colors$labels, colors = plot_data_label_colors$colors, 
+                    time_range = time_range)
+                }
+            }
+            return(plot_data_filtered_voltage_overall)
+        }), deps = c("sel_electrodes", "filtered_data", "repository", 
+        "vertical_spacing", "plot_data_label_colors"), cue = targets::tar_cue("thorough"), 
+        pattern = NULL, iteration = "list"), get_absolute_spacing = targets::tar_target_raw(name = "vertical_spacing2", 
+        command = quote({
+            {
+                vertical_spacing2 <- vertical_spacing
+                if (is.list(plot_data_filtered_voltage_overall)) {
+                  spacing <- plot_data_filtered_voltage_overall$spacing
+                  if (length(spacing) == 1 && !is.na(spacing) && 
+                    spacing > 1) {
+                    vertical_spacing2 <- spacing
+                  }
+                }
+            }
+            return(vertical_spacing2)
+        }), deps = c("vertical_spacing", "plot_data_filtered_voltage_overall"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), plot_data_filtered_voltage_subset = targets::tar_target_raw(name = "plot_data_filtered_voltage_subset", 
+        command = quote({
+            {
+                if (length(analysis_time2) != 2) {
+                  plot_data_filtered_voltage_subset <- "Invalid analysis time range"
+                } else if (!any(sel_electrodes)) {
+                  plot_data_filtered_voltage_subset <- "No electrode channel to display"
+                } else {
+                  sample_rate <- repository$sample_rate
+                  timepoint_range <- attr(analysis_time2, "timepoint_range")
+                  ntp <- timepoint_range[2] - timepoint_range[1] + 
+                    1
+                  nelec <- sum(sel_electrodes)
+                  limit <- graphics_matplot_max_points
+                  if (ntp * nelec > limit) {
+                    dsample <- ntp * nelec/limit
+                    tidx <- round(seq(timepoint_range[1], timepoint_range[2], 
+                      by = dsample))
+                    sample_rate <- sample_rate/dsample
+                  } else {
+                    tidx <- seq.int(timepoint_range[1], timepoint_range[2])
+                  }
+                  plot_data <- filtered_data[tidx, sel_electrodes, 
+                    drop = FALSE, dimnames = FALSE]
+                  plot_data_filtered_voltage_subset <- list(data = t(plot_data), 
+                    sample_rate = sample_rate, spacing = vertical_spacing2, 
+                    labels = plot_data_label_colors$labels, colors = plot_data_label_colors$colors, 
+                    time_range = analysis_time2)
+                }
+            }
+            return(plot_data_filtered_voltage_subset)
+        }), deps = c("analysis_time2", "sel_electrodes", "repository", 
+        "filtered_data", "vertical_spacing2", "plot_data_label_colors"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), plot_data_pwelch = targets::tar_target_raw(name = "plot_data_pwelch", 
+        command = quote({
+            {
+                if (!any(sel_electrodes)) {
+                  plot_data_pwelch <- "No electrode channel to display"
+                } else {
+                  dnames <- dimnames(pwelch_data)
+                  freq_range <- c(pwelch_frequency_limit, c(0, 
+                    300))[c(1, 2)]
+                  row_sel <- dnames$Frequency >= freq_range[[1]] & 
+                    dnames$Frequency <= freq_range[[2]]
+                  if (!any(row_sel)) {
+                    plot_data_pwelch <- "Frequency range is too small. Please adjust the input in '\n  Welch Periodogram Settings'."
+                  } else {
+                    display_electrodes_ = dnames$Electrode[sel_electrodes]
+                    hightights_ <- dnames$Electrode[sel_highlights]
+                    plot_data <- pwelch_data[row_sel, sel_electrodes, 
+                      drop = FALSE, dimnames = FALSE]
+                    plot_data <- 10 * log10(plot_data)
+                    freq <- dnames$Frequency[row_sel]
+                    freq_sel <- rep(FALSE, length(freq))
+                    for (idx in 1:10) {
+                      freq_sel <- freq_sel | ((freq >= (idx * 
+                        50 - 2) & freq <= (idx * 50 + 2)) | (freq >= 
+                        (idx * 60 - 2) & freq <= (idx * 60 + 
+                        2)))
+                      if (mean(freq_sel) > 0.9) {
+                        break
+                      }
+                    }
+                    freq_sel <- !freq_sel
+                    if (any(freq_sel)) {
+                      ylim <- range(plot_data[freq_sel, ], na.rm = TRUE)
+                    } else {
+                      ylim <- range(plot_data, na.rm = TRUE)
+                    }
+                    has_highlight <- any(sel_highlights)
+                    mean1 <- rowMeans(plot_data, na.rm = TRUE)
+                    if (has_highlight) {
+                      mean2 <- rowMeans(plot_data[, display_electrodes_ %in% 
+                        hightights_, drop = FALSE], na.rm = TRUE)
+                    } else {
+                      mean2 <- NULL
+                    }
+                    if (isTRUE(cleaned_inputs$filter_bandpass$enabled)) {
+                      filter_range <- cleaned_inputs$filter_bandpass$range
+                    } else {
+                      filter_range <- NULL
+                    }
+                    plot_data_pwelch <- list(frequencies = freq, 
+                      frequency_range = freq_range, data = plot_data, 
+                      has_highlight = has_highlight, data_range_trim = ylim, 
+                      mean_overall = mean1, mean_highlighted = mean2, 
+                      electrodes = plot_data_label_colors$labels, 
+                      highlights = hightights_, colors = plot_data_label_colors$colors, 
+                      bandpass_filter_range = filter_range)
+                  }
+                }
+            }
+            return(plot_data_pwelch)
+        }), deps = c("sel_electrodes", "pwelch_data", "pwelch_frequency_limit", 
+        "sel_highlights", "cleaned_inputs", "plot_data_label_colors"
+        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        iteration = "list"), plot_data_pwelch_subset = targets::tar_target_raw(name = "plot_data_pwelch_subset", 
+        command = quote({
+            {
+                if (length(analysis_time2) != 2) {
+                  plot_data_pwelch_subset <- ""
+                } else if (!is.list(plot_data_pwelch) || !length(plot_data_pwelch)) {
+                  if (is.character(plot_data_pwelch)) {
+                    plot_data_pwelch_subset <- plot_data_pwelch
+                  } else {
+                    plot_data_pwelch_subset <- "Unable to generate subset Welch Periodogram"
+                  }
+                } else {
+                  timepoint_range <- attr(analysis_time2, "timepoint_range")
+                  window_len <- pwelch_params2$window_size
+                  noverlap <- pwelch_params2$noverlap
+                  row_sel <- seq.int(timepoint_range[1], timepoint_range[2])
+                  step <- max(floor(window_len - noverlap + 0.99), 
+                    1)
+                  offset <- seq(1, max(length(row_sel) - window_len + 
+                    1, 1), by = step)
+                  if (!length(offset)) {
+                    plot_data_pwelch_subset <- "Selected time-range is too small. Cannot calculate Welch-Periodogram for the subset."
+                  } else {
+                    indata <- repository$data[[analysis_block]]
+                    sample_rate <- repository$sample_rate
+                    has_highlight <- plot_data_pwelch$has_highlight
+                    indata <- indata[row_sel, sel_electrodes, 
+                      drop = FALSE, dimnames = FALSE]
+                    indata[is.na(indata)] <- 0
+                    pwelch_result <- ravetools::pwelch(x = t(indata), 
+                      fs = sample_rate, window = window_len, 
+                      noverlap = noverlap)
+                    freq_sel <- (pwelch_result$freq >= plot_data_pwelch$frequency_range[[1]]) & 
+                      (pwelch_result$freq <= plot_data_pwelch$frequency_range[[2]])
+                    freq <- pwelch_result$freq[freq_sel]
+                    plot_data <- t(pwelch_result$spec[, freq_sel, 
+                      drop = FALSE])
+                    mean1 <- 10 * log10(rowMeans(plot_data))
+                    electrodes <- plot_data_pwelch$electrodes
+                    highlights <- plot_data_pwelch$highlights
+                    if (has_highlight) {
+                      mean2 <- 10 * log10(rowMeans(plot_data[, 
+                        electrodes %in% highlights, drop = FALSE]))
+                    } else {
+                      mean2 <- NULL
+                    }
+                    plot_data_pwelch_subset <- list(frequencies = freq, 
+                      frequency_range = plot_data_pwelch$frequency_range, 
+                      data = 10 * log10(plot_data), has_highlight = has_highlight, 
+                      data_range_trim = plot_data_pwelch$data_range_trim, 
+                      mean_overall = mean1, mean_highlighted = mean2, 
+                      electrodes = electrodes, highlights = highlights, 
+                      colors = plot_data_pwelch$colors, bandpass_filter_range = plot_data_pwelch$bandpass_filter_range)
+                  }
+                }
+            }
+            return(plot_data_pwelch_subset)
+        }), deps = c("analysis_time2", "plot_data_pwelch", "pwelch_params2", 
+        "repository", "analysis_block", "sel_electrodes"), cue = targets::tar_cue("thorough"), 
+        pattern = NULL, iteration = "list"), plot_filtered_signals = targets::tar_target_raw(name = "plot_filtered_signals", 
+        command = quote({
+            {
+                plot_filtered_signals <- TRUE
+                plot_data <- plot_data_filtered_voltage_overall
+                if (is.list(plot_data) && length(plot_data)) {
+                  if (length(unique(plot_data$colors)) > 1) {
+                    pal <- c("gray60", "orange")
+                  } else {
+                    pal <- graphics::par("fg")
+                  }
+                  ravetools::plot_signals(plot_data$data, sample_rate = plot_data$sample_rate, 
+                    channel_names = plot_data$labels, col = pal[plot_data$colors], 
+                    space = plot_data$spacing, space_mode = "absolute", 
+                    main = sprintf("Filtered signals (%s)", dipsaus::deparse_svec(plot_data$labels)), 
+                    tck = -0.005, yaxs = "r")
+                } else {
+                  plot_filtered_signals <- plot_data
+                }
+            }
+            return(plot_filtered_signals)
+        }), deps = "plot_data_filtered_voltage_overall", cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), plot_filtered_signals_subset = targets::tar_target_raw(name = "plot_filtered_signals_subset", 
+        command = quote({
+            {
+                plot_filtered_signals_subset <- TRUE
+                plot_data <- plot_data_filtered_voltage_subset
+                if (is.list(plot_data) && length(plot_data)) {
+                  if (length(unique(plot_data$colors)) > 1) {
+                    pal <- c("gray60", "orange")
+                  } else {
+                    pal <- graphics::par("fg")
+                  }
+                  time_range <- plot_data$time_range
+                  ravetools::plot_signals(plot_data$data, sample_rate = plot_data$sample_rate, 
+                    time_shift = time_range[[1]], channel_names = plot_data$labels, 
+                    col = pal[plot_data$colors], space = plot_data$spacing, 
+                    space_mode = "absolute", main = sprintf("Data slice (%.2f sec)", 
+                      time_range[[2]] - time_range[[1]]), tck = -0.005, 
+                    yaxs = "r")
+                } else {
+                  plot_filtered_signals_subset <- plot_data
+                }
+            }
+            return(plot_filtered_signals_subset)
+        }), deps = "plot_data_filtered_voltage_subset", cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), plot_pwelch = targets::tar_target_raw(name = "plot_pwelch", 
+        command = quote({
+            {
+                plot_pwelch <- TRUE
+                plot_data <- plot_data_pwelch
+                if (is.list(plot_data) && length(plot_data)) {
+                  cex <- 1
+                  mar <- c(2.6, 3.8, 2.1, 0.6) * (0.5 + cex/2)
+                  mgp <- cex * c(2, 0.5, 0)
+                  tck <- -0.02
+                  xline <- 1.2 * cex
+                  yline <- 2 * cex
+                  xaxs <- "i"
+                  yaxs <- "i"
+                  main <- "Welch periodogram (no filter)"
+                  cex_params <- graphics::par("fg", "bg", "mgp", 
+                    "mar", "mai", "cex.main", "cex.lab", "cex.axis", 
+                    "cex.sub")
+                  graphics::par(mar = mar, mgp = mgp)
+                  on.exit({
+                    do.call(graphics::par, cex_params)
+                  }, add = TRUE, after = FALSE)
+                  fg <- cex_params$fg
+                  if (length(unique(plot_data$colors)) > 1) {
+                    pal <- c("gray60", "orange")
+                  } else {
+                    pal <- c(fg, fg)
+                  }
+                  alpha <- 0.7
+                  col <- pal[plot_data$colors]
+                  ylim <- plot_data$data_range_trim
+                  freq <- plot_data$frequencies
+                  graphics::matplot(x = freq, y = plot_data$data, 
+                    col = col, ylim = plot_data$data_range_trim, 
+                    type = "l", cex = cex, lty = 1, lwd = 0.5, 
+                    las = 1, axes = FALSE, xaxs = xaxs, yaxs = yaxs, 
+                    cex.main = cex_params$cex.main * cex, main = main, 
+                    log = "x", xlab = "", ylab = "")
+                  filter_range <- plot_data$bandpass_filter_range
+                  if (length(filter_range)) {
+                    graphics::abline(v = filter_range, lty = 2)
+                    graphics::text(x = mean(filter_range), y = ylim[[2]], 
+                      labels = "Bandpass filter", adj = c(0.55, 
+                        1))
+                  }
+                  graphics::grid()
+                  graphics::lines(x = freq, y = plot_data$mean_overall, 
+                    col = fg, lty = 1, lwd = 3)
+                  if (plot_data$has_highlight) {
+                    graphics::lines(x = freq, y = plot_data$mean_highlighted, 
+                      col = pal[[2]], lty = 1, lwd = 3)
+                  }
+                  graphics::axis(1, at = pretty(freq), tck = -0.02, 
+                    cex = cex, cex.main = cex_params$cex.main * 
+                      cex, cex.lab = cex_params$cex.lab * cex, 
+                    cex.axis = cex_params$cex.axis * cex)
+                  graphics::axis(2, at = pretty(plot_data$data_range_trim), 
+                    tck = -0.02, cex = cex, cex.main = cex_params$cex.main * 
+                      cex, cex.lab = cex_params$cex.lab * cex, 
+                    cex.axis = cex_params$cex.axis * cex)
+                  graphics::mtext(side = 2, text = "Power (dB)", 
+                    line = yline, cex = cex_params$cex.lab * 
+                      cex)
+                  graphics::mtext(side = 1, text = "log(Frequency)", 
+                    line = xline, cex = cex_params$cex.lab * 
+                      cex)
+                  if (plot_data$has_highlight) {
+                    lg_text <- c("Highlighted", "Mean highlighted", 
+                      "Mean of all")
+                    lg_col <- pal[c(2, 2, 1)]
+                    lg_lwd <- c(0.5, 3, 3)
+                  } else {
+                    lg_text <- c("Mean of all")
+                    lg_col <- pal[2]
+                    lg_lwd <- 3
+                  }
+                  graphics::legend("topright", lg_text, lty = 1, 
+                    col = lg_col, lwd = lg_lwd, bty = "n", text.col = lg_col)
+                } else {
+                  plot_pwelch <- plot_data
+                }
+            }
+            return(plot_pwelch)
+        }), deps = "plot_data_pwelch", cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), plot_pwelch_subset = targets::tar_target_raw(name = "plot_pwelch_subset", 
+        command = quote({
+            {
+                plot_pwelch_subset <- TRUE
+                plot_data0 <- plot_data_pwelch
+                plot_data <- plot_data_pwelch_subset
+                if (is.list(plot_data0) && length(plot_data0) && 
+                  is.list(plot_data) && length(plot_data)) {
+                  cex <- 1
+                  mar <- c(2.6, 3.8, 2.1, 0.6) * (0.5 + cex/2)
+                  mgp <- cex * c(2, 0.5, 0)
+                  tck <- -0.02
+                  xline <- 1.2 * cex
+                  yline <- 2 * cex
+                  xaxs <- "i"
+                  yaxs <- "i"
+                  main <- "Welch periodogram (subset slice)"
+                  cex_params <- graphics::par("fg", "bg", "mgp", 
+                    "mar", "mai", "cex.main", "cex.lab", "cex.axis", 
+                    "cex.sub")
+                  graphics::par(mar = mar, mgp = mgp)
+                  on.exit({
+                    do.call(graphics::par, cex_params)
+                  }, add = TRUE, after = FALSE)
+                  fg <- cex_params$fg
+                  if (length(unique(plot_data$colors)) > 1) {
+                    pal <- c("gray60", "orange")
+                  } else {
+                    pal <- c(fg, fg)
+                  }
+                  alpha <- 0.7
+                  col <- pal[plot_data$colors]
+                  ylim <- plot_data$data_range_trim
+                  freq <- plot_data$frequencies
+                  graphics::matplot(x = freq, y = plot_data$data, 
+                    col = col, ylim = plot_data$data_range_trim, 
+                    type = "l", cex = cex, lty = 1, lwd = 0.5, 
+                    las = 1, axes = FALSE, xaxs = xaxs, yaxs = yaxs, 
+                    cex.main = cex_params$cex.main * cex, main = main, 
+                    log = "x", xlab = "", ylab = "")
+                  filter_range <- plot_data$bandpass_filter_range
+                  if (length(filter_range)) {
+                    graphics::abline(v = filter_range, lty = 2)
+                    graphics::text(x = mean(filter_range), y = ylim[[2]], 
+                      labels = "Bandpass filter", adj = c(0.55, 
+                        1))
+                  }
+                  graphics::grid()
+                  graphics::lines(x = plot_data0$frequencies, 
+                    y = plot_data0$mean_overall, col = fg, lty = 3, 
+                    lwd = 3)
+                  graphics::lines(x = freq, y = plot_data$mean_overall, 
+                    col = fg, lty = 1, lwd = 3)
+                  if (plot_data$has_highlight) {
+                    graphics::lines(x = plot_data0$frequencies, 
+                      y = plot_data0$mean_highlighted, col = pal[[2]], 
+                      lty = 3, lwd = 3)
+                    graphics::lines(x = freq, y = plot_data$mean_highlighted, 
+                      col = pal[[2]], lty = 1, lwd = 3)
+                  }
+                  graphics::axis(1, at = pretty(freq), tck = -0.02, 
+                    cex = cex, cex.main = cex_params$cex.main * 
+                      cex, cex.lab = cex_params$cex.lab * cex, 
+                    cex.axis = cex_params$cex.axis * cex)
+                  graphics::axis(2, at = pretty(plot_data$data_range_trim), 
+                    tck = -0.02, cex = cex, cex.main = cex_params$cex.main * 
+                      cex, cex.lab = cex_params$cex.lab * cex, 
+                    cex.axis = cex_params$cex.axis * cex)
+                  graphics::mtext(side = 2, text = "Power (dB)", 
+                    line = yline, cex = cex_params$cex.lab * 
+                      cex)
+                  graphics::mtext(side = 1, text = "log(Frequency)", 
+                    line = xline, cex = cex_params$cex.lab * 
+                      cex)
+                  if (plot_data$has_highlight) {
+                    lg_text <- c("Mean highlighted (subset)", 
+                      "Mean of all (subset)", "Mean highlighted", 
+                      "Mean of all")
+                    lg_col <- pal[c(2, 1, 2, 1)]
+                    lg_lwd <- c(3, 3, 3, 3)
+                    lg_lty <- c(1, 1, 3, 3)
+                  } else {
+                    lg_text <- c("Mean of all (subset)", "Mean of all")
+                    lg_col <- pal[2]
+                    lg_lwd <- 3
+                    lg_lty <- c(1, 3)
+                  }
+                  graphics::legend("topright", lg_text, lty = lg_lty, 
+                    col = lg_col, lwd = lg_lwd, bty = "n", text.col = lg_col, 
+                    ncol = 2)
+                } else {
+                  plot_pwelch_subset <- plot_data
+                }
+            }
+            return(plot_pwelch_subset)
+        }), deps = c("plot_data_pwelch", "plot_data_pwelch_subset"
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"))
