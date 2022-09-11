@@ -1,22 +1,25 @@
 analysis_block: block006
-analysis_electrodes: 1-10,13-22,24-27,29-52,54-56,61-65,73-77,79-91,93-107,109-129,133-150
+analysis_electrodes: 1-116
 analysis_time:
-- 88.2939399
-- 102.1444794
-block: block006
+- 239.105948
+- 257.0421901
+block:
+- block006
+- block007
+- block008
 filter_bandpass:
   enabled: no
 filter_notch:
   enabled: no
 hide_electrodes: ''
 highlight_electrodes: ''
-loaded_electrodes: 1-152
-project_name: devel
+loaded_electrodes: 1-116
+project_name: test
 pwelch_frequency_limit:
 - 0
 - 300
 pwelch_params:
   window_size: 4000
   noverlap: 2000.0
-subject_code: PAV005
+subject_code: PAV006
 vertical_spacing: ~

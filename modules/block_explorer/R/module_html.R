@@ -181,6 +181,54 @@ module_html <- function(){
 
 
             ravedash::input_card(
+              title = "3D Viewer Configurations",
+              class_body = "padding-5",
+
+              shiny::fluidRow(
+
+                shiny::column(
+                  width = 12L,
+                  shiny::tags$small(
+                    "3D viewer does not update automatically. ",
+                    "Please select a reasonable time range and manually click on `Generate viewer` button."
+                  )
+                ),
+
+                shiny::column(
+                  width = 12L,
+                  shiny::sliderInput(
+                    inputId = ns("viewer_timestart"),
+                    label = "Time start",
+                    min = 0, max = 1, value = 0, step = 0.01,
+                    round = -2
+                  )
+                ),
+                shiny::column(
+                  width = 12L,
+                  shiny::sliderInput(
+                    inputId = ns("viewer_timesduration"),
+                    label = "Duration",
+                    min = 0, max = 10, value = 2, step = 0.01,
+                    round = -2
+                  )
+                ),
+                shiny::column(
+                  width = 12L,
+                  shiny::actionLink(
+                    inputId = ns("viewer_sync"),
+                    label = "Sync from [Channel plot] selection"
+                  ),
+                  shiny::hr(),
+                  dipsaus::actionButtonStyled(
+                    inputId = ns("viewer_generate"),
+                    label = "Generate viewer", width = "100%"
+                  )
+                )
+
+              )
+            ),
+
+            ravedash::input_card(
               title = "Welch Periodogram Settings",
               class_body = "padding-5",
               start_collapsed = TRUE,
@@ -353,6 +401,21 @@ module_html <- function(){
                 )
 
               )
+            ),
+
+
+            ravedash::output_card(
+              inputId = ns("card_3dviewer"),
+              title = "3D visualization",
+              class_body = "min-height-300 height-500 resize-vertical no-padding",
+
+              ravedash::output_gadget_container(
+                threeBrain::threejsBrainOutput(
+                  outputId = ns("3dviewer"),
+                  height = "100%"
+                )
+              )
+
             )
 
           )

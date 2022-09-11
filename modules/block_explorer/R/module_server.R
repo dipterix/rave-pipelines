@@ -121,6 +121,22 @@ module_server <- function(input, output, session, ...){
         onFulfilled = function(...) {
           shidashi::clear_notifications(class = "pipeline-error")
           dipsaus::close_alert2()
+
+          ravedash::with_error_notification({
+            # update 3D viewer params
+            analysis_block <- pipeline$read("analysis_block")
+            # repository <- pipeline$read("repository")
+            repository <- component_container$data$repository
+            sample_rate <- repository$sample_rate
+            indata <- repository$data[[analysis_block]]
+            max_time <- floor(nrow(indata) / sample_rate)
+            shiny::updateSliderInput(
+              session = session,
+              inputId = "viewer_timestart",
+              max = max_time
+            )
+          })
+
           local_reactives$update_outputs <- Sys.time()
           local_reactives$update_selection <- Sys.time()
           local_data$results <- list(valid = TRUE)
@@ -230,6 +246,14 @@ module_server <- function(input, output, session, ...){
         inputId = "pwelch_frequency_limit",
         max = floor(srate / 2)
       )
+
+      # check if the brain exists
+      brain <- raveio::rave_brain(new_repository$subject)
+      if(inherits(brain, "rave-brain")) {
+        shidashi::card_operate(inputId = "card_3dviewer", method = "expand")
+      } else {
+        shidashi::card_operate(inputId = "card_3dviewer", method = "collapse")
+      }
 
       local_reactives$update_outputs <- FALSE
 
@@ -530,9 +554,8 @@ module_server <- function(input, output, session, ...){
       shiny::validate(
         shiny::need(isTRUE(msg), message = paste(msg, collapse = ""))
       )
-
-
-    })
+    }),
+    output_opts = list(click = shiny::clickOpts(id = ns("plot_pwelch__click"), clip = TRUE))
   )
 
   get_pwelch_click <- function(plot_data, click) {
@@ -747,10 +770,139 @@ module_server <- function(input, output, session, ...){
         shiny::need(isTRUE(msg), message = paste(msg, collapse = ""))
       )
 
-    })
+    }),
+    output_opts = list(click = shiny::clickOpts(id = ns("plot_pwelch_subset__click")))
   )
 
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      analysis_time2 <- pipeline$read("analysis_time2")
+      if(length(analysis_time2) != 2) { return() }
 
+      start_time <- round(analysis_time2[1], digits = 2)
+      shiny::updateSliderInput(
+        session = session,
+        inputId = "viewer_timestart",
+        value = start_time
+      )
+      duration <- analysis_time2[2] - analysis_time2[1]
+      if(duration > 10) {
+        duration <- 10
+      } else {
+        duration <- round(duration, digits = 2)
+      }
+      shiny::updateSliderInput(
+        session = session,
+        inputId = "viewer_timesduration",
+        value = duration
+      )
+
+    }),
+    input$viewer_sync,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  shiny::bindEvent(
+    ravedash::safe_observe({
+
+      ravedash::with_error_notification({
+        loaded_flag <- ravedash::watch_data_loaded()
+        if(!loaded_flag){
+          stop("Please load data first")
+        }
+        if(!length(local_reactives$update_outputs) || isFALSE(local_reactives$update_outputs)) {
+          stop("Please run the analysis first")
+        }
+
+        repository <- component_container$data$repository
+        if(!length(repository)) {
+          stop("Please load data first")
+        }
+
+        time_start <- input$viewer_timestart
+        if(length(time_start) != 1 || is.na(time_start) || time_start < 0) {
+          stop("Viewer start time is invalid")
+        }
+
+        sample_rate <- repository$sample_rate
+        duration <- input$viewer_timesduration
+        if(length(duration) != 1 || is.na(duration)) {
+          stop("Viewer duration is invalid")
+        }
+
+        brain <- raveio::rave_brain(repository$subject)
+        if(!inherits(brain, "rave-brain")) {
+          stop("Cannot find 3D models from the subject.")
+        }
+
+        # get data
+        filtered_data <- pipeline$read("filtered_data")
+
+        sel_highlights <- pipeline$read("sel_highlights")
+        sel_electrodes <- pipeline$read("sel_electrodes")
+
+
+        electrodes <- repository$subject$electrodes
+        sel <- electrodes %in% repository$electrode_list
+        nelec <- sum(sel)
+
+        status <- rep("Inactive", length(electrodes))
+        status[sel_electrodes] <- "Displayed"
+        status[sel_highlights] <- "Highlighted"
+        status <- status[sel]
+        status <- factor(status, levels = c("Inactive", "Displayed", "Highlighted"))
+
+
+        # Get filtered data
+        has_signals <- FALSE
+        tidx_start <- round(time_start * sample_rate) + 1
+        tidx_end <- tidx_start + round(duration * sample_rate)
+        ntp <- nrow(filtered_data)
+        if(tidx_start < 1) { tidx_start <- 1 }
+        if(tidx_start > ntp){ tidx_start <- ntp}
+        if( tidx_end < tidx_start ) { tidx_end <- tidx_start }
+        if(tidx_end > ntp) { tidx_end <- ntp}
+
+        ntp <- tidx_end - tidx_start + 1
+        if(nelec * ntp > 4000001) {
+          drate <- ceiling(nelec * ntp / 4000001)
+        } else {
+          drate <- 1
+        }
+
+        tidx <- seq.int(tidx_start, tidx_end, by = drate)
+        new_sample_rate <- sample_rate / drate
+
+        time <- tidx / sample_rate
+        vdata <- filtered_data[tidx, sel, drop = FALSE, dimnames = FALSE]
+
+        ntidx <- length(tidx)
+
+        elecs <- electrodes[sel]
+
+        data_table <- data.frame(
+          Electrode = rep(elecs, each = ntidx),
+          Time = rep(time, length(elecs)),
+          Status = rep(status, each = ntidx),
+          Filtered = as.vector(vdata)
+        )
+
+        brain$set_electrode_values(data_table)
+
+        local_reactives$brain_widget <- brain$plot()
+      })
+
+    }),
+    input$viewer_generate,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+
+  ravedash::register_output(
+    outputId = "3dviewer",
+    render_function = threeBrain::renderBrain({
+      local_reactives$brain_widget
+    })
+  )
 
 
 }
