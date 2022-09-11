@@ -333,7 +333,7 @@ input:checked + .slider::before {
     @include position(absolute);
     min-height: 100%;
     min-width: 100%;
-    z-index: 10000;
+    z-index: 1061;
   }
 }
 
@@ -440,6 +440,14 @@ input:checked + .slider::before {
   & .os-content {
     min-height: 100%;
   }
+}
+
+.text-small {
+  font-size: 80%;
+}
+.text-nowrap {
+  @include overflow(hidden, x);
+  white-space: nowrap;
 }
 
 /** Colors **/
@@ -761,7 +769,7 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
   bottom: 1.25rem;
   position: fixed;
   right: 1.25rem;
-  z-index: 10000;
+  z-index: 1039;
   box-shadow: 0 0 10px 1px adjust-color($gray, $alpha: -0.5);
   border-radius: .25rem;
 
@@ -930,7 +938,7 @@ body.dark-mode .nav-sidebar .nav-header.nav-divider {
     }
     & .flip-box-back {
       position: absolute;
-      z-index: 9999;
+      z-index: 1038;
       transform: rotateY(180deg);
     }
   }
