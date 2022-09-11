@@ -10,7 +10,7 @@ modules:
     order: 1.1
   power_explorer:
     label: Power Explorer
-    order: 12
+    order: 13
     badge: New!|badge-info
   jupyterlab:
     label: JupyterLab
@@ -45,6 +45,7 @@ modules:
   block_explorer:
     label: Block Explorer
     badge: Experimental|badge-warning
+    order: 12
   custom_3d_viewer:
     label: "Subject 3D Viewer"
     order: 11
