@@ -1211,6 +1211,11 @@ class Shidashi {
       ])
     });
 
+    this.shinyHandler("shutdown_session", (params) => {
+      console.log("Shutting down RAVE...")
+      window.close();
+    });
+
     // keep alive
     /*let alive_counter = 0;
     const keep_alive = () => {

@@ -94,6 +94,37 @@ server <- function(input, output, session){
         if(!isTRUE(raveio::raveio_getopt(key = "secure_mode", default = FALSE))) {
           source("./R/rave-options.R", local = parse_env)
           shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
+
+
+          shiny::bindEvent(
+            ravedash::safe_observe({
+              ravedash::shutdown_session(session = session)
+            }),
+            input$ravedash_shutdown,
+            ignoreNULL = TRUE, ignoreInit = TRUE, once = TRUE
+          )
+
+          shiny::bindEvent(
+            ravedash::safe_observe({
+              shiny::showModal(
+                shiny::modalDialog(
+                  title = "Power-off RAVE",
+                  easyClose = TRUE, size = "m",
+                  footer = shiny::tagList(
+                    shiny::modalButton("Cancel"),
+                    dipsaus::actionButtonStyled(
+                      inputId = "ravedash_shutdown",
+                      label = "Shutdown",
+                      icon = ravedash::shiny_icons[["power-off"]]
+                    )
+                  ),
+                  "This will shutdown the RAVE server. Please press the [Shutdown] button to proceed."
+                )
+              )
+            }),
+            input$ravedash_shutdown_btn,
+            ignoreNULL = TRUE, ignoreInit = TRUE
+          )
         }
       }
 
