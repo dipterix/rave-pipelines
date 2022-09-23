@@ -3,6 +3,8 @@ divider:
     order: 0
   Built-ins:
     order: 10
+  Settings:
+    order: 10000
 modules:
   import_lfp_native:
     label: Native Structure
@@ -47,8 +49,11 @@ modules:
     badge: Beta|badge-info
     order: 12
   custom_3d_viewer:
-    label: "Subject 3D Viewer"
+    label: Subject 3D Viewer
     order: 11
+  configure_rave:
+    label: Configure RAVE
+    order: 10001.0
 groups:
   Import Signals:
     order: 1
