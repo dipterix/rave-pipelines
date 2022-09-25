@@ -128,10 +128,12 @@ server <- function(input, output, session){
           )
 
           if( is_single_session ) {
-            ravedash::logger("Session flag is marked as single session: closing the website tab will shutdown the RAVE application", level = "info")
+            ravedash::logger("Single-session mode is ON: closing the website tab will shutdown the RAVE application.", level = "info")
             session$onEnded(function() {
-              ravedash::shutdown_session(session = session)
+              shiny::stopApp()
             })
+          } else {
+            ravedash::logger("Single-session mode is OFF: closing the website tab will NOT shutdown the RAVE application. Please use the builtin shutdown button.", level = "info")
           }
         }
       }
