@@ -27,6 +27,7 @@ server <- function(input, output, session){
   if(!isTRUE(getOption('shiny.maxRequestSize', 0) > 0)) {
     options(shiny.maxRequestSize = 300 * 1024 ^ 2)
   }
+  is_single_session <- isTRUE(getOption("ravedash.single.session", default = FALSE))
 
   # # Register bindings for compound input
   # dipsaus::registerInputBinding('textOutput', 'shiny', 'shiny.textOutput', update_function = NULL)
@@ -125,6 +126,13 @@ server <- function(input, output, session){
             input$ravedash_shutdown_btn,
             ignoreNULL = TRUE, ignoreInit = TRUE
           )
+
+          if( is_single_session ) {
+            ravedash::logger("Session flag is marked as single session: closing the website tab will shutdown the RAVE application", level = "info")
+            session$onEnded(function() {
+              ravedash::shutdown_session(session = session)
+            })
+          }
         }
       }
 
