@@ -67,7 +67,7 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
                 shidashi::flex_item(
                   shiny::selectInput(
                     inputId = ns("ct_path"),
-                    label = "Raw CT DICOM folder",
+                    label = "Raw CT (DICOM folder or Nifti file)",
                     choices = character(0L)
                   )
                 )
@@ -308,6 +308,7 @@ loader_server <- function(input, output, session, ...){
       paths <- list.files(subject$preprocess_settings$raw_path, all.files = TRUE, full.names = FALSE, include.dirs = TRUE, no.. = TRUE, recursive = TRUE)
       paths <- paths[dir.exists(file.path(subject$preprocess_settings$raw_path, paths)) | grepl("nii($|\\.gz$)", x = paths, ignore.case = TRUE)]
       paths <- paths[!paths %in% c("", ".", "..", "/")]
+      paths <- paths[!startsWith(paths, "rave-imaging")]
 
       selected <- NULL
       if(length(paths)) {

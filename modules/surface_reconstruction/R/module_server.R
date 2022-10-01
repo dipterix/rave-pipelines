@@ -611,6 +611,9 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     shiny::observe({
+      loaded_flag <- ravedash::watch_data_loaded()
+      if(!loaded_flag){ return() }
+
       params <- input_params()
       # save parameters
       pipeline$set_settings(
