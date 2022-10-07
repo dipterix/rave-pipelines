@@ -69,7 +69,7 @@ diagnose_notch_filters <- function(
         ravetools::diagnose_channel(
           raw_signal,
           notch_signal,
-          sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
+          # sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
           srate = srate,
           max_freq = max_freq,
           try_compress = TRUE,
@@ -78,8 +78,7 @@ diagnose_notch_filters <- function(
           col = c(fg, "red"),
           nclass = nbins,
           main = sprintf("%s, Block %s, Electrode %s (%s)",
-                         subject$subject_id, block, e, etype),
-          ...
+                         subject$subject_id, block, e, etype)
         )
       } else {
         notch_signal <- raw_signal
@@ -87,7 +86,7 @@ diagnose_notch_filters <- function(
         ravetools::diagnose_channel(
           raw_signal,
           notch_signal,
-          sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
+          # sc = ravetools::decimate(raw_signal, ceiling(length(raw_signal) / 5000)),
           srate = srate,
           max_freq = max_freq,
           try_compress = TRUE,
