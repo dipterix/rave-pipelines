@@ -23,14 +23,9 @@ module_server <- function(input, output, session, ...){
 
       data <- pipeline$read(var_names = c("subject", "imported_electrodes"))
 
-      subject <- raveio::as_rave_subject(data$subject$subject_id, strict = FALSE)
+      subject <- data$subject
       blocks <- subject$preprocess_settings$blocks
       imported_electrodes <- data$imported_electrodes
-      imported_electrodes <- imported_electrodes[imported_electrodes %in% subject$electrodes]
-      if(!length(imported_electrodes)) {
-        imported_electrodes <- subject$electrodes[subject$preprocess_settings$data_imported]
-      }
-
       sample_rates <- subject$preprocess_settings$sample_rates
 
       local_data$subject <- subject
@@ -283,7 +278,6 @@ module_server <- function(input, output, session, ...){
           onFulfilled = function(...){
 
             subject <- pipeline$read(var_names = "subject")
-            subject <- raveio::as_rave_subject(subject$subject_id, strict = FALSE)
             filter_settings <- pipeline$read(var_names = "filter_settings")
 
             shiny::showModal(shiny::modalDialog(
