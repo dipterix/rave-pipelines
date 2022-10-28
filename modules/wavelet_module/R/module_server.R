@@ -203,6 +203,7 @@ module_server <- function(input, output, session, ...){
 
 
       subject <- pipeline$read("subject")
+      subject <- raveio::as_rave_subject(subject, strict = FALSE)
 
       all_electrodes <- subject$electrodes
       etypes <- subject$preprocess_settings$electrode_types
