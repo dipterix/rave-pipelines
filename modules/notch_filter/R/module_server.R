@@ -26,6 +26,11 @@ module_server <- function(input, output, session, ...){
       subject <- data$subject
       blocks <- subject$preprocess_settings$blocks
       imported_electrodes <- data$imported_electrodes
+      imported_electrodes <- imported_electrodes[imported_electrodes %in% subject$electrodes]
+      if(!length(imported_electrodes)) {
+        imported_electrodes <- subject$electrodes[subject$preprocess_settings$data_imported]
+      }
+
       sample_rates <- subject$preprocess_settings$sample_rates
 
       local_data$subject <- subject
@@ -36,7 +41,7 @@ module_server <- function(input, output, session, ...){
         notch_filtered[subject$electrodes == e]
       })
 
-      if(all(notch_filtered)) {
+      if(isTRUE(all(notch_filtered))) {
         shidashi::card_operate(title = "Filter settings", method = "collapse")
       } else {
         shidashi::card_operate(title = "Filter settings", method = "expand")
