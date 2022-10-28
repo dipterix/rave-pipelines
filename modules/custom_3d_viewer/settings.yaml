@@ -1,50 +1,10 @@
-controllers:
-  Display Coordinates: no
-  Show Panels: no
-  Coronal (P - A): 0
-  Axial (I - S): 0
-  Sagittal (L - R): 0
-  Overlay Coronal: no
-  Overlay Axial: no
-  Overlay Sagittal: no
-  Dist. Threshold: 2
-  Surface Material: MeshPhongMaterial
-  Left Hemisphere: normal
-  Right Hemisphere: normal
-  Left Opacity: 1
-  Right Opacity: 1
-  Surface Color: vertices
-  Blend Factor: 0.4
-  Sigma: 3
-  Decay: 0.15
-  Range Limit: 10
-  Visibility: all visible
-  Voxel Label: '0'
-  Display Data: z_score_Amplitude_Trial_Onset
-  Display Range: ''
-  Threshold Data: '[None]'
-  Threshold Range: ''
-  Threshold Method: '|v| >= T1'
-  Video Mode: muted
-  Show Legend: yes
-  Show Time: yes
-  Highlight Box: yes
-  Info Text: yes
+controllers: []
 data_source: Uploads
 data_source_pipeline: power_explorer/power_explorer-22_09_03-22_54_46
 data_source_pipeline_target: omnibus_results
 data_source_project: demo
-main_camera:
-  position:
-    x: -455.6191685
-    'y': 195.5884042
-    z: 2.4717834
-  zoom: 1
-  up:
-    x: -0.0422324
-    'y': 0.0203749
-    z: 0.9989
-project_name: '[Auto]'
+main_camera: []
+project_name: demo
 shiny_outputId: custom_3d_viewer-viewer_ready
 subject_code: YAB
 surface_types: ~

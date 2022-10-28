@@ -13,6 +13,136 @@ localization_list:
     - 10
     - 11
     - 12
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 17
+    - 17
+    - 17
+    - 2
+    - 2
+    - 1030
+    - 1030
+    - 1015
+    - 1015
+    - 1015
+    - 0
+    - 0
+    FSLabel:
+    - Left-Hippocampus
+    - Left-Hippocampus
+    - Left-Hippocampus
+    - Left-Cerebral-White-Matter
+    - Left-Cerebral-White-Matter
+    - ctx-lh-superiortemporal
+    - ctx-lh-superiortemporal
+    - ctx-lh-middletemporal
+    - ctx-lh-middletemporal
+    - ctx-lh-middletemporal
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - -22.1877154
+    - -28.2788614
+    - -33.3893603
+    - -38.8463725
+    - -45.099292
+    - -49.5438795
+    - -55.7168411
+    - -60.961986
+    - -66.080699
+    - -72.4365078
+    - -77.5820844
+    - -83.768721
+    MNI305_y:
+    - -18.0980191
+    - -19.6282733
+    - -21.0898093
+    - -21.1497827
+    - -23.4107486
+    - -25.1080932
+    - -24.0755856
+    - -25.8730117
+    - -28.53465
+    - -27.6092842
+    - -29.4868399
+    - -29.8366193
+    MNI305_z:
+    - -20.6597883
+    - -19.0722912
+    - -17.4888058
+    - -16.3125888
+    - -14.522991
+    - -13.7751441
+    - -11.8273965
+    - -10.0985453
+    - -9.2902699
+    - -7.4614705
+    - -6.2195841
+    - -5.0225806
     Label:
     - LI1
     - LI2
@@ -65,110 +195,6 @@ localization_list:
     - iEEG
     - iEEG
     - iEEG
-    Coord_x:
-    - -24.383329
-    - -28.2398339
-    - -32.7512977
-    - -38.1265296
-    - -42.6025468
-    - -47.9777787
-    - -52.4537959
-    - -57.8136375
-    - -62.2896547
-    - -66.7502815
-    - -72.1409038
-    - -76.5170706
-    Coord_y:
-    - 27.0356662
-    - 25.1649682
-    - 25.1060524
-    - 24.0823595
-    - 23.0943008
-    - 22.0706079
-    - 21.0825492
-    - 19.9396006
-    - 18.951542
-    - 17.8442277
-    - 16.9397904
-    - 15.9224003
-    Coord_z:
-    - -20.4770726
-    - -20.2381619
-    - -19.359976
-    - -18.3723406
-    - -17.3743911
-    - -16.3867557
-    - -15.3888061
-    - -15.3309274
-    - -14.3329779
-    - -14.264785
-    - -12.3473929
-    - -11.0344023
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - -26.7066303
-    - -31.2653322
-    - -36.4983472
-    - -42.7799372
-    - -48.0190172
-    - -54.3006071
-    - -59.5396871
-    - -65.8008121
-    - -71.0398921
-    - -76.2585071
-    - -82.5605621
-    - -87.6884154
-    MNI305_y:
-    - 15.7495802
-    - 13.7737064
-    - 13.9853063
-    - 13.1608887
-    - 12.3679756
-    - 11.5435581
-    - 10.750645
-    - 9.5571053
-    - 8.7641922
-    - 7.602157
-    - 7.1468616
-    - 6.400113
-    MNI305_z:
-    - -36.6371613
-    - -35.9389992
-    - -34.8055356
-    - -33.3568175
-    - -31.9256601
-    - -30.4769421
-    - -29.0457847
-    - -28.642727
-    - -27.2115696
-    - -26.8260725
-    - -24.3316941
-    - -22.5368264
     VertexNumber:
     - -1
     - -1
@@ -182,32 +208,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 1030
-    - 1030
-    - 1030
-    - 1030
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -248,6 +248,136 @@ localization_list:
     - 22
     - 23
     - 24
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - LA1
     - LA2
@@ -300,110 +430,6 @@ localization_list:
     - sEEG
     - sEEG
     - sEEG
-    Coord_x:
-    - -15.2776991
-    - -20.6375407
-    - -25.9895288
-    - -30.458009
-    - -34.7731344
-    - -40.3293144
-    - -44.7899412
-    - -50.1852293
-    - -55.5143088
-    - -60.8487967
-    - -66.4043906
-    - -70.7970279
-    Coord_y:
-    - 13.6098942
-    - 12.4669455
-    - 11.1340012
-    - 10.2166826
-    - 8.1996365
-    - 9.0148182
-    - 7.9075039
-    - 7.6936981
-    - 5.6207804
-    - 5.0047443
-    - 4.5358268
-    - 3.3651717
-    Coord_z:
-    - -10.9790182
-    - -10.9211395
-    - -10.8686212
-    - -10.7950679
-    - -10.6114109
-    - -9.8590034
-    - -9.7908105
-    - -9.8526955
-    - -9.6748701
-    - -9.6866187
-    - -9.3967129
-    - -9.6010137
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - -16.9188216
-    - -23.1799466
-    - -29.4413368
-    - -34.6596866
-    - -39.7559776
-    - -46.1538266
-    - -51.3724416
-    - -57.6275016
-    - -63.9001566
-    - -70.105212
-    - -76.5616905
-    - -81.702236
-    MNI305_y:
-    - 3.1045638
-    - 1.9110241
-    - 0.5044874
-    - -0.4445509
-    - -2.5918996
-    - -1.4264907
-    - -2.5885259
-    - -2.7775526
-    - -4.9764226
-    - -5.6012875
-    - -5.9830769
-    - -7.2856651
-    MNI305_z:
-    - -23.6518532
-    - -23.2487955
-    - -22.8191029
-    - -22.4602407
-    - -21.7881886
-    - -20.9237194
-    - -20.5382223
-    - -20.4328584
-    - -19.7316328
-    - -19.5005289
-    - -18.9434134
-    - -18.8610886
     VertexNumber:
     - -1
     - -1
@@ -417,32 +443,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 1012
-    - 1035
-    - 2
-    - 2
-    - 1030
-    - 1030
-    - 1030
-    - 1030
-    - 1015
-    - 1015
-    - 0
-    - 0
-    FSLabel:
-    - ctx-lh-lateralorbitofrontal
-    - ctx-lh-insula
-    - Left-Cerebral-White-Matter
-    - Left-Cerebral-White-Matter
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-middletemporal
-    - ctx-lh-middletemporal
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -483,6 +483,136 @@ localization_list:
     - 34
     - 35
     - 36
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - LB1
     - LB2
@@ -535,110 +665,6 @@ localization_list:
     - iEEG
     - iEEG
     - iEEG
-    Coord_x:
-    - -19.0186697
-    - -24.1140518
-    - -28.7169693
-    - -33.2453613
-    - -38.5421888
-    - -42.0046794
-    - -47.6377559
-    - -52.0783265
-    - -56.4016698
-    - -62.7676909
-    - -67.1942189
-    - -72.6883753
-    Coord_y:
-    - -5.508901
-    - -7.2110596
-    - -8.515406
-    - -8.9587662
-    - -11.4932389
-    - -13.3484246
-    - -12.4376643
-    - -14.3548658
-    - -16.8470259
-    - -17.4635101
-    - -18.5666735
-    - -18.8594051
-    Coord_z:
-    - -11.4245852
-    - -10.2800935
-    - -9.2461797
-    - -8.3972514
-    - -7.2988801
-    - -7.0506836
-    - -5.3377525
-    - -4.2200392
-    - -3.9877337
-    - -2.3221526
-    - -1.8464295
-    - -0.5610854
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - -22.1912762
-    - -28.1839671
-    - -33.5859213
-    - -38.8572915
-    - -45.1239307
-    - -49.2258787
-    - -55.716841
-    - -60.961986
-    - -66.091755
-    - -73.5062637
-    - -78.6889531
-    - -85.0747546
-    MNI305_y:
-    - -18.2505851
-    - -19.793923
-    - -20.9283332
-    - -21.152002
-    - -23.6313356
-    - -25.5923075
-    - -24.0755856
-    - -25.8730117
-    - -28.5368971
-    - -28.7238408
-    - -29.7781509
-    - -29.711671
-    MNI305_z:
-    - -20.7471559
-    - -19.0080405
-    - -17.4774686
-    - -16.3103725
-    - -14.4744472
-    - -13.7784974
-    - -11.8273965
-    - -10.0985453
-    - -9.2880258
-    - -7.107172
-    - -6.256042
-    - -4.5898275
     VertexNumber:
     - -1
     - -1
@@ -652,32 +678,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 17
-    - 17
-    - 17
-    - 2
-    - 2
-    - 1030
-    - 1030
-    - 1015
-    - 1015
-    - 1015
-    - 0
-    - 0
-    FSLabel:
-    - Left-Hippocampus
-    - Left-Hippocampus
-    - Left-Hippocampus
-    - Left-Cerebral-White-Matter
-    - Left-Cerebral-White-Matter
-    - ctx-lh-superiortemporal
-    - ctx-lh-superiortemporal
-    - ctx-lh-middletemporal
-    - ctx-lh-middletemporal
-    - ctx-lh-middletemporal
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -718,6 +718,136 @@ localization_list:
     - 46
     - 47
     - 48
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RI1
     - RI2
@@ -770,110 +900,6 @@ localization_list:
     - sEEG
     - sEEG
     - sEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -887,32 +913,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -953,6 +953,136 @@ localization_list:
     - 58
     - 59
     - 60
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RA1
     - RA2
@@ -1005,110 +1135,6 @@ localization_list:
     - iEEG
     - iEEG
     - iEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -1122,32 +1148,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -1188,6 +1188,136 @@ localization_list:
     - 70
     - 71
     - 72
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RB1
     - RB2
@@ -1240,110 +1370,6 @@ localization_list:
     - sEEG
     - sEEG
     - sEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -1357,32 +1383,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -1423,6 +1423,136 @@ localization_list:
     - 82
     - 83
     - 84
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RC1
     - RC2
@@ -1475,110 +1605,6 @@ localization_list:
     - iEEG
     - iEEG
     - iEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -1592,32 +1618,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -1658,6 +1658,136 @@ localization_list:
     - 94
     - 95
     - 96
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RD1
     - RD2
@@ -1710,110 +1840,6 @@ localization_list:
     - sEEG
     - sEEG
     - sEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -1827,32 +1853,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -1893,6 +1893,136 @@ localization_list:
     - 106
     - 107
     - 108
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    FSLabel:
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    - Unknown
+    MNI305_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    MNI305_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
     Label:
     - RQ1
     - RQ2
@@ -1945,110 +2075,6 @@ localization_list:
     - iEEG
     - iEEG
     - iEEG
-    Coord_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Coord_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    Radius:
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    - 1
-    SurfaceType:
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    - pial
-    MNI305_x:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_y:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    MNI305_z:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
     VertexNumber:
     - -1
     - -1
@@ -2062,32 +2088,6 @@ localization_list:
     - -1
     - -1
     - -1
-    FSIndex:
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    - 0
-    FSLabel:
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
-    - Unknown
     SurfaceElectrode:
     - no
     - no
@@ -2106,6 +2106,169 @@ localization_list:
     - LFP
     - LFP
     - LFP
+    - LFP
+    - LFP
+    - LFP
+    - LFP
+    - LFP
+    - LFP
+    - LFP
+    - LFP
+  RT.8.iEEG:
+    Electrode:
+    - 109
+    - 110
+    - 111
+    - 112
+    - 113
+    - 114
+    - 115
+    - 116
+    Coord_x:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_y:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Coord_z:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    Radius:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    SurfaceType:
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    - pial
+    FSIndex:
+    - 1024
+    - 2
+    - 2
+    - 2
+    - 1024
+    - 2
+    - 1024
+    - 1024
+    FSLabel:
+    - ctx-lh-precentral
+    - Left-Cerebral-White-Matter
+    - Left-Cerebral-White-Matter
+    - Left-Cerebral-White-Matter
+    - ctx-lh-precentral
+    - Left-Cerebral-White-Matter
+    - ctx-lh-precentral
+    - ctx-lh-precentral
+    MNI305_x:
+    - -61.9714785
+    - -59.8190891
+    - -57.6666996
+    - -55.5143102
+    - -53.3619208
+    - -51.2095313
+    - -49.0571419
+    - -46.9047526
+    MNI305_y:
+    - -2.5712418
+    - -1.5276634
+    - -0.4840849
+    - 0.5594935
+    - 1.603072
+    - 2.6466504
+    - 3.6902289
+    - 4.7338073
+    MNI305_z:
+    - 20.4104155
+    - 25.1745908
+    - 29.9387661
+    - 34.7029415
+    - 39.4671167
+    - 44.231292
+    - 48.9954674
+    - 53.7596427
+    Label:
+    - RT1
+    - RT2
+    - RT3
+    - RT4
+    - RT5
+    - RT6
+    - RT7
+    - RT8
+    LabelPrefix:
+    - RT
+    - RT
+    - RT
+    - RT
+    - RT
+    - RT
+    - RT
+    - RT
+    Dimension:
+    - 8
+    - 8
+    - 8
+    - 8
+    - 8
+    - 8
+    - 8
+    - 8
+    LocationType:
+    - iEEG
+    - iEEG
+    - iEEG
+    - iEEG
+    - iEEG
+    - iEEG
+    - iEEG
+    - iEEG
+    VertexNumber:
+    - -1
+    - -1
+    - -1
+    - -1
+    - -1
+    - -1
+    - -1
+    - -1
+    SurfaceElectrode:
+    - no
+    - no
+    - no
+    - no
+    - no
+    - no
+    - no
+    - no
+    SignalType:
     - LFP
     - LFP
     - LFP
@@ -2158,6 +2321,11 @@ localization_plan:
   '9':
     label: RQ
     dimension: '12'
+    type: iEEG
+    info: ~
+  '10':
+    label: RT
+    dimension: '8'
     type: iEEG
     info: ~
 path_ct_in_t1: '{subject$freesurfer_path}/../coregistration/ct_in_t1.nii.gz'

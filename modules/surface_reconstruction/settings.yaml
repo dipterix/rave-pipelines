@@ -3,8 +3,8 @@ dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20220720/bin/dcm2niix
 freesurfer_path: /Applications/freesurfer/7.3.2
 fsl_path: /usr/local/fsl
 params:
-  nii_t1: ''
-  nii_ct: ''
+  nii_t1: DICOM_SAG_MPRAGE_20220728090416_13.nii
+  nii_ct: ct_in_t1.nii.gz
   dcm2niix:
     merge: Auto
     float: 'Yes'
@@ -12,9 +12,9 @@ params:
   freesurfer:
     flag: -autorecon1
     fresh_start: no
-path_ct: 008
-path_mri: 008
-project_name: demo
+path_ct: CT/CT.nii.gz
+path_mri: MRI/DICOM_SAG_MPRAGE_20220728090416_13.nii
+project_name: devel
 skip_coregistration: no
 skip_recon: no
-subject_code: DemoSubject
+subject_code: PAV006

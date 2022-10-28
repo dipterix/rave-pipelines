@@ -1,12 +1,9 @@
 analysis_block: block006
 analysis_electrodes: 1-116
 analysis_time:
-- 261.4143719
-- 263.7767911
-block:
-- block006
-- block007
-- block008
+- 222.1877056
+- 229.8033456
+block: block006
 filter_bandpass:
   enabled: no
 filter_notch:
