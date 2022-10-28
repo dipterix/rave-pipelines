@@ -65,7 +65,7 @@ loader_server <- function(input, output, session, ...){
       pipeline$set_settings(.list = settings)
 
       res <- pipeline$run(
-        names = c("notch_filtered_electrodes", "sample_rates"),
+        names = c("notch_filtered_electrodes", "sample_rates", "subject"),
         as_promise = TRUE
       )
 
