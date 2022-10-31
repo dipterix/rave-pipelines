@@ -4,11 +4,9 @@ import_blocks__session_block:
 - 008
 - '010'
 import_channels__electrode_file: auto
-import_channels__electrodes: '14'
+import_channels__electrodes: 13-16,24
 import_channels__sample_rate: 2000
 import_channels__unit: NA
 import_setup__project_name: devel
 import_setup__subject_code: DemoSubject
-skip_validation:
-  value: no
-  time: 2022-10-30 22:14:38
+skip_validation: yes

@@ -472,7 +472,7 @@ module_server <- function(input, output, session, ...){
         },
         onRejected = function(e){
           dipsaus::close_alert2()
-          error_notification(e)
+          ravedash::error_notification(e)
         }
       ))
 

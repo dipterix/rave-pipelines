@@ -36,7 +36,7 @@ lapply(
 list2env(as.list(.settings), envir = environment())
 ```
 
-```{rave load_subject, language = "R", export = "subject", cue = "always"}
+```{rave load_subject, language = "R", export = "subject", cue = "always", format = "rave-subject"}
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code, 
@@ -110,7 +110,7 @@ dipsaus::lapply_async2(
       ))
     }
     for(block in blocks){
-      cat(block, e, "\n")
+      # cat(block, e, "\n")
       signal <- raveio::load_h5(h5_path, sprintf("raw/%s", block), ram = TRUE)
       signal <- ravetools::notch_filter(s = signal, sample_rate = srate, lb = filters$lb, ub = filters$ub, domain = filters$domain)
       raveio::save_h5(x = signal, file = h5_path, name = sprintf("notch/%s", block), chunk = 1024, replace = TRUE, ctype = "numeric")
@@ -162,11 +162,12 @@ if(!length(foreground) == 1) {
 
 
 if(length(params$path) == 1) {
-  
-  grDevices::pdf(file = params$path, width = 12, height = 7, onefile = TRUE, bg = background, fg = foreground, useDingbats = FALSE)
+  grDevices::pdf(file = params$path, width = 12, height = 7, onefile = TRUE, bg = background, fg =  foreground,useDingbats = FALSE)
+   
   on.exit({
     grDevices::dev.off()
   }, add = TRUE)
+  
 }
 
 winlen <- as.numeric(params$window_length)

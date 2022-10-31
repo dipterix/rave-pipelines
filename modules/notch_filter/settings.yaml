@@ -1,5 +1,6 @@
+background: '#ffffff'
 diagnostic_plot_params:
-  path: /var/folders/d7/xvwd68xd12bfpx38nb32w6b80000gp/T//RtmpCReNDV/filea4755b204c13.pdf
+  path: /var/folders/bs/n0q8wqv931g89ppshhgp2m2m0000gn/T//RtmpPoysNZ/file29594ccf28a7.pdf
   window_length: 4000
   max_frequency: 300
   histogram_bins: 60
@@ -16,4 +17,4 @@ notch_filter_upperbound:
 - 122.0
 - 182.0
 project_name: devel
-subject_code: PAV005
+subject_code: DemoSubject

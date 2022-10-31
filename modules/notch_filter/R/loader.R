@@ -90,6 +90,7 @@ loader_server <- function(input, output, session, ...){
           dipsaus::close_alert2()
 
           # Immediately open a new alert showing the error messages
+          e <- ravedash::logger_error_condition(e)
           dipsaus::shiny_alert2(
             title = "Errors",
             text = paste(
