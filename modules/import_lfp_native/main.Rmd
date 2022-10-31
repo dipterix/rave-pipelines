@@ -19,7 +19,7 @@ if(FALSE){
 }
 ```
 
-```{rave obtain_subject_instance, language = "R", export = "subject"}
+```{rave obtain_subject_instance, language = "R", export = "subject", format = "rave-subject"}
 # raveio::pipeline_debug(quick = FALSE)
 subject_id <- sprintf("%s/%s",
                       import_setup__project_name,
@@ -59,7 +59,7 @@ if(!is.numeric(format)) {
   format <- which(startsWith(names(raveio::IMPORT_FORMATS), trimws(format)))
 }
 
-if(skip_validation) {
+if(isTRUE(skip_validation)) {
   ravedash::logger("`skip_validation` is on.", level = "warn")
   validation_result <- TRUE
 } else {
@@ -76,8 +76,8 @@ if(skip_validation) {
       items <- reasons[[ii]]
       paste0(ii, ' - ', nm, '\n', paste0('    ', items, collapse = '\n'))
     })
-    stop('The following issues found when importing subject ',
-         sQuote(subject$subject_code), ' into project ', sQuote(subject$project_name),
+    stop('The following issues found when validating subject ',
+         sQuote(subject$subject_code), ' in project ', sQuote(subject$project_name),
          '.\n', msg, call. = bquote(raveio::validate_raw_file(
       subject_code = .(subject$subject_code),
       blocks = .(blocks), electrodes = .(electrodes),
@@ -88,7 +88,7 @@ if(skip_validation) {
 
 ```
 
-```{rave check_import_signals, language = "R", export = "preprocess_info", cue = "always"}
+```{rave check_import_signals, language = "R", export = "preprocess_info", cue = "always", format = "rave-subject"}
 
 force(validation_result)
 
