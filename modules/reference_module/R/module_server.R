@@ -1782,12 +1782,7 @@ module_server <- function(input, output, session, ...){
     subject <- ginfo$subject
     brain <- raveio::rave_brain(subject = subject)
 
-    shiny::validate(
-      shiny::need(
-        !is.null(brain),
-        message = ""
-      )
-    )
+    shiny::validate(shiny::need(!is.null(brain), message = "No 3D brain available"))
 
     value <- rep("Others", length(subject$electrodes))
 

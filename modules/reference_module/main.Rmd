@@ -19,13 +19,11 @@ if(FALSE){
 
 
 
-```{rave load_subject, language = "R", export = "subject", cue = "always"}
-library(raveio)
-subject <- RAVESubject$new(
+```{rave load_subject, language = "R", export = "subject", cue = "always", format = "rave-subject"}
+subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
 )
-print(subject)
 ```
 
 Loads preset reference table, and generate a reference file called `_unsaved`. The reference table will be saved to this file before exported.
@@ -100,10 +98,6 @@ if(isTRUE(reference_name %in% subject$reference_names)) {
 unsaved_meta <- file.path(subject$meta_path, "reference__unsaved.csv")
 utils::write.csv(reference_table_initial, unsaved_meta)
 
-```
-
-```{rave load_3D_brain, language = "R", export = "brain", cue = "always"}
-brain <- raveio::rave_brain(subject = subject)
 ```
 
 ```{rave load_voltage_data, language = "R", export = "voltage_data", cue = "always"}
