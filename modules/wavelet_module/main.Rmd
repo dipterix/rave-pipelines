@@ -17,7 +17,7 @@ if(FALSE){
 
 ```
 
-```{rave load_subject, language = "R", export = "subject", cue = "always"}
+```{rave load_subject, language = "R", export = "subject", cue = "always", format = "rave-subject"}
 
 # check if project and subject are valid
 stopifnot(grepl("^[a-zA-Z0-9_]{1,}$", project_name))
