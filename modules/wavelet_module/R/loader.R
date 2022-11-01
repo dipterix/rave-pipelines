@@ -53,12 +53,19 @@ loader_server <- function(input, output, session, ...){
   shiny::bindEvent(
     ravedash::safe_observe({
       # gather information from preset UIs
-      settings <- component_container$collect_settings(
-        ids = c(
-          "loader_project_name",
-          "loader_subject_code"
+      settings <- tryCatch({
+        component_container$collect_settings(
+          ids = c(
+            "loader_project_name",
+            "loader_subject_code"
+          )
         )
-      )
+      }, error = function(e) {
+        ravedash::error_alert("Please check your inputs and make sure the Notch filters have been applied.")
+        class(e) <- c("rave_muffled", class(e))
+        stop(e)
+      })
+
       # TODO: add your own input values to the settings file
 
       # Save the variables into pipeline settings file
@@ -90,22 +97,7 @@ loader_server <- function(input, output, session, ...){
 
 
         # this is what should happen when pipeline fails
-        onRejected = function(e){
-
-          dipsaus::close_alert2()
-
-          # Immediately open a new alert showing the error messages
-          dipsaus::shiny_alert2(
-            title = "Errors",
-            text = paste(
-              "Found an error while trying to gather subject information:\n\n",
-              paste(e$message, collapse = "\n")
-            ),
-            icon = "error",
-            danger_mode = TRUE,
-            auto_close = FALSE
-          )
-        }
+        onRejected = ravedash::error_alert
       )
     }),
     input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE
