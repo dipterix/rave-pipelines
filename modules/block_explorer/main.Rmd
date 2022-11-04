@@ -41,7 +41,7 @@ list2env(as.list(.settings), envir = environment())
 #### Step 1: Create `RAVE` subject's instances
 
 
-```{rave load_subject, language = "R", export = "subject"}
+```{rave load_subject, language = "R", export = "subject", format = "rave-subject"}
 subject <- RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code
