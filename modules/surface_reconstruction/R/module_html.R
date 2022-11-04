@@ -154,11 +154,19 @@ module_html <- function(){
                 shiny::fluidRow(
 
                   shiny::column(
+                    width = 12L,
+                    shiny::plotOutput(
+                      outputId = ns("mri_preview"),
+                      height = "300px"
+                    )
+                  ),
+
+                  shiny::column(
                     width = 7L,
                     shiny::div(
                       shiny::selectInput(
                         inputId = ns("param_fs_infile"),
-                        label = "MRI file",
+                        label = "MRI file (select one with the best quality)",
                         choices = character(0L)
                       ),
                       shiny::actionLink(
