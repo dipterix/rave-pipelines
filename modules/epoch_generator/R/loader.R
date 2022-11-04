@@ -57,7 +57,13 @@ loader_server <- function(input, output, session, ...){
           "loader_subject_code"
         )
       )
-      # TODO: add your own input values to the settings file
+
+      subject <- raveio::RAVESubject$new(project_name = settings$project_name,
+                                         subject_code = settings$subject_code,
+                                         strict = FALSE)
+      if(!length(subject$blocks)) {
+        stop("The subject has no session blocks. Please import signals first")
+      }
 
       # Save the variables into pipeline settings file
       pipeline$set_settings(.list = settings)
@@ -71,7 +77,7 @@ loader_server <- function(input, output, session, ...){
         project_name = settings$project_name,
         subject_code = settings$subject_code
       )
-    }),
+    }, error_wrapper = "alert"),
     input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE
   )
 

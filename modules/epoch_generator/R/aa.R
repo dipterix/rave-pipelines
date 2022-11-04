@@ -36,7 +36,7 @@ check_data_loaded <- function(first_time = FALSE){
                                       strict = FALSE)
 
   # If not imported at all, then returns FALSE
-  if(any(subject$preprocess_settings$data_imported)) {
+  if(length(subject$blocks)) {
     ravedash::fire_rave_event('loader_message', subject$subject_id)
     return(TRUE)
   }
