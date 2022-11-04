@@ -31,14 +31,12 @@ fslut <- list(
 )
 ```
 
-```{rave load_subject, language = "R", export = "subject"}
+```{rave load_subject, language = "R", export = "subject", format = "rave-subject"}
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code,
   strict = FALSE
 )
-print(subject)
-print(subject$freesurfer_path)
 ```
 
 
