@@ -221,7 +221,7 @@ loader_server <- function(input, output, session, ...){
               shiny::tags$li(shiny::strong("dcm2niix"), ": ", paste(cmd_tools$dcm2niix, collapse = "")),
               shiny::tags$li(shiny::strong("FreeSurfer"), ": ", paste(cmd_tools$freesurfer, collapse = "")),
               shiny::tags$li(shiny::strong("FSL-flirt"), ": ", paste(cmd_tools$flirt, collapse = "")),
-              shiny::tags$li(shiny::strong("AFNI-3dAllineate"), ": ", paste(cmd_tools$afni_3dallineate, collapse = ""))
+              shiny::tags$li(shiny::strong("AFNI"), ": ", paste(cmd_tools$afni, collapse = ""))
             )
           )
 
