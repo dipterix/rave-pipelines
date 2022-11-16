@@ -7,6 +7,9 @@
 NULL
 
 # Set pipeline options
+library(raveio)
+library(ravedash)
+
 targets::tar_option_set(
 
   # R libraries to load
