@@ -337,6 +337,10 @@ module_server <- function(input, output, session, ...){
 
     export_type <- input$export_type
     export_electrode <- dipsaus::parse_svec(input$export_electrode)
+    export_electrode <- export_electrode[export_electrode %in% subject$electrodes]
+    if(!length(export_electrode)) {
+      export_electrode <- subject$electrodes
+    }
     export_epoch <- input$export_epoch
     export_reference <- input$export_reference
     export_window <- c(input$export_pre, input$export_post)
