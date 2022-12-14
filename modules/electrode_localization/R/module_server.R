@@ -318,7 +318,7 @@ module_server <- function(input, output, session, ...){
       #   subject_name = subject$subject_code
       # )
 
-      ct_in_t1 <- pipeline$read("ct_in_t1")
+      localize_data <- pipeline$read("localize_data")
 
       control_presets <- c("localization", "animation", "display_highlights")
       controllers <- list()
@@ -343,16 +343,18 @@ module_server <- function(input, output, session, ...){
         dipsaus::close_alert2()
       }, add = TRUE)
 
-      if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-        class(ct_in_t1) <- "threeBrain.nii"
-        viewer <- brain$localize(
-          ct_in_t1, show_modal = FALSE,
-          controllers = controllers)
-      } else {
-        viewer <- brain$localize(
-          show_modal = FALSE,
-          controllers = controllers)
+      if(!is.null(localize_data$ct_data) && is.list(localize_data$ct_data)) {
+        class(localize_data$ct_data) <- "threeBrain.nii"
       }
+
+      viewer <- brain$localize(
+        ct_path = localize_data$ct_data,
+        transform_space = localize_data$transform_space,
+        transform_matrix = localize_data$transform_matrix,
+        mri_path = localize_data$mri_path,
+        show_modal = FALSE,
+        controllers = controllers
+      )
 
       viewer
     })

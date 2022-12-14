@@ -4,7 +4,7 @@ freesurfer_path: /Applications/freesurfer/7.3.2
 fsl_path: /usr/local/fsl
 params:
   nii_t1: DICOM_SAG_MPRAGE_20220728090416_13.nii
-  nii_ct: ct_in_t1.nii.gz
+  nii_ct: POST_IMPLANT_CT_1_STEALTH_20220824232445_2.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
@@ -12,8 +12,8 @@ params:
   freesurfer:
     flag: -autorecon1
     fresh_start: no
-path_ct: CT/CT.nii.gz
-path_mri: MRI/DICOM_SAG_MPRAGE_20220728090416_13.nii
+path_ct: post-CT
+path_mri: pre-MRI
 project_name: devel
 skip_coregistration: no
 skip_recon: no

@@ -29,48 +29,71 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
             )
           ),
           ravedash::flex_group_box(
-            title = "Locate the CT aligned to T1",
+            title = "Data to load",
+
+            shidashi::flex_item(
+              shiny::selectInput(
+                inputId = ns("loader_method"),
+                label = "Localization method",
+                choices = c(
+                  "Re-sampled CT",
+                  "FSL transform + Raw CT + MRI",
+                  "Localize without CT"
+                )
+              )
+            ),
+
+            shidashi::flex_break(),
 
             shiny::conditionalPanel(
-              condition = sprintf("input['%s']!==true", ns("loader_ct_skip")),
+              condition = sprintf("input['%s']!=='Localize without CT'", ns("loader_method")),
               class = "padding-5",
               style = "flex:1; ",
+
+              shidashi::flex_container(
+                shidashi::flex_item(
+                  shiny::selectInput(
+                    inputId = ns("loader_ct_fname"),
+                    label = "Choose CT",
+                    choices = character(0L)
+                  )
+                ),
+                shidashi::flex_item(
+                  shiny::fileInput(
+                    inputId = ns("loader_ct_upload"),
+                    label = "Upload .nii file", multiple = FALSE,
+                    accept = c(".nii", ".gz")
+                  )
+                )
+              ),
+              shiny::conditionalPanel(
+                condition = sprintf("input['%s']!=='Re-sampled CT'", ns("loader_method")),
+
+                shidashi::flex_container(
+                  shidashi::flex_item(
+                    shiny::selectInput(
+                      inputId = ns("loader_mri_fname"),
+                      label = "Choose raw MRI",
+                      choices = character(0L)
+                    )
+                  ),
+                  shidashi::flex_item(
+                    shiny::selectInput(
+                      inputId = ns("loader_transform_fname"),
+                      label = "Transform matrix",
+                      choices = character(0L)
+                    )
+                  )
+                )
+
+              ),
 
               shiny::div(
                 class = "float-right",
                 shiny::actionLink(ns("loader_ct_refresh"), "Refresh file list")
-              ),
-              shiny::selectInput(
-                inputId = ns("loader_ct_fname"),
-                label = "Choose CT",
-                choices = character(0L)
               )
-            ),
-            shiny::conditionalPanel(
-              condition = sprintf("input['%s']!==true", ns("loader_ct_skip")),
-              class = "flex-break",
-              " "
-            ),
-            shiny::conditionalPanel(
-              condition = sprintf("input['%s']==='[Upload]' && input['%s']!==true",
-                                  ns("loader_ct_fname"), ns("loader_ct_skip")),
-              class = "padding-5",
-              style = "flex:1; ",
-              shiny::fileInput(
-                inputId = ns("loader_ct_upload"),
-                label = "Upload CT in Nifti format", multiple = FALSE,
-                accept = c(".nii", ".gz")
-              )
-            ),
-            shidashi::flex_break(),
-            shidashi::flex_item(
-              shiny::checkboxInput(
-                inputId = ns("loader_ct_skip"),
-                label = "Do not localize with CT",
-                value = FALSE
-              )
-            )
 
+            )
           )
 
 
@@ -173,7 +196,7 @@ loader_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = FALSE
   )
 
-  refresh_ct_chocies <- function(value = NULL){
+  refresh_ct_chocies <- function(value_ct = NULL, value_mri = NULL, value_transform = NULL){
     project_name <- loader_project$get_sub_element_input()
     subject_code <- loader_subject$get_sub_element_input()
 
@@ -181,6 +204,14 @@ loader_server <- function(input, output, session, ...){
        is.na(project_name) || is.na(subject_code) || project_name == '' || subject_code == '') {
       shiny::updateSelectInput(
         session = session, inputId = "loader_ct_fname",
+        choices = character(0L)
+      )
+      shiny::updateSelectInput(
+        session = session, inputId = "loader_mri_fname",
+        choices = character(0L)
+      )
+      shiny::updateSelectInput(
+        session = session, inputId = "loader_transform_fname",
         choices = character(0L)
       )
     }
@@ -194,33 +225,56 @@ loader_server <- function(input, output, session, ...){
         session = session, inputId = "loader_ct_fname",
         choices = character(0L)
       )
+      shiny::updateSelectInput(
+        session = session, inputId = "loader_mri_fname",
+        choices = character(0L)
+      )
+      shiny::updateSelectInput(
+        session = session, inputId = "loader_transform_fname",
+        choices = character(0L)
+      )
     }
 
-    f1 <- list.files(file.path(fs_path, "coregistration"), pattern = "nii(?:\\.gz)?$",
+    nifti_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "nii(?:\\.gz)?$",
                      recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
                      full.names = FALSE, all.files = FALSE)
-    f2 <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "nii(?:\\.gz)?$",
-                     recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
-                     full.names = FALSE, all.files = FALSE)
-    files <- c(f1, f2)
-    files[duplicated(files)] <- sprintf("%s (2)", files[duplicated(files)])
-
-    files <- c(files, "[Upload]")
-
-    selected <- subject$get_default(
-      "ct_path", default_if_missing = shiny::isolate(input$loader_ct_fname),
+    transform_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "(mat|txt)$",
+                             recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
+                             full.names = FALSE, all.files = FALSE)
+    selected_ct <- subject$get_default(
+      "path_ct", default_if_missing = shiny::isolate(input$loader_ct_fname),
       namespace = "electrode_localization")
-    if(length(selected) == 1) {
-      selected <- basename(selected)
+    if(length(selected_ct) == 1) {
+      selected_ct <- basename(selected_ct)
     }
-    selected <- c(value, selected) %OF% files
-    if(selected == "[Upload]") {
-      selected <- files[[1]]
-    }
-
+    selected_ct <- c(value_ct, selected_ct) %OF% nifti_files
     shiny::updateSelectInput(
-      session = session, inputId = "loader_ct_fname", choices = files,
-      selected = selected
+      session = session, inputId = "loader_ct_fname", choices = nifti_files,
+      selected = selected_ct
+    )
+
+    selected_mri <- subject$get_default(
+      "path_mri", default_if_missing = shiny::isolate(input$loader_mri_fname),
+      namespace = "electrode_localization")
+    if(length(selected_mri) == 1) {
+      selected_mri <- basename(selected_mri)
+    }
+    selected_mri <- c(value_mri, selected_mri) %OF% nifti_files
+    shiny::updateSelectInput(
+      session = session, inputId = "loader_mri_fname", choices = nifti_files,
+      selected = selected_mri
+    )
+
+    selected_transform <- subject$get_default(
+      "path_transform", default_if_missing = shiny::isolate(input$loader_transform_fname),
+      namespace = "electrode_localization")
+    if(length(selected_transform) == 1) {
+      selected_transform <- basename(selected_transform)
+    }
+    selected_transform <- c(value_transform, selected_transform) %OF% transform_files
+    shiny::updateSelectInput(
+      session = session, inputId = "loader_transform_fname", choices = transform_files,
+      selected = selected_transform
     )
 
     electrode_file <- file.path(subject$meta_path, c("electrodes_unsaved.csv", "electrodes.csv"))
@@ -334,7 +388,7 @@ loader_server <- function(input, output, session, ...){
 
       if(!loader_project$sv$is_valid() || !loader_subject$sv$is_valid()) {
         loading_error("Invalid project/subject. Please specify a valid subject first before uploading CT.")
-        refresh_ct_chocies(NULL)
+        refresh_ct_chocies()
         return()
       }
       project_name <- loader_project$get_sub_element_input()
@@ -345,7 +399,7 @@ loader_server <- function(input, output, session, ...){
       fs_path <- subject$freesurfer_path
       if(length(fs_path) == 0 || is.na(fs_path) || !dir.exists(fs_path)) {
         loading_error("Cannot find surface/volume reconstruction directory. Please at least run FreeSurfer autorecon1 (only ~10 min)")
-        refresh_ct_chocies(NULL)
+        refresh_ct_chocies()
         return()
       }
 
@@ -365,7 +419,7 @@ loader_server <- function(input, output, session, ...){
         file.copy(finfo$datapath, file.path(pdir, fname), overwrite = TRUE, recursive = FALSE)
       }
 
-      refresh_ct_chocies(fname)
+      refresh_ct_chocies()
     }),
     input$loader_ct_upload,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -373,7 +427,7 @@ loader_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      refresh_ct_chocies(NULL)
+      refresh_ct_chocies()
     }),
     loader_project$get_sub_element_input(),
     loader_subject$get_sub_element_input(),
@@ -424,42 +478,46 @@ loader_server <- function(input, output, session, ...){
         return()
       }
 
-      if(isTRUE(input$loader_ct_skip)) {
-        rpath <- NULL
-      } else {
-        fname <- input$loader_ct_fname
-        if(length(fname) != 1 || is.na(fname) || fname == "" || fname == "[Upload]") {
-          loading_error("Invalid CT file. Please specify or upload your own.")
-          return()
+      check_path <- function(fname, type) {
+        if(length(fname) != 1 || is.na(fname) || fname == "") {
+          loading_error(sprintf("Invalid %s file. Please specify or upload your own.", type))
+          return(NULL)
         }
-        if(endsWith(fname, " (2))")) {
-          fname <- substr(fname, 1L, nchar(fname) - 4)
-          fpath <- file.path(fs_path, "..", "coregistration", fname)
-          rpath <- file.path("{subject$freesurfer_path}", "..", "coregistration", fname)
-        } else {
-          fpath <- c(
-            file.path(fs_path, "coregistration", fname),
-            file.path(fs_path, "..", "coregistration", fname)
-          )
-          rpath <- c(
-            file.path("{subject$freesurfer_path}", "coregistration", fname),
-            file.path("{subject$freesurfer_path}", "..", "coregistration", fname)
-          )
+        fpath <- file.path(fs_path, "..", "coregistration", fname)
+        if(!file.exists(fpath)) {
+          loading_error(sprintf("Invalid %s path. Please check or upload your own.", type))
+          return(NULL)
         }
-        sel <- file.exists(fpath)
-        fpath <- fpath[sel]
-        rpath <- rpath[sel]
-        if(!length(fpath)) {
-          loading_error(sprintf("Cannot find file [%s]", fname))
-          return()
-        }
-        fpath <- normalizePath(fpath[[1]])
-        rpath <- rpath[[1]]
+        file.path("{subject$freesurfer_path}", "..", "coregistration", fname)
       }
+
+      path_ct <- NULL
+      path_mri <- NULL
+      path_transform <- NULL
+      transform_space <- "resampled"
+      switch(
+        paste(input$loader_method),
+        "Re-sampled CT" = {
+          path_ct <- check_path(input$loader_ct_fname, "CT")
+          if(is.null(path_ct)) { return() }
+        },
+        "FSL transform + Raw CT + MRI" = {
+          path_ct <- check_path(input$loader_ct_fname, "CT")
+          if(is.null(path_ct)) { return() }
+          path_mri <- check_path(input$loader_mri_fname, "MRI")
+          if(is.null(path_mri)) { return() }
+          path_transform <- check_path(input$loader_transform_fname, "transform matrix")
+          if(is.null(path_transform)) { return() }
+          transform_space <- "fsl"
+        }
+      )
 
       # Save the variables into pipeline settings file
       pipeline$set_settings(
-        path_ct_in_t1 = rpath,
+        path_ct = path_ct,
+        path_mri = path_mri,
+        path_transform = path_transform,
+        transform_space = transform_space,
         localization_plan = input$loader_plan,
         .list = settings
       )
@@ -473,7 +531,7 @@ loader_server <- function(input, output, session, ...){
 
       res <- pipeline$run(
         as_promise = TRUE,
-        names = c("plan_list", "brain", "ct_in_t1", "ct_exists", "fslut"),
+        names = c("plan_list", "brain", "localize_data", "ct_exists", "fslut"),
         type = "vanilla",
         scheduler = "none",
         check_interval = 1,

@@ -610,6 +610,68 @@ module_server <- function(input, output, session, ...){
   }), priority = 1L, millis = 300)
 
 
+  output$ct_preview <- shiny::renderPlot({
+    loaded_flag <- ravedash::watch_data_loaded()
+    if(!loaded_flag){ return() }
+    subject <- pipeline$read("subject")
+
+    params <- input_params()
+    nii_ct <- params$nii_ct
+    path <- file.path(subject$preprocess_settings$raw_path,
+                      "rave-imaging", "inputs", "CT", nii_ct)
+    has_path <- FALSE
+    nii <- NULL
+    if(length(path) == 1 && !is.na(path) && file.exists(path)) {
+      try({
+        nii <- threeBrain:::read_nii2(path)
+        has_path <- TRUE
+      }, silent = TRUE)
+    }
+    shiny::validate(shiny::need(has_path, message = "No valid CT file selected"))
+
+    data <- nii$get_data()
+    voxel_size <- nii$get_voxel_size()
+    shape <- dim(data)
+    ijk <- round(shape / 2)
+    ijk[ijk <= 0] <- 1
+
+    idx1 <- seq_len(shape[[1]]) * voxel_size[[1]]
+    idx1 <- idx1 - mean(idx1)
+    idx2 <- seq_len(shape[[2]]) * voxel_size[[2]]
+    idx2 <- idx2 - mean(idx2)
+    idx3 <- seq_len(shape[[3]]) * voxel_size[[3]]
+    idx3 <- idx3 - mean(idx3)
+    canvas_lim <- max(abs(c(idx1,idx2,idx3))) * c(-1, 1)
+
+    old_par <- par(c("mfrow", "mar", "bg", "fg"))
+    on.exit({
+      do.call(par, old_par)
+    })
+    layout(matrix(c(4,4,4,1,2,3), nrow = 2, byrow = TRUE),
+           heights = c(lcm(1.5), 1))
+    par(mar = c(0,0,0,0), bg = "black", fg = "white")
+    image(z = as.matrix(data[ijk[1], , ]), x = idx2, y = idx3,
+          useRaster = TRUE, asp = 1, col = gray_colors,
+          axes = FALSE, xlab = "", ylab = "",
+          xlim = canvas_lim, ylim = canvas_lim)
+    image(z = as.matrix(data[, ijk[2], ]), x = idx1, y = idx3,
+          useRaster = TRUE, asp = 1, col = gray_colors,
+          axes = FALSE, xlab = "", ylab = "",
+          xlim = canvas_lim, ylim = canvas_lim)
+    image(z = as.matrix(data[, , ijk[3]]), x = idx1, y = idx2,
+          useRaster = TRUE, asp = 1, col = gray_colors,
+          axes = FALSE, xlab = "", ylab = "",
+          xlim = canvas_lim, ylim = canvas_lim)
+    plot.new()
+    legend("center",
+           sprintf(
+             "Slices: %s, Voxel sizes: %s",
+             paste(shape, collapse = "x"),
+             paste(sprintf("%.2f", voxel_size), collapse = ", ")
+           ), bty = "n", cex = 2)
+  })
+
+
   output$mri_preview <- shiny::renderPlot({
     loaded_flag <- ravedash::watch_data_loaded()
     if(!loaded_flag){ return() }

@@ -177,44 +177,84 @@ brain <- threeBrain::freesurfer_brain2(
 ```
 
 
-```{rave Loading_brain_and_CT_if_exists, language = "R", export = "ct_in_t1"}
+```{rave Loading_brain_and_CT_if_exists, language = "R", export = "localize_data"}
 force(subject)
+
+resolve_path <- function(path) {
+  if(length(path) != 1) {
+    stop("Cannot resolve path: ", paste(format(path), collapse = "\n"))
+  }
+  if(startsWith(path, "{")) {
+    s <- strsplit(path, "/|\\\\")[[1]]
+    s[[1]] <- raveio::glue(s[[1]])
+    s <- do.call(file.path, as.list(s))
+    path <- normalizePath(s, mustWork = TRUE)
+  } else {
+    path <- normalizePath(path, mustWork = TRUE)
+  }
+  path
+}
 
 has_ct <- FALSE
 ct_path <- character(0L)
-if(length(path_ct_in_t1)) {
-  if(startsWith(path_ct_in_t1, "{")) {
-    s <- strsplit(path_ct_in_t1, "/|\\\\")[[1]]
-    s[[1]] <- raveio::glue(s[[1]])
-    s <- do.call(file.path, as.list(s))
-    ct_path <- normalizePath(s, mustWork = TRUE)
-  } else {
-    ct_path <- normalizePath(path_ct_in_t1, mustWork = TRUE)
-  }
+mri_path <- character(0L)
+mri_data <- NULL
+transform_matrix <- NULL
+if(length(path_ct)) {
+  ct_path <- resolve_path(path_ct)
   has_ct <- TRUE
-}
-
-
-if(has_ct) {
-  subject$set_default("ct_path", path_ct_in_t1, namespace = "electrode_localization")
-  ct_in_t1 <- threeBrain:::read_nii2(ct_path)
+  subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
+  ct_data <- threeBrain:::read_nii2(ct_path)
+  
+  # check if method is MRI
+  if(identical(tolower(transform_space), "fsl")) {
+    transform_space <- "fsl"
+    mri_path <- resolve_path(path_mri)
+    subject$set_default("path_mri", path_mri, namespace = "electrode_localization")
+    mri_data <- threeBrain:::read_nii2(mri_path, head_only = TRUE)
+    
+    transform_matrix <- as.matrix(read.table(resolve_path(path_transform)))
+    dimnames(transform_matrix) <- NULL
+    
+    if(length(transform_matrix) != 16L || !is.numeric(transform_matrix)) {
+      stop("Invalid transform matrix. Must be a 4x4 matrix.")
+    }
+    subject$set_default("path_transform", path_transform, namespace = "electrode_localization")
+    
+    
+  } else {
+    transform_space <- "resampled"
+  }
+  
 } else {
-  subject$set_default("ct_path", NULL, namespace = "electrode_localization")
-  ct_in_t1 <- NA
+  subject$set_default("path_ct", NULL, namespace = "electrode_localization")
+  ct_data <- NULL
+  transform_space <- "resampled"
 }
+
+localize_data <- list(
+  transform_space = transform_space,
+  ct_data = ct_data,
+  ct_path = ct_path,
+  mri_path = mri_path,
+  mri_data = mri_data,
+  transform_matrix = transform_matrix
+)
 ```
 
 ```{rave generate_indicator, language = "R", export = "ct_exists"}
-ct_exists <- isTRUE(!is.null(ct_in_t1) && is.list(ct_in_t1))
+ct_exists <- isTRUE(!is.null(localize_data$ct_data) && is.list(localize_data$ct_data))
 ```
 
 ```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always"}
 
-if(!is.null(ct_in_t1) && is.list(ct_in_t1)) {
-  viewer <- brain$localize(coregistered_ct = ct_in_t1)
-} else {
-  viewer <- brain$localize()
-}
+force(ct_exists)
+viewer <- brain$localize(
+  ct_path = localize_data$ct_data, 
+  transform_space = localize_data$transform_space,
+  transform_matrix = localize_data$transform_matrix,
+  mri_path = localize_data$mri_path
+)
 
 # If running in interactive mode
 if(interactive()) {

@@ -232,6 +232,14 @@ module_html <- function(){
                 shiny::fluidRow(
 
                   shiny::column(
+                    width = 12L,
+                    shiny::plotOutput(
+                      outputId = ns("ct_preview"),
+                      height = "300px"
+                    )
+                  ),
+
+                  shiny::column(
                     width = 7L,
                     shiny::div(
                       shiny::selectInput(
