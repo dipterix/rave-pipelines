@@ -608,7 +608,6 @@ module_server <- function(input, output, session, ...){
       label <- input$fsindex_label
       group_table <- local_data$plan_list[[group_id]]
       # if(!is.data.frame(group_table)) { return() }
-      print(label)
       if(isTRUE(label %in% component_container$data$fslut$labels)) {
         # change label
         # if(nrow(group_table) < ridx) { return() }

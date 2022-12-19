@@ -20,25 +20,31 @@ rm(._._env_._.)
     }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
         quote({
             settings[["subject_code"]]
-        }), deps = "settings"), input_localization_list = targets::tar_target_raw("localization_list", 
-        quote({
-            settings[["localization_list"]]
-        }), deps = "settings"), input_localization_plan = targets::tar_target_raw("localization_plan", 
-        quote({
-            settings[["localization_plan"]]
         }), deps = "settings"), input_path_mri = targets::tar_target_raw("path_mri", 
         quote({
             settings[["path_mri"]]
+        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
+        quote({
+            settings[["project_name"]]
         }), deps = "settings"), input_path_transform = targets::tar_target_raw("path_transform", 
         quote({
             settings[["path_transform"]]
         }), deps = "settings"), input_transform_space = targets::tar_target_raw("transform_space", 
         quote({
             settings[["transform_space"]]
-        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
+        }), deps = "settings"), `__extern_path_localization_list` = targets::tar_target_raw("settings_path._localization_list_", 
+        "./data/localization_list.json", format = "file"), input_localization_list = targets::tar_target_raw("localization_list", 
         quote({
-            settings[["project_name"]]
-        }), deps = "settings"), load_FreeSurfer_LUT = targets::tar_target_raw(name = "fslut", 
+            asNamespace("raveio")$pipeline_load_extdata(name = "localization_list", 
+                format = "json", error_if_missing = FALSE, default_if_missing = structure(list(), 
+                  class = "key_missing"), pipe_dir = ".")
+        }), deps = "settings_path._localization_list_"), `__extern_path_localization_plan` = targets::tar_target_raw("settings_path._localization_plan_", 
+        "./data/localization_plan.json", format = "file"), input_localization_plan = targets::tar_target_raw("localization_plan", 
+        quote({
+            asNamespace("raveio")$pipeline_load_extdata(name = "localization_plan", 
+                format = "json", error_if_missing = FALSE, default_if_missing = structure(list(), 
+                  class = "key_missing"), pipe_dir = ".")
+        }), deps = "settings_path._localization_plan_"), load_FreeSurfer_LUT = targets::tar_target_raw(name = "fslut", 
         command = quote({
             .__target_expr__. <- quote({
                 fslut_path <- system.file("palettes", "datacube2", 
@@ -563,7 +569,7 @@ rm(._._env_._.)
         iteration = "list"), merge_localization_list = targets::tar_target_raw(name = "localization_result_initial", 
         command = quote({
             .__target_expr__. <- quote({
-                require(dipsaus)
+                localization_result_initial <- NULL
                 re <- lapply(localization_list, function(item) {
                   item$FSIndex %?<-% 0
                   item$FSLabel %?<-% "Unknown"
@@ -582,41 +588,45 @@ rm(._._env_._.)
                   tbl
                 })
                 re <- do.call("rbind", dipsaus::drop_nulls(re))
-                if (!length(re)) {
-                  return(NULL)
+                if (length(re) && nrow(re)) {
+                  rownames(re) <- NULL
+                  re <- re[order(re$Electrode), ]
+                  re$SurfaceElectrode <- re$LocationType %in% 
+                    c("ECoG")
+                  re$SurfaceType <- "pial"
+                  re$VertexNumber <- -1
+                  empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
+                    (re$Coord_z)^2
+                  empty_sel <- is.na(empty_sel) | empty_sel == 
+                    0
+                  tkrRAS <- rbind(re$Coord_x, re$Coord_y, re$Coord_z, 
+                    1)
+                  mr_voxel <- solve(brain$Torig) %*% tkrRAS
+                  t1 <- brain$Norig %*% mr_voxel
+                  mni305 <- brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
+                    tkrRAS
+                  mni152 <- raveio:::MNI305_to_MNI152 %*% mni305
+                  mni305[, empty_sel] <- 0
+                  mni152[, empty_sel] <- 0
+                  t1[, empty_sel] <- 0
+                  mr_voxel[, empty_sel] <- 0
+                  re$MNI305_x <- mni305[1, ]
+                  re$MNI305_y <- mni305[2, ]
+                  re$MNI305_z <- mni305[3, ]
+                  re$T1R <- t1[1, ]
+                  re$T1A <- t1[2, ]
+                  re$T1S <- t1[3, ]
+                  re$MNI152_x <- mni152[1, ]
+                  re$MNI152_y <- mni152[2, ]
+                  re$MNI152_z <- mni152[3, ]
+                  re$MRVoxel_I <- round(mr_voxel[1, ])
+                  re$MRVoxel_J <- round(mr_voxel[2, ])
+                  re$MRVoxel_K <- round(mr_voxel[3, ])
+                  save_path <- file.path(subject$meta_path, "electrodes_unsaved.csv")
+                  raveio::dir_create2(dirname(save_path))
+                  utils::write.csv(re, save_path, row.names = FALSE)
+                  localization_result_initial <- re
                 }
-                rownames(re) <- NULL
-                re <- re[order(re$Electrode), ]
-                re$SurfaceElectrode <- re$LocationType %in% c("ECoG")
-                re$SurfaceType <- "pial"
-                re$VertexNumber <- -1
-                empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
-                  (re$Coord_z)^2
-                empty_sel <- is.na(empty_sel) | empty_sel == 
-                  0
-                tkrRAS <- rbind(re$Coord_x, re$Coord_y, re$Coord_z, 
-                  1)
-                t1 <- brain$Norig %*% solve(brain$Torig) %*% 
-                  tkrRAS
-                mni305 <- brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
-                  tkrRAS
-                mni152 <- raveio:::MNI305_to_MNI152 %*% mni305
-                mni305[, empty_sel] <- 0
-                mni152[, empty_sel] <- 0
-                t1[, empty_sel] <- 0
-                re$MNI305_x <- mni305[1, ]
-                re$MNI305_y <- mni305[2, ]
-                re$MNI305_z <- mni305[3, ]
-                re$T1R <- t1[1, ]
-                re$T1A <- t1[2, ]
-                re$T1S <- t1[3, ]
-                re$MNI152_x <- mni152[1, ]
-                re$MNI152_y <- mni152[2, ]
-                re$MNI152_z <- mni152[3, ]
-                save_path <- file.path(subject$meta_path, "electrodes_unsaved.csv")
-                raveio::dir_create2(dirname(save_path))
-                utils::write.csv(re, save_path, row.names = FALSE)
-                localization_result_initial <- re
             })
             tryCatch({
                 eval(.__target_expr__.)
@@ -628,7 +638,7 @@ rm(._._env_._.)
         }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
             target_export = "localization_result_initial", target_expr = quote({
                 {
-                  require(dipsaus)
+                  localization_result_initial <- NULL
                   re <- lapply(localization_list, function(item) {
                     item$FSIndex %?<-% 0
                     item$FSLabel %?<-% "Unknown"
@@ -647,42 +657,46 @@ rm(._._env_._.)
                     tbl
                   })
                   re <- do.call("rbind", dipsaus::drop_nulls(re))
-                  if (!length(re)) {
-                    return(NULL)
+                  if (length(re) && nrow(re)) {
+                    rownames(re) <- NULL
+                    re <- re[order(re$Electrode), ]
+                    re$SurfaceElectrode <- re$LocationType %in% 
+                      c("ECoG")
+                    re$SurfaceType <- "pial"
+                    re$VertexNumber <- -1
+                    empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
+                      (re$Coord_z)^2
+                    empty_sel <- is.na(empty_sel) | empty_sel == 
+                      0
+                    tkrRAS <- rbind(re$Coord_x, re$Coord_y, re$Coord_z, 
+                      1)
+                    mr_voxel <- solve(brain$Torig) %*% tkrRAS
+                    t1 <- brain$Norig %*% mr_voxel
+                    mni305 <- brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
+                      tkrRAS
+                    mni152 <- raveio:::MNI305_to_MNI152 %*% mni305
+                    mni305[, empty_sel] <- 0
+                    mni152[, empty_sel] <- 0
+                    t1[, empty_sel] <- 0
+                    mr_voxel[, empty_sel] <- 0
+                    re$MNI305_x <- mni305[1, ]
+                    re$MNI305_y <- mni305[2, ]
+                    re$MNI305_z <- mni305[3, ]
+                    re$T1R <- t1[1, ]
+                    re$T1A <- t1[2, ]
+                    re$T1S <- t1[3, ]
+                    re$MNI152_x <- mni152[1, ]
+                    re$MNI152_y <- mni152[2, ]
+                    re$MNI152_z <- mni152[3, ]
+                    re$MRVoxel_I <- round(mr_voxel[1, ])
+                    re$MRVoxel_J <- round(mr_voxel[2, ])
+                    re$MRVoxel_K <- round(mr_voxel[3, ])
+                    save_path <- file.path(subject$meta_path, 
+                      "electrodes_unsaved.csv")
+                    raveio::dir_create2(dirname(save_path))
+                    utils::write.csv(re, save_path, row.names = FALSE)
+                    localization_result_initial <- re
                   }
-                  rownames(re) <- NULL
-                  re <- re[order(re$Electrode), ]
-                  re$SurfaceElectrode <- re$LocationType %in% 
-                    c("ECoG")
-                  re$SurfaceType <- "pial"
-                  re$VertexNumber <- -1
-                  empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
-                    (re$Coord_z)^2
-                  empty_sel <- is.na(empty_sel) | empty_sel == 
-                    0
-                  tkrRAS <- rbind(re$Coord_x, re$Coord_y, re$Coord_z, 
-                    1)
-                  t1 <- brain$Norig %*% solve(brain$Torig) %*% 
-                    tkrRAS
-                  mni305 <- brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
-                    tkrRAS
-                  mni152 <- raveio:::MNI305_to_MNI152 %*% mni305
-                  mni305[, empty_sel] <- 0
-                  mni152[, empty_sel] <- 0
-                  t1[, empty_sel] <- 0
-                  re$MNI305_x <- mni305[1, ]
-                  re$MNI305_y <- mni305[2, ]
-                  re$MNI305_z <- mni305[3, ]
-                  re$T1R <- t1[1, ]
-                  re$T1A <- t1[2, ]
-                  re$T1S <- t1[3, ]
-                  re$MNI152_x <- mni152[1, ]
-                  re$MNI152_y <- mni152[2, ]
-                  re$MNI152_z <- mni152[3, ]
-                  save_path <- file.path(subject$meta_path, "electrodes_unsaved.csv")
-                  raveio::dir_create2(dirname(save_path))
-                  utils::write.csv(re, save_path, row.names = FALSE)
-                  localization_result_initial <- re
                 }
                 localization_result_initial
             }), target_depends = c("localization_list", "brain", 
@@ -693,23 +707,26 @@ rm(._._env_._.)
             .__target_expr__. <- quote({
                 src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                 if (file.exists(src)) {
-                  re <- utils::read.csv(file.path(subject$meta_path, 
+                  localization_result_final <- utils::read.csv(file.path(subject$meta_path, 
                     "electrodes_unsaved.csv"))
-                  brain$set_electrodes(electrodes = re)
-                  re <- brain$calculate_template_coordinates(save_to = FALSE)
-                  sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
-                    c("left", "right")
-                  if (any(sel)) {
-                    is_left <- grepl(pattern = "(left|lh-)", 
-                      re$FSLabel, ignore.case = TRUE)
-                    is_right <- grepl(pattern = "(right|rh-)", 
-                      re$FSLabel, ignore.case = TRUE)
-                    re$Hemisphere[sel & (is_left | re$MNI305_x < 
-                      0)] <- "left"
-                    re$Hemisphere[sel & !is_left & (is_right | 
-                      re$MNI305_x > 0)] <- "right"
-                  }
-                  localization_result_final <- re
+                  try({
+                    re <- localization_result_final
+                    brain$set_electrodes(electrodes = re)
+                    re <- brain$calculate_template_coordinates(save_to = FALSE)
+                    sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
+                      c("left", "right")
+                    if (any(sel)) {
+                      is_left <- grepl(pattern = "(left|lh-)", 
+                        re$FSLabel, ignore.case = TRUE)
+                      is_right <- grepl(pattern = "(right|rh-)", 
+                        re$FSLabel, ignore.case = TRUE)
+                      re$Hemisphere[sel & (is_left | re$MNI305_x < 
+                        0)] <- "left"
+                      re$Hemisphere[sel & !is_left & (is_right | 
+                        re$MNI305_x > 0)] <- "right"
+                    }
+                    localization_result_final <- re
+                  })
                 } else {
                   localization_result_final <- NULL
                 }
@@ -726,23 +743,26 @@ rm(._._env_._.)
                 {
                   src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                   if (file.exists(src)) {
-                    re <- utils::read.csv(file.path(subject$meta_path, 
+                    localization_result_final <- utils::read.csv(file.path(subject$meta_path, 
                       "electrodes_unsaved.csv"))
-                    brain$set_electrodes(electrodes = re)
-                    re <- brain$calculate_template_coordinates(save_to = FALSE)
-                    sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
-                      c("left", "right")
-                    if (any(sel)) {
-                      is_left <- grepl(pattern = "(left|lh-)", 
-                        re$FSLabel, ignore.case = TRUE)
-                      is_right <- grepl(pattern = "(right|rh-)", 
-                        re$FSLabel, ignore.case = TRUE)
-                      re$Hemisphere[sel & (is_left | re$MNI305_x < 
-                        0)] <- "left"
-                      re$Hemisphere[sel & !is_left & (is_right | 
-                        re$MNI305_x > 0)] <- "right"
-                    }
-                    localization_result_final <- re
+                    try({
+                      re <- localization_result_final
+                      brain$set_electrodes(electrodes = re)
+                      re <- brain$calculate_template_coordinates(save_to = FALSE)
+                      sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
+                        c("left", "right")
+                      if (any(sel)) {
+                        is_left <- grepl(pattern = "(left|lh-)", 
+                          re$FSLabel, ignore.case = TRUE)
+                        is_right <- grepl(pattern = "(right|rh-)", 
+                          re$FSLabel, ignore.case = TRUE)
+                        re$Hemisphere[sel & (is_left | re$MNI305_x < 
+                          0)] <- "left"
+                        re$Hemisphere[sel & !is_left & (is_right | 
+                          re$MNI305_x > 0)] <- "right"
+                      }
+                      localization_result_final <- re
+                    })
                   } else {
                     localization_result_final <- NULL
                   }
