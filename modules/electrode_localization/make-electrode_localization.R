@@ -435,8 +435,10 @@ rm(._._env_._.)
                 } else {
                   subject$set_default("path_ct", NULL, namespace = "electrode_localization")
                   ct_data <- NULL
-                  transform_space <- "resampled"
+                  transform_space <- "no_ct"
                 }
+                subject$set_default("transform_space", transform_space, 
+                  namespace = "electrode_localization")
                 localize_data <- list(transform_space = transform_space, 
                   ct_data = ct_data, ct_path = ct_path, mri_path = mri_path, 
                   mri_data = mri_data, transform_matrix = transform_matrix)
@@ -498,8 +500,10 @@ rm(._._env_._.)
                   } else {
                     subject$set_default("path_ct", NULL, namespace = "electrode_localization")
                     ct_data <- NULL
-                    transform_space <- "resampled"
+                    transform_space <- "no_ct"
                   }
+                  subject$set_default("transform_space", transform_space, 
+                    namespace = "electrode_localization")
                   localize_data <- list(transform_space = transform_space, 
                     ct_data = ct_data, ct_path = ct_path, mri_path = mri_path, 
                     mri_data = mri_data, transform_matrix = transform_matrix)

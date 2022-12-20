@@ -196,7 +196,7 @@ loader_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = FALSE
   )
 
-  refresh_ct_chocies <- function(value_ct = NULL, value_mri = NULL, value_transform = NULL){
+  refresh_ct_chocies <- function(value_ct = NULL, value_mri = NULL, value_transform = NULL, reset_method = FALSE){
     project_name <- loader_project$get_sub_element_input()
     subject_code <- loader_subject$get_sub_element_input()
 
@@ -233,6 +233,18 @@ loader_server <- function(input, output, session, ...){
         session = session, inputId = "loader_transform_fname",
         choices = character(0L)
       )
+    }
+
+    if( reset_method ) {
+      current_method <- shiny::isolate(input$loader_method)
+      selected_method <- subject$get_default(
+        "transform_space", default_if_missing = NULL,
+        namespace = "electrode_localization")
+      if(length(selected_method) == 1) {
+        selected_method <- names(LOCALIZATION_METHODS)[unlist(LOCALIZATION_METHODS) == selected_method]
+      }
+      selected_method <- c(selected_method, current_method) %OF% names(LOCALIZATION_METHODS)
+      shiny::updateSelectInput(session = session, inputId = "loader_method", selected = selected_method)
     }
 
     nifti_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "nii(?:\\.gz)?$",
@@ -427,7 +439,7 @@ loader_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      refresh_ct_chocies()
+      refresh_ct_chocies(reset_method = TRUE)
     }),
     loader_project$get_sub_element_input(),
     loader_subject$get_sub_element_input(),
