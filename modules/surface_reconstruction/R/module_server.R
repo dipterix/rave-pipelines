@@ -39,6 +39,7 @@ module_server <- function(input, output, session, ...){
 
   # Local non-reactive values, used to store static variables
   local_data <- dipsaus::fastmap2()
+  local_env <- new.env()
 
   gray_colors <- gray.colors(256, 0, 1)
 
@@ -234,6 +235,22 @@ module_server <- function(input, output, session, ...){
     selected <- selected %OF% choices
     shiny::updateSelectInput(
       session = session, inputId = "param_coreg_ct",
+      choices = choices, selected = selected
+    )
+
+    deriv_path <- shiny::isolate(file.path(local_reactives$temp_dir, "derivative"))
+    choices <- list.files(
+      deriv_path,
+      pattern = "\\.(nii|\\.nii\\.gz)$",
+      full.names = FALSE,
+      recursive = FALSE,
+      ignore.case = TRUE,
+      include.dirs = FALSE,
+      all.files = FALSE
+    )
+    selected <- input$param_coreg_mri %OF% choices
+    shiny::updateSelectInput(
+      session = session, inputId = "param_coreg_mri",
       choices = choices, selected = selected
     )
   }
@@ -605,6 +622,16 @@ module_server <- function(input, output, session, ...){
       freesurfer = list(
         flag = input$param_fs_steps,
         fresh_start = isTRUE(input$param_fs_fresh_start)
+      ),
+      flirt = list(
+        reference = input$param_coreg_mri,
+        dof = as.integer(gsub("[^0-9]+$", "", input$coreg_fsl_dof)) %OF% c(6L, 7L, 9L, 12L),
+        cost = input$coreg_fsl_cost %OF% FSL_COST_FUNCTIONS,
+        search = as.integer(input$coreg_fsl_search) %OF% c(90L, 180L),
+        searchcost = input$coreg_fsl_searchcost %OF% FSL_COST_FUNCTIONS
+      ),
+      afni = list(
+        reference = input$param_coreg_mri
       )
     )
   }), priority = 1L, millis = 300)
@@ -735,7 +762,7 @@ module_server <- function(input, output, session, ...){
 
 
   shiny::bindEvent(
-    shiny::observe({
+    ravedash::safe_observe({
       loaded_flag <- ravedash::watch_data_loaded()
       if(!loaded_flag){ return() }
 
@@ -746,21 +773,22 @@ module_server <- function(input, output, session, ...){
       )
       shidashi::clear_notifications(class = ns("error_notif"))
 
-      tryCatch({
-        res <- pipeline$run(
-          as_promise = FALSE,
-          names = c("settings", 'subject', "params", "import_T1", "import_CT",
-                    "fs_recon", "coreg_flirt", "coreg_3dallineate"),
-          type = "vanilla",
-          scheduler = "none",
-          shortcut = TRUE
-        )
-        local_reactives$bash_scripts <- res
-      }, error = function(e) {
-        error_notification(e)
-      })
+      res <- pipeline$eval(
+        names = c("settings", 'subject', "params", "import_T1",
+                  "import_CT", "fs_recon", "coreg_flirt", "coreg_3dallineate"),
+        env = local_env, clean = FALSE
+      )
+      # res <- pipeline$run(
+      #   as_promise = FALSE,
+      #   names = c("settings", 'subject', "params", "import_T1", "import_CT",
+      #             "fs_recon", "coreg_flirt", "coreg_3dallineate"),
+      #   type = "vanilla",
+      #   scheduler = "none",
+      #   shortcut = TRUE
+      # )
+      local_reactives$bash_scripts <- as.list(res)
 
-    }),
+    }, error_wrapper = "notification"),
     local_reactives$build_command,
     input_params(),
     ignoreNULL = FALSE, ignoreInit = FALSE

@@ -222,6 +222,13 @@ module_html <- function(){
                 shiny::uiOutput(ns("panel_coreg"), container = shiny::p)
               ),
               shiny::div(
+                "This step tries to align the CT to MR image. ",
+                "For MRI, ",
+                shiny::pre(class="pre-compact no-padding display-inline", "MRI_RAW.nii"),
+                " is the original image file, and ",
+                shiny::pre(class="pre-compact no-padding display-inline", "T1.nii"),
+                " is the FreeSurfer-normalized image.",
+                shiny::br(),
                 "* The script requires Unix ",
                 shiny::pre(class="pre-compact no-padding display-inline", "bash"),
                 " terminals. If you are using Windows, ",
@@ -230,17 +237,18 @@ module_html <- function(){
                 shiny::hr(),
 
                 shiny::fluidRow(
-
                   shiny::column(
                     width = 12L,
                     shiny::plotOutput(
                       outputId = ns("ct_preview"),
                       height = "300px"
                     )
-                  ),
+                  )
+                ),
 
+                shiny::fluidRow(
                   shiny::column(
-                    width = 7L,
+                    width = 5L,
                     shiny::div(
                       shiny::selectInput(
                         inputId = ns("param_coreg_ct"),
@@ -258,11 +266,82 @@ module_html <- function(){
                     width = 5L,
                     shiny::div(
                       shiny::selectInput(
+                        inputId = ns("param_coreg_mri"),
+                        label = "MR image",
+                        choices = character(0L)
+                      )
+                    )
+                  ),
+
+                  shiny::column(
+                    width = 2L,
+                    shiny::div(
+                      shiny::selectInput(
                         inputId = ns("coreg_ct_program"),
                         label = "Program",
                         choices = c("AFNI", "FSL")
                       )
                     )
+                  )
+                ),
+
+                # AFNI FSL params
+                shiny::conditionalPanel(
+                  condition = sprintf("input['%s']==='FSL'", ns("coreg_ct_program")),
+                  shiny::fluidRow(
+
+                    shiny::column(
+                      width = 12L,
+                      "FSL parameters"
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_fsl_dof"),
+                        label = "DOF",
+                        choices = c(
+                          "6 (rigid body)",
+                          "7 (gloabl rescale)",
+                          "9 (traditional)",
+                          "12 (affine)"
+                        ),
+                        selected = "6 (rigid body)"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_fsl_cost"),
+                        label = "Cost function",
+                        choices = FSL_COST_FUNCTIONS,
+                        selected = "mutualinfo"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_fsl_search"),
+                        label = "Search range",
+                        choices = c(
+                          "90", "180"
+                        ),
+                        selected = "90"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_fsl_searchcost"),
+                        label = "Search Cost",
+                        choices = FSL_COST_FUNCTIONS,
+                        selected = "mutualinfo"
+                      )
+                    )
+
                   )
                 ),
 

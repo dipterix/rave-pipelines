@@ -330,11 +330,15 @@ The following bash script uses `flirt` command
 
 ```{rave CT_MR_coregistration_via_FSL, export = "coreg_flirt", cue = "always", echo=FALSE}
 coreg_flirt <- tryCatch({
-  mri_path <- params$nii_t1
-  mri_root <- file.path(check_result$path_temp, "inputs", "MRI")
-  mri_path <- file.path(mri_root, mri_path)
+  mri_path <- file.path(check_result$path_temp, "derivative", params$flirt$reference)
   if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
-    stop("Please choose a valid MRI Nifti file under ", mri_root)
+    mri_path <- params$nii_t1
+    mri_root <- file.path(check_result$path_temp, "inputs", "MRI")
+    mri_path <- file.path(mri_root, mri_path)
+  }
+  
+  if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
+    stop("Please choose a valid MRI Nifti file")
   }
   ct_path <- params$nii_ct
   ct_root <- file.path(check_result$path_temp, "inputs", "CT")
@@ -347,6 +351,10 @@ coreg_flirt <- tryCatch({
     subject = subject,
     mri_path = mri_path,
     ct_path = ct_path,
+    dof = params$flirt$dof,
+    cost = params$flirt$cost,
+    search = params$flirt$search,
+    searchcost = params$flirt$searchcost,
     overwrite = FALSE,
     command_path = cmd_tools$flirt,
     dry_run = TRUE,

@@ -1,10 +1,9 @@
-afni_path: /Users/dipterix/abin
+skip_coregistration: no
+path_ct: ''
 dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20220720/bin/dcm2niix
-freesurfer_path: /Applications/freesurfer/7.3.2
-fsl_path: /usr/local/fsl
 params:
-  nii_t1: DICOM_SAG_MPRAGE_20220728090416_13.nii
-  nii_ct: POST_IMPLANT_CT_1_STEALTH_20220824232445_2.nii
+  nii_t1: PRE_IMPLANT_MRI_AXIAL_T1_MPRAGE_BRAIN_POST_STEALTH_20221023132448_14.nii
+  nii_ct: POST_IMPLANT_CT_1_IEEG_HEAD_20221130155104_3.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
@@ -12,9 +11,18 @@ params:
   freesurfer:
     flag: -autorecon1
     fresh_start: no
-path_ct: post-CT
-path_mri: pre-MRI
-project_name: devel
-skip_coregistration: no
+  flirt:
+    reference: T1.nii
+    dof: 6
+    cost: mutualinfo
+    search: 90
+    searchcost: mutualinfo
+  afni:
+    reference: T1.nii
+afni_path: /Users/dipterix/abin
 skip_recon: no
-subject_code: PAV006
+path_mri: ''
+project_name: devel
+freesurfer_path: /Applications/freesurfer/7.3.2
+fsl_path: /usr/local/fsl
+subject_code: PAV010
