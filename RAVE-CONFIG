@@ -49,7 +49,8 @@ SubPipelines:
     modules/reference_module,
     modules/surface_reconstruction,
     modules/custom_3d_viewer,
-    modules/block_explorer
+    modules/block_explorer,
+    modules/import_bids
 InteractiveModules:
     modules/import_lfp_native,
     modules/notch_filter,
@@ -62,4 +63,5 @@ InteractiveModules:
     modules/compatibility_rave1,
     modules/standalone_viewer,
     modules/custom_3d_viewer
-    modules/block_explorer
+    modules/block_explorer,
+    modules/import_bids

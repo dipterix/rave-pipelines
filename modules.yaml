@@ -11,7 +11,7 @@ modules:
     group: Import Signals
     order: 1.1
   import_bids:
-    label: BIDS Format
+    label: Migrate BIDS Format
     group: Import Signals
     order: 1.2
   power_explorer:
