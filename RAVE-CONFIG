@@ -35,6 +35,7 @@ Imports:
     stringr,
     targets,
     threeBrain,
+    checkmate,
     yaml,
 Suggests:
     rstudioapi,

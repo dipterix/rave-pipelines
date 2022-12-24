@@ -115,6 +115,33 @@ class Shidashi {
     this._dummyLink.click();
   }
 
+  openIFrameTab(url, title, more = {}, target = "_blank") {
+    if( !this.$body.hasClass("parent-frame") ) {
+      if( window.parent === window ) {
+        this.openURL( url, target );
+      } else {
+        this.notifyParent("openIFrameTab", [url, title, target, more]);
+      }
+      return;
+    }
+    const adminLTEIFrame = $('.content-wrapper').data('adminLTEIframeHandler');
+    if( !adminLTEIFrame ) {
+      return;
+    }
+    const $title = document.createElement("p");
+    $title.innerText = title;
+
+    const $link = document.createElement("a");
+    $link.setAttribute("href", url);
+    $link.setAttribute("target", target);
+    $link.setAttribute("title", title);
+    for(let k in more) {
+      $link.setAttribute(k, more[k]);
+    }
+    $link.appendChild( $title );
+    adminLTEIFrame.openTabSidebar($link);
+  }
+
   launchStandaloneViewer(outputId) {
     const url = `/?output_id=${ outputId }&rave_id=${ this._raveId }&module=standalone_viewer`;
     this.openURL(url);
@@ -1215,6 +1242,34 @@ class Shidashi {
       console.log("Shutting down RAVE...")
       window.close();
     });
+
+    this.shinyHandler("open_url", (params) => {
+      if(
+        params && typeof params === "object" &&
+        typeof params.url === "string" ) {
+
+        const target = params.target || "_blank";
+        this.openURL(params.url, "_blank");
+      }
+
+    });
+
+    this.shinyHandler("open_iframe_tab", (params) => {
+      if(
+        params && typeof params === "object" &&
+        typeof params.url === "string" ) {
+
+        const title = params.title || "Untitled";
+        const target = params.target || "_blank";
+        const more = params.more || {};
+        this.openIFrameTab(params.url, title, target, more);
+      }
+
+    });
+
+
+
+
 
     // keep alive
     /*let alive_counter = 0;

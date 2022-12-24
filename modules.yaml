@@ -10,6 +10,10 @@ modules:
     label: Native Structure
     group: Import Signals
     order: 1.1
+  import_bids:
+    label: BIDS Format
+    group: Import Signals
+    order: 1.2
   power_explorer:
     label: Power Explorer
     order: 13
