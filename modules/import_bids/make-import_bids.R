@@ -237,31 +237,36 @@ rm(._._env_._.)
                 if (any(migrate_plan$Planned)) {
                   plan_table <- migrate_plan[migrate_plan$Planned, 
                     , drop = FALSE]
-                  res <- lapply(seq_len(nrow(plan_table)), function(ii) {
-                    src_prefix <- file.path(bids_root, plan_table$Source[[ii]])
-                    src_files <- sprintf("%s_%s", src_prefix, 
-                      data_types)
-                    fe <- file.exists(src_files)
-                    dtypes <- data_types[fe]
-                    src_files <- src_files[fe]
-                    dst_path <- file.path(subject_root, plan_table$Block[[ii]])
-                    if (file.exists(dst_path)) {
-                      if (backup) {
-                        raveio::backup_file(dst_path, remove = TRUE)
+                  res <- dipsaus::lapply_async2(x = seq_len(nrow(plan_table)), 
+                    FUN = function(ii) {
+                      src_prefix <- file.path(bids_root, plan_table$Source[[ii]])
+                      src_files <- sprintf("%s_%s", src_prefix, 
+                        data_types)
+                      fe <- file.exists(src_files)
+                      dtypes <- data_types[fe]
+                      src_files <- src_files[fe]
+                      dst_path <- file.path(subject_root, plan_table$Block[[ii]])
+                      if (file.exists(dst_path)) {
+                        if (backup) {
+                          raveio::backup_file(dst_path, remove = TRUE)
+                        }
                       }
-                    }
-                    unlink(dst_path, recursive = TRUE)
-                    raveio::dir_create2(dst_path)
-                    for (jj in seq_along(dtypes)) {
-                      src_abspath <- src_files[[jj]]
-                      dst_abspath <- file.path(dst_path, basename(src_abspath))
-                      file.copy(from = src_abspath, to = dst_abspath, 
-                        overwrite = TRUE, copy.mode = TRUE, copy.date = TRUE)
-                    }
-                    list(BIDS_run = plan_table$Source[[ii]], 
-                      RAVE_block = plan_table$Block[[ii]], imported = dtypes, 
-                      timestamp = strftime(Sys.time(), usetz = TRUE))
-                  })
+                      unlink(dst_path, recursive = TRUE)
+                      raveio::dir_create2(dst_path)
+                      for (jj in seq_along(dtypes)) {
+                        src_abspath <- src_files[[jj]]
+                        dst_abspath <- file.path(dst_path, basename(src_abspath))
+                        file.copy(from = src_abspath, to = dst_abspath, 
+                          overwrite = TRUE, copy.mode = TRUE, 
+                          copy.date = TRUE)
+                      }
+                      list(BIDS_run = plan_table$Source[[ii]], 
+                        RAVE_block = plan_table$Block[[ii]], 
+                        imported = dtypes, timestamp = strftime(Sys.time(), 
+                          usetz = TRUE))
+                    }, plan = FALSE, callback = function(ii) {
+                      sprintf("BIDS to RAVE|migrating %s", plan_table$Block[[ii]])
+                    })
                   migrate_result$migrates <- c(migrate_result$migrates, 
                     res)
                   raveio::save_yaml(migrate_result, file = migrate_result_path)
@@ -307,8 +312,8 @@ rm(._._env_._.)
                   if (any(migrate_plan$Planned)) {
                     plan_table <- migrate_plan[migrate_plan$Planned, 
                       , drop = FALSE]
-                    res <- lapply(seq_len(nrow(plan_table)), 
-                      function(ii) {
+                    res <- dipsaus::lapply_async2(x = seq_len(nrow(plan_table)), 
+                      FUN = function(ii) {
                         src_prefix <- file.path(bids_root, plan_table$Source[[ii]])
                         src_files <- sprintf("%s_%s", src_prefix, 
                           data_types)
@@ -335,6 +340,9 @@ rm(._._env_._.)
                           RAVE_block = plan_table$Block[[ii]], 
                           imported = dtypes, timestamp = strftime(Sys.time(), 
                             usetz = TRUE))
+                      }, plan = FALSE, callback = function(ii) {
+                        sprintf("BIDS to RAVE|migrating %s", 
+                          plan_table$Block[[ii]])
                       })
                     migrate_result$migrates <- c(migrate_result$migrates, 
                       res)

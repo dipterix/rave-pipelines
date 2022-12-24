@@ -278,7 +278,10 @@ loader_server <- function(input, output, session, ...){
         backup = backup
       )
 
-      migrate_plan <- pipeline$run("migrate_plan")
+      migrate_plan <- pipeline$run(names = "migrate_plan",
+                                   scheduler = "none",
+                                   type = "vanilla",
+                                   async = FALSE)
       plan_table <- migrate_plan[migrate_plan$Planned, ]
       not_planned <- migrate_plan[!migrate_plan$Planned, ]
 
@@ -399,7 +402,10 @@ loader_server <- function(input, output, session, ...){
         auto_close = FALSE, buttons = FALSE
       )
       on.exit({ shiny::removeModal() }, add = TRUE, after = TRUE)
-      # pipeline$run("migrate_result")
+      pipeline$run(names = "migrate_result",
+                   scheduler = "none",
+                   type = "vanilla",
+                   async = FALSE)
 
       Sys.sleep(0.5)
       dipsaus::close_alert2()
@@ -433,6 +439,7 @@ loader_server <- function(input, output, session, ...){
         import_setup__subject_code = BIDS_subject_info$subject_code
       )
 
+      ravedash::clear_notifications(class = ns("notif-next-step"))
       ravedash::switch_module(
         module_id = "import_lfp_native",
         title = "Native Structure (from BIDS)"
