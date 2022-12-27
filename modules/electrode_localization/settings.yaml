@@ -1,8 +1,8 @@
 path_ct: '{subject$freesurfer_path}/../coregistration/CT_RAW.nii'
 subject_code: PAV006
-path_mri: '{subject$freesurfer_path}/../coregistration/MRI_RAW.nii'
+path_mri: '{subject$freesurfer_path}/../coregistration/MRI_reference.nii'
 project_name: devel
-path_transform: '{subject$freesurfer_path}/../coregistration/ct2t1.mat'
-transform_space: fsl
+path_transform: '{subject$freesurfer_path}/../coregistration/CT_IJK_to_MR_RAS.txt'
+transform_space: ijk2ras
 localization_list: ${EXTDATA-SETTINGS|localization_list|json}
 localization_plan: ${EXTDATA-SETTINGS|localization_plan|json}

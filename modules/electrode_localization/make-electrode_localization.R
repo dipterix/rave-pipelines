@@ -151,13 +151,12 @@ rm(._._env_._.)
     check_localization_plan = targets::tar_target_raw(name = "plan_list", 
         command = quote({
             .__target_expr__. <- quote({
-                require(dipsaus)
-                count <- dipsaus::fastmap2()
+                count <- fastmap2()
                 count$n <- 0
                 count$labels <- list()
                 plan_list <- NULL
                 plan_table <- lapply(localization_plan, function(item) {
-                  dim <- as.integer(dipsaus::parse_svec(item$dimension, 
+                  dim <- as.integer(parse_svec(item$dimension, 
                     unique = FALSE, sep = "[,x]"))
                   dim <- dim[!is.na(dim)]
                   if (!length(dim) || any(dim <= 0)) {
@@ -188,7 +187,7 @@ rm(._._env_._.)
                     ne
                   re
                 })
-                plan_table <- dipsaus::drop_nulls(plan_table)
+                plan_table <- drop_nulls(plan_table)
                 if (length(plan_table)) {
                   plan_table <- do.call("rbind", unname(plan_table))
                   electrodes <- sort(subject$preprocess_settings$electrodes)
@@ -261,13 +260,12 @@ rm(._._env_._.)
         }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
             target_export = "plan_list", target_expr = quote({
                 {
-                  require(dipsaus)
-                  count <- dipsaus::fastmap2()
+                  count <- fastmap2()
                   count$n <- 0
                   count$labels <- list()
                   plan_list <- NULL
                   plan_table <- lapply(localization_plan, function(item) {
-                    dim <- as.integer(dipsaus::parse_svec(item$dimension, 
+                    dim <- as.integer(parse_svec(item$dimension, 
                       unique = FALSE, sep = "[,x]"))
                     dim <- dim[!is.na(dim)]
                     if (!length(dim) || any(dim <= 0)) {
@@ -298,7 +296,7 @@ rm(._._env_._.)
                       ne
                     re
                   })
-                  plan_table <- dipsaus::drop_nulls(plan_table)
+                  plan_table <- drop_nulls(plan_table)
                   if (length(plan_table)) {
                     plan_table <- do.call("rbind", unname(plan_table))
                     electrodes <- sort(subject$preprocess_settings$electrodes)
@@ -415,13 +413,14 @@ rm(._._env_._.)
                   has_ct <- TRUE
                   subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
                   ct_data <- threeBrain:::read_nii2(ct_path)
-                  if (identical(tolower(transform_space), "fsl")) {
-                    transform_space <- "fsl"
+                  transform_space <- tolower(transform_space)
+                  if (transform_space %in% c("fsl")) {
                     mri_path <- resolve_path(path_mri)
-                    subject$set_default("path_mri", path_mri, 
-                      namespace = "electrode_localization")
                     mri_data <- threeBrain:::read_nii2(mri_path, 
                       head_only = TRUE)
+                  }
+                  subject$set_default("path_mri", path_mri, namespace = "electrode_localization")
+                  if (transform_space %in% c("fsl", "ijk2ras")) {
                     transform_matrix <- as.matrix(read.table(resolve_path(path_transform)))
                     dimnames(transform_matrix) <- NULL
                     if (length(transform_matrix) != 16L || !is.numeric(transform_matrix)) {
@@ -479,13 +478,15 @@ rm(._._env_._.)
                     has_ct <- TRUE
                     subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
                     ct_data <- threeBrain:::read_nii2(ct_path)
-                    if (identical(tolower(transform_space), "fsl")) {
-                      transform_space <- "fsl"
+                    transform_space <- tolower(transform_space)
+                    if (transform_space %in% c("fsl")) {
                       mri_path <- resolve_path(path_mri)
-                      subject$set_default("path_mri", path_mri, 
-                        namespace = "electrode_localization")
                       mri_data <- threeBrain:::read_nii2(mri_path, 
                         head_only = TRUE)
+                    }
+                    subject$set_default("path_mri", path_mri, 
+                      namespace = "electrode_localization")
+                    if (transform_space %in% c("fsl", "ijk2ras")) {
                       transform_matrix <- as.matrix(read.table(resolve_path(path_transform)))
                       dimnames(transform_matrix) <- NULL
                       if (length(transform_matrix) != 16L || 
@@ -591,7 +592,7 @@ rm(._._env_._.)
                   }
                   tbl
                 })
-                re <- do.call("rbind", dipsaus::drop_nulls(re))
+                re <- do.call("rbind", drop_nulls(re))
                 if (length(re) && nrow(re)) {
                   rownames(re) <- NULL
                   re <- re[order(re$Electrode), ]
@@ -660,7 +661,7 @@ rm(._._env_._.)
                     }
                     tbl
                   })
-                  re <- do.call("rbind", dipsaus::drop_nulls(re))
+                  re <- do.call("rbind", drop_nulls(re))
                   if (length(re) && nrow(re)) {
                     rownames(re) <- NULL
                     re <- re[order(re$Electrode), ]

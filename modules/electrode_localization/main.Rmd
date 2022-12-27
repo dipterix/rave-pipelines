@@ -58,15 +58,14 @@ ct_candidates <- structure(files, paths = list(
 The following code block only run once only when starting a new localization
 
 ```{rave check_localization_plan, export = "plan_list", cue = "always"}
-require(dipsaus)
 # check if number of electrodes is consistent with the plan
-count <- dipsaus::fastmap2()
+count <- fastmap2()
 count$n <- 0
 count$labels <- list()
 
 plan_list <- NULL
 plan_table <- lapply(localization_plan, function(item) {
-  dim <- as.integer(dipsaus::parse_svec(item$dimension, unique = FALSE, sep = "[,x]"))
+  dim <- as.integer(parse_svec(item$dimension, unique = FALSE, sep = "[,x]"))
   dim <- dim[!is.na(dim)]
   if(!length(dim) || any(dim <= 0)) { return(NULL) }
   ne <- prod(dim)
@@ -93,7 +92,7 @@ plan_table <- lapply(localization_plan, function(item) {
   count$labels[[label]] <- count$labels[[label]] + ne
   re
 })
-plan_table <- dipsaus::drop_nulls(plan_table)
+plan_table <- drop_nulls(plan_table)
 
 if(length(plan_table)) {
   plan_table <- do.call('rbind', unname(plan_table))
@@ -200,12 +199,14 @@ if(length(path_ct)) {
   ct_data <- threeBrain:::read_nii2(ct_path)
   
   # check if method is MRI
-  if(identical(tolower(transform_space), "fsl")) {
-    transform_space <- "fsl"
+  transform_space <- tolower(transform_space)
+  if(transform_space %in% c("fsl")) {
     mri_path <- resolve_path(path_mri)
-    subject$set_default("path_mri", path_mri, namespace = "electrode_localization")
     mri_data <- threeBrain:::read_nii2(mri_path, head_only = TRUE)
-    
+  }
+  subject$set_default("path_mri", path_mri, namespace = "electrode_localization")
+  
+  if(transform_space %in% c("fsl", "ijk2ras")) {  
     transform_matrix <- as.matrix(read.table(resolve_path(path_transform)))
     dimnames(transform_matrix) <- NULL
     
@@ -213,8 +214,6 @@ if(length(path_ct)) {
       stop("Invalid transform matrix. Must be a 4x4 matrix.")
     }
     subject$set_default("path_transform", path_transform, namespace = "electrode_localization")
-    
-    
   } else {
     transform_space <- "resampled"
   }
@@ -286,7 +285,7 @@ re <- lapply(localization_list, function(item) {
   if(!nrow(tbl)) { return(NULL) }
   tbl
 })
-re <- do.call("rbind", dipsaus::drop_nulls(re))
+re <- do.call("rbind", drop_nulls(re))
 
 if(length(re) && nrow(re)) {
   rownames(re) <- NULL

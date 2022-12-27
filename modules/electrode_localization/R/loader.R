@@ -36,8 +36,9 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
                 inputId = ns("loader_method"),
                 label = "Localization method",
                 choices = c(
-                  "Re-sampled CT",
+                  "CT (IJK) to MR (RAS) transform + Raw CT",
                   "FSL transform + Raw CT + MRI",
+                  "Re-sampled CT",
                   "Localize without CT"
                 )
               )
@@ -253,6 +254,7 @@ loader_server <- function(input, output, session, ...){
     transform_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "(mat|txt)$",
                              recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
                              full.names = FALSE, all.files = FALSE)
+    transform_files <- unique(c(transform_files[transform_files %in% c("CT_IJK_to_MR_RAS.txt", "ct2t1.mat")], transform_files))
     selected_ct <- subject$get_default(
       "path_ct", default_if_missing = shiny::isolate(input$loader_ct_fname),
       namespace = "electrode_localization")
@@ -521,6 +523,15 @@ loader_server <- function(input, output, session, ...){
           path_transform <- check_path(input$loader_transform_fname, "transform matrix")
           if(is.null(path_transform)) { return() }
           transform_space <- "fsl"
+        },
+        "CT (IJK) to MR (RAS) transform + Raw CT" = {
+          path_ct <- check_path(input$loader_ct_fname, "CT")
+          if(is.null(path_ct)) { return() }
+          path_mri <- check_path(input$loader_mri_fname, "MRI")
+          if(is.null(path_mri)) { return() }
+          path_transform <- check_path(input$loader_transform_fname, "transform matrix")
+          if(is.null(path_transform)) { return() }
+          transform_space <- "ijk2ras"
         }
       )
 
