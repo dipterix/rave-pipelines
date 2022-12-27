@@ -263,7 +263,7 @@ module_html <- function(){
                   ),
 
                   shiny::column(
-                    width = 5L,
+                    width = 4L,
                     shiny::div(
                       shiny::selectInput(
                         inputId = ns("param_coreg_mri"),
@@ -274,18 +274,98 @@ module_html <- function(){
                   ),
 
                   shiny::column(
-                    width = 2L,
+                    width = 3L,
                     shiny::div(
                       shiny::selectInput(
                         inputId = ns("coreg_ct_program"),
                         label = "Program",
-                        choices = c("AFNI", "FSL")
+                        choices = c("native (nipy)", "AFNI", "FSL")
                       )
                     )
                   )
                 ),
 
-                # AFNI FSL params
+                # native: nipy
+                shiny::conditionalPanel(
+                  condition = sprintf("input['%s']==='native (nipy)'", ns("coreg_ct_program")),
+                  shiny::fluidRow(
+
+                    shiny::column(
+                      width = 12L,
+                      "Coregistration parameters"
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_nipy_reg_type"),
+                        label = "Registration type",
+                        choices = c("rigid", "affine"),
+                        selected = "rigid"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_nipy_interp"),
+                        label = "Interpolation",
+                        choices = c("pv", "tri"),
+                        selected = "pv"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_nipy_cost"),
+                        label = "Cost function",
+                        choices = c("crl1", "cc", "cr", "mi", "nmi", "slr"),
+                        selected = "crl1"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 3L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_nipy_optimizer"),
+                        label = "Optimizer",
+                        choices = c("powell", "steepest", "cg", "bfgs", "simplex"),
+                        selected = "powell"
+                      )
+                    ),
+
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::checkboxInput(
+                        inputId = ns("coreg_nipy_clean_source"),
+                        label = "Remove negative CT values",
+                        value = TRUE
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::checkboxInput(
+                        inputId = ns("coreg_nipy_inverse_target"),
+                        label = "Invert MR image color",
+                        value = TRUE
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::checkboxInput(
+                        inputId = ns("coreg_nipy_precenter_source"),
+                        label = "Pre-center CT (giant move)",
+                        value = TRUE
+                      )
+                    )
+
+                  )
+                ),
+                # FSL params
                 shiny::conditionalPanel(
                   condition = sprintf("input['%s']==='FSL'", ns("coreg_ct_program")),
                   shiny::fluidRow(

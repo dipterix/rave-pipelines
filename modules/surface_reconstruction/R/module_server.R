@@ -309,7 +309,7 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
-  run_command_pipeline <- function(cmd, wait = TRUE, title = "Running Terminal Command") {
+  run_command_pipeline <- function(cmd, wait = TRUE, title = "Running Terminal Command", command = "bash", ...) {
 
     shidashi::clear_notifications(class = ns("error_notif"))
 
@@ -355,7 +355,13 @@ module_server <- function(input, output, session, ...){
         cat(script)
       }
       Sys.sleep(0.5)
-      raveio::cmd_execute(script = script, script_path = script_path, stderr = log_path)
+      raveio::cmd_execute(
+        script = script,
+        script_path = script_path,
+        stdout = log_path,
+        stderr = log_path,
+        command = .(command)
+      )
     }), wait = wait, quoted = TRUE, name = title)
 
     final <- function(has_error = FALSE) {
@@ -550,12 +556,19 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      # cmd <- res$coreg_flirt
-      if(identical(input$coreg_ct_program, "AFNI")) {
-        cmd <- local_reactives$bash_scripts$coreg_3dallineate
-      } else {
-        cmd <- local_reactives$bash_scripts$coreg_flirt
-      }
+      program <- paste(input$coreg_ct_program, collapse = "")
+      cmd <- switch(
+        program,
+        "AFNI" = {
+          local_reactives$bash_scripts$coreg_3dallineate
+        },
+        "FSL" = {
+          local_reactives$bash_scripts$coreg_flirt
+        },
+        {
+          local_reactives$bash_scripts$coreg_nipy
+        }
+      )
       if(isTRUE(cmd$error)) {
         error_notification(cmd$condition)
         return()
@@ -583,27 +596,65 @@ module_server <- function(input, output, session, ...){
         icon = ravedash::shiny_icons$terminal
       )
 
-    }),
+    }, error_wrapper = "notification"),
     input$btn_coreg_copy,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      # cmd <- res$coreg_flirt
-      if(identical(input$coreg_ct_program, "AFNI")) {
-        bin <- "AFNI/3dAllineate"
-        cmd <- local_reactives$bash_scripts$coreg_3dallineate
-      } else {
-        bin <- "FSL/flirt"
-        cmd <- local_reactives$bash_scripts$coreg_flirt
-      }
+      program <- paste(input$coreg_ct_program, collapse = "")
+      native <- FALSE
+      switch(
+        program,
+        "AFNI" = {
+          bin <- "AFNI/3dAllineate"
+          cmd <- local_reactives$bash_scripts$coreg_3dallineate
+        },
+        "FSL" = {
+          bin <- "FSL/flirt"
+          cmd <- local_reactives$bash_scripts$coreg_flirt
+        },
+        {
+          bin <- "RAVE/nipy"
+          cmd <- local_reactives$bash_scripts$coreg_nipy
+          native <- TRUE
+        }
+      )
       if(isTRUE(cmd$error)) {
         error_notification(cmd$condition)
         return()
       }
       ravedash::logger("Running {bin} from console", level = "info", use_glue = TRUE)
-      run_command_pipeline(cmd = cmd, wait = FALSE, title = bin)
+
+      # set flag so rpymat is not checked
+      check_rpymat <- FALSE
+      if(native) {
+        if(dipsaus::get_os() == "windows") {
+          dipsaus::shiny_alert2(
+            title = sprintf("Running coregistration via %s", bin),
+            text = ravedash::be_patient_text(),
+            icon = "info", auto_close = FALSE, buttons = FALSE
+          )
+          on.exit({
+            Sys.sleep(0.5)
+            dipsaus::close_alert2()
+          }, add = TRUE, after = TRUE)
+          raveio::backup_file(cmd$script_path, remove = TRUE, quiet = TRUE)
+          writeLines(cmd$script, con = cmd$script_path, sep = "\n")
+          source(cmd$script_path, local = TRUE)
+        } else {
+          run_command_pipeline(
+            cmd = cmd,
+            wait = FALSE,
+            title = bin,
+            command = Sys.which("Rscript"),
+            args = c("--no-save", "--no-restore")
+          )
+        }
+      } else {
+        run_command_pipeline(cmd = cmd, wait = FALSE, title = bin)
+      }
     }),
     input$btn_coreg_run,
     ignoreNULL = TRUE, ignoreInit = TRUE
@@ -629,6 +680,16 @@ module_server <- function(input, output, session, ...){
         cost = input$coreg_fsl_cost %OF% FSL_COST_FUNCTIONS,
         search = as.integer(input$coreg_fsl_search) %OF% c(90L, 180L),
         searchcost = input$coreg_fsl_searchcost %OF% FSL_COST_FUNCTIONS
+      ),
+      nipy = list(
+        reference = input$param_coreg_mri,
+        clean_source = input$coreg_nipy_clean_source,
+        inverse_target = input$coreg_nipy_inverse_target,
+        precenter_source = input$coreg_nipy_precenter_source,
+        reg_type = input$coreg_nipy_reg_type,
+        similarity = input$coreg_nipy_cost,
+        interp = input$coreg_nipy_interp,
+        optimizer = input$coreg_nipy_optimizer
       ),
       afni = list(
         reference = input$param_coreg_mri
@@ -775,7 +836,8 @@ module_server <- function(input, output, session, ...){
 
       res <- pipeline$eval(
         names = c("settings", 'subject', "params", "import_T1",
-                  "import_CT", "fs_recon", "coreg_flirt", "coreg_3dallineate"),
+                  "import_CT", "fs_recon", "coreg_flirt",
+                  "coreg_3dallineate", "coreg_nipy"),
         env = local_env, clean = FALSE
       )
       # res <- pipeline$run(
@@ -794,7 +856,7 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = FALSE, ignoreInit = FALSE
   )
 
-  render_shell <- function(cmd){
+  render_shell <- function(cmd, shell = "/bin/sh"){
     cmd <- paste(cmd, collapse = "\n")
     cmd <- unlist(strsplit(cmd, "\n"))
     shiny::div(
@@ -810,7 +872,7 @@ module_server <- function(input, output, session, ...){
         })
       ),
       `data-clipboard-text` = paste(c(
-        "/bin/sh",
+        shell,
         unlist(lapply(cmd, function(s){
           if(startsWith(trimws(s), "#")) { s <- NULL }
           s
@@ -850,17 +912,31 @@ module_server <- function(input, output, session, ...){
   })
 
   output$panel_coreg <- shiny::renderUI({
-    if(identical(input$coreg_ct_program, "AFNI")) {
-      cmd <- local_reactives$bash_scripts$coreg_3dallineate
-    } else {
-      cmd <- local_reactives$bash_scripts$coreg_flirt
-    }
+    program <- paste(input$coreg_ct_program, collapse = "")
+    cmd <- switch(
+      program,
+      "AFNI" = {
+        local_reactives$bash_scripts$coreg_3dallineate
+      },
+      "FSL" = {
+        local_reactives$bash_scripts$coreg_flirt
+      },
+      {
+        local_reactives$bash_scripts$coreg_nipy
+      }
+    )
 
     shiny::validate(
       shiny::need(!isTRUE(cmd$error),
                   message = cmd$condition$message)
     )
-    render_shell(cmd$script)
+    if(program %in% c("AFNI", "FSL")) {
+      shell <- "/bin/sh"
+    } else {
+      shell <- Sys.which("Rscript")
+    }
+
+    render_shell(cmd$script, shell = shell)
   })
 
 
