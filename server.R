@@ -218,10 +218,18 @@ server <- function(input, output, session){
               if(!length(jupyter_port)) {
                 jupyter_port <- raveio::raveio_getopt("jupyter_port", default = 17284L)
               }
+              # check if jupyter_port is in server list
+              jupyter_running <- FALSE
+              try({
+                tbl <- rpymat::jupyter_server_list()
+                if(jupyter_port %in% tbl$port) {
+                  jupyter_running <- TRUE
+                }
+              }, silent = TRUE)
 
               # shutdown jupyter UI
               start_jupyter_ui <- NULL
-              if(length(jupyter_conf$port)) {
+              if(jupyter_running) {
                 shutdown_jupyter_ui <- shiny::actionButton(
                   inputId = "ravedash_shutdown_jupyter",
                   label = "Stop Jupyter"
@@ -284,7 +292,7 @@ server <- function(input, output, session){
       }
 
     }),
-    session$clientData$url_search, ignoreNULL = TRUE
+    session$clientData$url_search, ignoreNULL = TRUE, label = "ravedash-SitePath"
   )
 
 }
