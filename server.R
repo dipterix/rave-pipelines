@@ -140,9 +140,9 @@ server <- function(input, output, session){
               shiny::removeModal()
               ravedash::show_notification(
                 title = "JupyterLab server stopped",
-                subtitle = "success!",
-                type = "success",
-                message = sprintf("JupyterLab instance at port %s has been shut down", conf$port)
+                type = "warning",
+                message = sprintf("JupyterLab instance at port %s has been shut down", conf$port),
+                position = "bottomRight"
               )
             }),
             input$ravedash_shutdown_jupyter,
@@ -150,13 +150,17 @@ server <- function(input, output, session){
           )
           shiny::bindEvent(
             ravedash::safe_observe({
+              on.exit({
+                Sys.sleep(0.5)
+                shiny::removeModal()
+              })
               if(!isTRUE(dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE))) {
-                return()
+                stop("Current RAVE session is not running from RStudio. Please either start RAVE from RStudio, or manually start JupyterLab.")
               }
               conf <- get_jupyter_configuration()
-              if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
-                 !file.exists(conf$confpath)) {
-                return()
+
+              if(length(conf$confpath) != 1 || is.na(conf$confpath)) {
+                stop("Unable to obtain the RAVE session path. Please contact the RAVE support team to report this bug.")
               }
               jupyter_port <- as.integer(conf$port)
               if(!length(jupyter_port)) {
@@ -167,6 +171,18 @@ server <- function(input, output, session){
                 host <- "127.0.0.1"
               }
               jupyter_wd <- raveio::raveio_getopt('data_dir')
+
+              ravedash::show_notification(
+                title = "Starting JupyterLab-server",
+                message = sprintf("Starting JupyterLab at %s:%s ...", host, jupyter_port),
+                close = FALSE, autohide = FALSE, position = "bottomRight", type = "default",
+                class = "notif-start-jupyter"
+              )
+
+              if(dipsaus::package_installed("ravemanager")) {
+                ravemanager::configure_python(verbose = FALSE)
+              }
+
               rpymat::jupyter_check_launch(
                 open_browser = FALSE, workdir = jupyter_wd,
                 port = jupyter_port,
@@ -179,14 +195,16 @@ server <- function(input, output, session){
                 ),
                 file = conf$confpath
               )
-              shiny::removeModal()
+
+              ravedash::clear_notifications(class = "notif-start-jupyter")
               ravedash::show_notification(
                 title = "JupyterLab server started",
                 subtitle = "success!",
                 type = "success",
-                message = sprintf("A JupyterLab instance is running at %s:%s.", host, jupyter_port)
+                message = "A JupyterLab instance is running. You might need to refresh this webpage.",
+                position = "bottomRight"
               )
-            }),
+            }, error_wrapper = "notification"),
             input$ravedash_start_jupyter,
             ignoreNULL = TRUE, ignoreInit = TRUE
           )
@@ -196,8 +214,10 @@ server <- function(input, output, session){
 
               jupyter_conf <- get_jupyter_configuration()
               rs_available <- dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE)
-
-              print(jupyter_conf)
+              jupyter_port <- jupyter_conf$port
+              if(!length(jupyter_port)) {
+                jupyter_port <- raveio::raveio_getopt("jupyter_port", default = 17284L)
+              }
 
               # shutdown jupyter UI
               start_jupyter_ui <- NULL
@@ -244,7 +264,7 @@ server <- function(input, output, session){
                     shutdown_rave_ui,
                     shutdown_all_ui
                   ),
-                  "This will shutdown the RAVE server. Please press the [Shutdown] button to proceed."
+                  "* If you shut down RAVE only, the active Jupyter server will still run in the background. Please manually stop the Jupyter server via ", shiny::tags$span(class = "font-weight-bold", sprintf("rpymat::jupyter_server_stop(%s)", jupyter_port))
                 )
               )
             }),
