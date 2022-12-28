@@ -174,7 +174,8 @@ server <- function(input, output, session){
 
               ravedash::show_notification(
                 title = "Starting JupyterLab-server",
-                message = sprintf("Starting JupyterLab at %s:%s ...", host, jupyter_port),
+                message = sprintf(
+                  "Starting JupyterLab at %s:%s ... (This might take a while if this is the first time that you configure the Python environment for RAVE)", host, jupyter_port),
                 close = FALSE, autohide = FALSE, position = "bottomRight", type = "default",
                 class = "notif-start-jupyter"
               )
