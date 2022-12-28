@@ -153,11 +153,11 @@ server <- function(input, output, session){
               if(!isTRUE(dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE))) {
                 return()
               }
+              conf <- get_jupyter_configuration()
               if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
                  !dir.exists(conf$confpath)) {
                 return()
               }
-              conf <- get_jupyter_configuration()
               jupyter_port <- as.integer(conf$port)
               if(!length(jupyter_port)) {
                 jupyter_port <- raveio::raveio_getopt("jupyter_port", default = 17284L)
