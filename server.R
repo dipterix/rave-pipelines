@@ -272,7 +272,14 @@ server <- function(input, output, session){
                     shutdown_rave_ui,
                     shutdown_all_ui
                   ),
-                  "* If you shut down RAVE only, the active Jupyter server will still run in the background. Please manually stop the Jupyter server via ", shiny::tags$span(class = "font-weight-bold", sprintf("rpymat::jupyter_server_stop(%s)", jupyter_port))
+                  local({
+                    if(jupyter_running) {
+                      shiny::tagList("* If you shut down RAVE only, the active Jupyter server will still run in the background. Please manually stop the Jupyter server via ", shiny::tags$span(class = "font-weight-bold", sprintf("rpymat::jupyter_server_stop(%s)", jupyter_port)))
+                    } else {
+                      "Please choose from the following options."
+                    }
+                  })
+
                 )
               )
             }),
