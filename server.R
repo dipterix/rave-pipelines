@@ -108,7 +108,7 @@ server <- function(input, output, session){
                 port <- as.integer(jupyter_conf$port)
                 if(isTRUE(!is.na(port) & port >= 1024 & port <= 65535)) {
                   re$port <- port
-                  re$host <- host
+                  re$host <- jupyter_conf$host
                 }
               }
             })
@@ -179,6 +179,7 @@ server <- function(input, output, session){
                 ),
                 file = conf$confpath
               )
+              shiny::removeModal()
               ravedash::show_notification(
                 title = "JupyterLab server started",
                 subtitle = "success!",
