@@ -96,28 +96,148 @@ server <- function(input, output, session){
           source("./R/rave-options.R", local = parse_env)
           shiny::moduleServer("._raveoptions_.", parse_env$rave_option_server)
 
-
+          get_jupyter_configuration <- function() {
+            re <- list()
+            sess_root <- ravedash:::current_session_path()
+            jupyter_confpath <- file.path(sess_root, "jupyter.yaml")
+            re$confpath <- jupyter_confpath
+            try({
+              if(length(jupyter_confpath) == 1 && !is.na(jupyter_confpath) &&
+                 file.exists(jupyter_confpath)) {
+                jupyter_conf <- raveio::load_yaml(jupyter_confpath)
+                port <- as.integer(jupyter_conf$port)
+                if(isTRUE(!is.na(port) & port >= 1024 & port <= 65535)) {
+                  re$port <- port
+                  re$host <- host
+                }
+              }
+            })
+            re
+          }
           shiny::bindEvent(
             ravedash::safe_observe({
-              ravedash::shutdown_session(session = session)
+              ravedash::shutdown_session(session = session, jupyter = TRUE)
             }),
-            input$ravedash_shutdown,
+            input$ravedash_shutdown_all,
             ignoreNULL = TRUE, ignoreInit = TRUE, once = TRUE
+          )
+          shiny::bindEvent(
+            ravedash::safe_observe({
+              ravedash::shutdown_session(session = session, jupyter = FALSE)
+            }),
+            input$ravedash_shutdown_rave,
+            ignoreNULL = TRUE, ignoreInit = TRUE, once = TRUE
+          )
+          shiny::bindEvent(
+            ravedash::safe_observe({
+              try({
+                conf <- get_jupyter_configuration()
+                if(length(conf$port)) {
+                  rpymat::jupyter_server_stop(conf$port)
+                  ravedash::show_notification(
+                    title = "JupyterLab server stopped",
+                    subtitle = "success!",
+                    type = "success",
+                    message = sprintf("JupyterLab instance at port %s has been shut down", conf$port)
+                  )
+                }
+              })
+            }),
+            input$ravedash_shutdown_jupyter,
+            ignoreNULL = TRUE, ignoreInit = TRUE
+          )
+          shiny::bindEvent(
+            ravedash::safe_observe({
+              if(!isTRUE(dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE))) {
+                return()
+              }
+              if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
+                 !dir.exists(conf$confpath)) {
+                return()
+              }
+              conf <- get_jupyter_configuration()
+              jupyter_port <- as.integer(conf$port)
+              if(!length(jupyter_port)) {
+                jupyter_port <- raveio::raveio_getopt("jupyter_port", default = 17284L)
+              }
+              host <- conf$host
+              if(!length(host)) {
+                host <- "127.0.0.1"
+              }
+              jupyter_wd <- raveio::raveio_getopt('data_dir')
+              rpymat::jupyter_check_launch(
+                open_browser = FALSE, workdir = jupyter_wd,
+                port = jupyter_port,
+                host = host, async = TRUE)
+
+              raveio::save_yaml(
+                list(
+                  host = host,
+                  port = jupyter_port
+                ),
+                file = conf$confpath
+              )
+              ravedash::show_notification(
+                title = "JupyterLab server started",
+                subtitle = "success!",
+                type = "success",
+                message = sprintf("A JupyterLab instance is running at %s:%s.", host, jupyter_port)
+              )
+            }),
+            input$ravedash_start_jupyter,
+            ignoreNULL = TRUE, ignoreInit = TRUE
           )
 
           shiny::bindEvent(
             ravedash::safe_observe({
+
+              jupyter_conf <- get_jupyter_configuration()
+              rs_available <- dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE)
+
+              # shutdown jupyter UI
+              start_jupyter_ui <- NULL
+              if(length(jupyter_conf$port)) {
+                shutdown_jupyter_ui <- shiny::actionButton(
+                  inputId = "ravedash_shutdown_jupyter",
+                  label = "Stop Jupyter"
+                )
+                shutdown_rave_ui <- shiny::actionButton(
+                  inputId = "ravedash_shutdown_rave",
+                  label = "Stop RAVE"
+                )
+                shutdown_all_ui <- dipsaus::actionButtonStyled(
+                  inputId = "ravedash_shutdown_all",
+                  label = "Stop RAVE + Jupyter",
+                  icon = ravedash::shiny_icons[["power-off"]]
+                )
+              } else {
+                shutdown_jupyter_ui <- NULL
+                shutdown_all_ui <- NULL
+                shutdown_rave_ui <- dipsaus::actionButtonStyled(
+                  inputId = "ravedash_shutdown_rave",
+                  label = "Stop RAVE",
+                  icon = ravedash::shiny_icons[["power-off"]]
+                )
+                if(rs_available) {
+                  start_jupyter_ui <- shiny::actionButton(
+                    inputId = "ravedash_start_jupyter",
+                    label = "Start Jupyter"
+                  )
+                }
+              }
+
+
+
               shiny::showModal(
                 shiny::modalDialog(
-                  title = "Power-off RAVE",
-                  easyClose = TRUE, size = "m",
+                  title = "Power-On/Off RAVE Services",
+                  easyClose = TRUE, size = "l",
                   footer = shiny::tagList(
                     shiny::modalButton("Cancel"),
-                    dipsaus::actionButtonStyled(
-                      inputId = "ravedash_shutdown",
-                      label = "Shutdown",
-                      icon = ravedash::shiny_icons[["power-off"]]
-                    )
+                    shutdown_jupyter_ui,
+                    start_jupyter_ui,
+                    shutdown_rave_ui,
+                    shutdown_all_ui
                   ),
                   "This will shutdown the RAVE server. Please press the [Shutdown] button to proceed."
                 )
