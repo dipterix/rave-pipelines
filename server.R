@@ -130,18 +130,20 @@ server <- function(input, output, session){
           )
           shiny::bindEvent(
             ravedash::safe_observe({
-              try({
-                conf <- get_jupyter_configuration()
-                if(length(conf$port)) {
-                  rpymat::jupyter_server_stop(conf$port)
-                  ravedash::show_notification(
-                    title = "JupyterLab server stopped",
-                    subtitle = "success!",
-                    type = "success",
-                    message = sprintf("JupyterLab instance at port %s has been shut down", conf$port)
-                  )
-                }
-              })
+              conf <- get_jupyter_configuration()
+              if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
+                 !dir.exists(conf$confpath)) {
+                return()
+              }
+              rpymat::jupyter_server_stop(conf$port)
+              unlink(conf$confpath)
+              shiny::removeModal()
+              ravedash::show_notification(
+                title = "JupyterLab server stopped",
+                subtitle = "success!",
+                type = "success",
+                message = sprintf("JupyterLab instance at port %s has been shut down", conf$port)
+              )
             }),
             input$ravedash_shutdown_jupyter,
             ignoreNULL = TRUE, ignoreInit = TRUE
