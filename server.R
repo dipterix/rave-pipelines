@@ -132,7 +132,7 @@ server <- function(input, output, session){
             ravedash::safe_observe({
               conf <- get_jupyter_configuration()
               if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
-                 !dir.exists(conf$confpath)) {
+                 !file.exists(conf$confpath)) {
                 return()
               }
               rpymat::jupyter_server_stop(conf$port)
@@ -155,7 +155,7 @@ server <- function(input, output, session){
               }
               conf <- get_jupyter_configuration()
               if(length(conf$confpath) != 1 || is.na(conf$confpath) ||
-                 !dir.exists(conf$confpath)) {
+                 !file.exists(conf$confpath)) {
                 return()
               }
               jupyter_port <- as.integer(conf$port)
@@ -196,6 +196,8 @@ server <- function(input, output, session){
 
               jupyter_conf <- get_jupyter_configuration()
               rs_available <- dipsaus::rs_avail(child_ok = TRUE, shiny_ok = TRUE)
+
+              print(jupyter_conf)
 
               # shutdown jupyter UI
               start_jupyter_ui <- NULL
