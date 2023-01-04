@@ -343,12 +343,12 @@ module_server <- function(input, output, session, ...){
         dipsaus::close_alert2()
       }, add = TRUE)
 
-      if(!is.null(localize_data$ct_data) && is.list(localize_data$ct_data)) {
-        class(localize_data$ct_data) <- "threeBrain.nii"
+      if(!is.null(localize_data$ct_header) && is.list(localize_data$ct_header)) {
+        class(localize_data$ct_header) <- "threeBrain.nii"
       }
 
       viewer <- brain$localize(
-        ct_path = localize_data$ct_data,
+        ct_path = localize_data$ct_path,
         transform_space = localize_data$transform_space,
         transform_matrix = localize_data$transform_matrix,
         mri_path = localize_data$mri_path,
