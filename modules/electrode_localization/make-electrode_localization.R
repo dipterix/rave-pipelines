@@ -93,7 +93,7 @@ rm(._._env_._.)
                 }
                 subject
             }), target_depends = c("project_name", "subject_code"
-            )), deps = c("project_name", "subject_code"), cue = targets::tar_cue("thorough"), 
+            )), deps = c("project_name", "subject_code"), cue = targets::tar_cue("always"), 
         pattern = NULL, iteration = "list"), find_CT_Nifti_files = targets::tar_target_raw(name = "ct_candidates", 
         command = quote({
             .__target_expr__. <- quote({
@@ -516,7 +516,7 @@ rm(._._env_._.)
             }), target_depends = c("subject", "path_ct", "transform_space", 
             "path_mri", "path_transform")), deps = c("subject", 
         "path_ct", "transform_space", "path_mri", "path_transform"
-        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), generate_indicator = targets::tar_target_raw(name = "ct_exists", 
         command = quote({
             .__target_expr__. <- quote({
@@ -538,7 +538,7 @@ rm(._._env_._.)
                 }
                 ct_exists
             }), target_depends = "localize_data"), deps = "localize_data", 
-        cue = targets::tar_cue("thorough"), pattern = NULL, iteration = "list"), 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
     generate_localization_viewer = targets::tar_target_raw(name = "viewer", 
         command = quote({
             .__target_expr__. <- quote({

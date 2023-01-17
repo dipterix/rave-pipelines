@@ -24,7 +24,7 @@ fslut <- list(
 )
 ```
 
-```{rave load_subject, language = "R", export = "subject", format = "rave-subject"}
+```{rave load_subject, language = "R", export = "subject", format = "rave-subject", cue = "always"}
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code,
@@ -169,7 +169,7 @@ brain <- threeBrain::freesurfer_brain2(
 ```
 
 
-```{rave Loading_brain_and_CT_if_exists, language = "R", export = "localize_data"}
+```{rave Loading_brain_and_CT_if_exists, language = "R", export = "localize_data", cue = "always"}
 force(subject)
 
 resolve_path <- function(path) {
@@ -236,11 +236,11 @@ localize_data <- list(
 )
 ```
 
-```{rave generate_indicator, language = "R", export = "ct_exists"}
+```{rave generate_indicator, language = "R", export = "ct_exists", cue = "always"}
 ct_exists <- isTRUE(!is.null(localize_data$ct_header) && is.list(localize_data$ct_header))
 ```
 
-```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always"}
+```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always", cue = "always"}
 
 force(ct_exists)
 viewer <- brain$localize(
