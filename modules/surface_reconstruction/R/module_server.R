@@ -309,7 +309,7 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
-  run_command_pipeline <- function(cmd, wait = TRUE, title = "Running Terminal Command", command = "bash", ...) {
+  run_command_pipeline <- function(cmd, wait = TRUE, title = "Running Terminal Command", command = NULL, ...) {
 
     shidashi::clear_notifications(class = ns("error_notif"))
 
@@ -325,6 +325,13 @@ module_server <- function(input, output, session, ...){
       ),
       footer = dipsaus::actionButtonStyled(ns("dismiss_modal"), "Running...", disabled = "")
     ))
+
+    if( !length(command) ) {
+      command <- cmd$command
+      if(!length(command)) {
+        command <- "bash"
+      }
+    }
 
     cmd$execute(dry_run = TRUE, backup = FALSE)
 
@@ -355,12 +362,14 @@ module_server <- function(input, output, session, ...){
         cat(script)
       }
       Sys.sleep(0.5)
+      command <- .(command)
+      cat("\n\n# Running above script using system command:", command)
       raveio::cmd_execute(
         script = script,
         script_path = script_path,
         stdout = log_path,
         stderr = log_path,
-        command = .(command)
+        command = command
       )
     }), wait = wait, quoted = TRUE, name = title)
 

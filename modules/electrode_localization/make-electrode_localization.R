@@ -93,7 +93,7 @@ rm(._._env_._.)
                 }
                 subject
             }), target_depends = c("project_name", "subject_code"
-            )), deps = c("project_name", "subject_code"), cue = targets::tar_cue("thorough"), 
+            )), deps = c("project_name", "subject_code"), cue = targets::tar_cue("always"), 
         pattern = NULL, iteration = "list"), find_CT_Nifti_files = targets::tar_target_raw(name = "ct_candidates", 
         command = quote({
             .__target_expr__. <- quote({
@@ -412,7 +412,8 @@ rm(._._env_._.)
                   ct_path <- resolve_path(path_ct)
                   has_ct <- TRUE
                   subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
-                  ct_data <- threeBrain:::read_nii2(ct_path)
+                  ct_header <- threeBrain:::read_nii2(ct_path, 
+                    head_only = TRUE)
                   transform_space <- tolower(transform_space)
                   if (transform_space %in% c("fsl")) {
                     mri_path <- resolve_path(path_mri)
@@ -433,13 +434,13 @@ rm(._._env_._.)
                   }
                 } else {
                   subject$set_default("path_ct", NULL, namespace = "electrode_localization")
-                  ct_data <- NULL
+                  ct_header <- NULL
                   transform_space <- "no_ct"
                 }
                 subject$set_default("transform_space", transform_space, 
                   namespace = "electrode_localization")
                 localize_data <- list(transform_space = transform_space, 
-                  ct_data = ct_data, ct_path = ct_path, mri_path = mri_path, 
+                  ct_header = ct_header, ct_path = ct_path, mri_path = mri_path, 
                   mri_data = mri_data, transform_matrix = transform_matrix)
             })
             tryCatch({
@@ -477,7 +478,8 @@ rm(._._env_._.)
                     ct_path <- resolve_path(path_ct)
                     has_ct <- TRUE
                     subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
-                    ct_data <- threeBrain:::read_nii2(ct_path)
+                    ct_header <- threeBrain:::read_nii2(ct_path, 
+                      head_only = TRUE)
                     transform_space <- tolower(transform_space)
                     if (transform_space %in% c("fsl")) {
                       mri_path <- resolve_path(path_mri)
@@ -500,25 +502,26 @@ rm(._._env_._.)
                     }
                   } else {
                     subject$set_default("path_ct", NULL, namespace = "electrode_localization")
-                    ct_data <- NULL
+                    ct_header <- NULL
                     transform_space <- "no_ct"
                   }
                   subject$set_default("transform_space", transform_space, 
                     namespace = "electrode_localization")
                   localize_data <- list(transform_space = transform_space, 
-                    ct_data = ct_data, ct_path = ct_path, mri_path = mri_path, 
-                    mri_data = mri_data, transform_matrix = transform_matrix)
+                    ct_header = ct_header, ct_path = ct_path, 
+                    mri_path = mri_path, mri_data = mri_data, 
+                    transform_matrix = transform_matrix)
                 }
                 localize_data
             }), target_depends = c("subject", "path_ct", "transform_space", 
             "path_mri", "path_transform")), deps = c("subject", 
         "path_ct", "transform_space", "path_mri", "path_transform"
-        ), cue = targets::tar_cue("thorough"), pattern = NULL, 
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), generate_indicator = targets::tar_target_raw(name = "ct_exists", 
         command = quote({
             .__target_expr__. <- quote({
-                ct_exists <- isTRUE(!is.null(localize_data$ct_data) && 
-                  is.list(localize_data$ct_data))
+                ct_exists <- isTRUE(!is.null(localize_data$ct_header) && 
+                  is.list(localize_data$ct_header))
             })
             tryCatch({
                 eval(.__target_expr__.)
@@ -530,17 +533,17 @@ rm(._._env_._.)
         }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
             target_export = "ct_exists", target_expr = quote({
                 {
-                  ct_exists <- isTRUE(!is.null(localize_data$ct_data) && 
-                    is.list(localize_data$ct_data))
+                  ct_exists <- isTRUE(!is.null(localize_data$ct_header) && 
+                    is.list(localize_data$ct_header))
                 }
                 ct_exists
             }), target_depends = "localize_data"), deps = "localize_data", 
-        cue = targets::tar_cue("thorough"), pattern = NULL, iteration = "list"), 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
     generate_localization_viewer = targets::tar_target_raw(name = "viewer", 
         command = quote({
             .__target_expr__. <- quote({
                 force(ct_exists)
-                viewer <- brain$localize(ct_path = localize_data$ct_data, 
+                viewer <- brain$localize(ct_path = localize_data$ct_path, 
                   transform_space = localize_data$transform_space, 
                   transform_matrix = localize_data$transform_matrix, 
                   mri_path = localize_data$mri_path)
@@ -559,7 +562,7 @@ rm(._._env_._.)
             target_export = "viewer", target_expr = quote({
                 {
                   force(ct_exists)
-                  viewer <- brain$localize(ct_path = localize_data$ct_data, 
+                  viewer <- brain$localize(ct_path = localize_data$ct_path, 
                     transform_space = localize_data$transform_space, 
                     transform_matrix = localize_data$transform_matrix, 
                     mri_path = localize_data$mri_path)

@@ -1,5 +1,5 @@
 path_ct: '{subject$freesurfer_path}/../coregistration/CT_RAW.nii'
-subject_code: PAV006
+subject_code: PAV010
 path_mri: '{subject$freesurfer_path}/../coregistration/MRI_reference.nii'
 project_name: devel
 path_transform: '{subject$freesurfer_path}/../coregistration/CT_IJK_to_MR_RAS.txt'

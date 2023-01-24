@@ -24,7 +24,7 @@ fslut <- list(
 )
 ```
 
-```{rave load_subject, language = "R", export = "subject", format = "rave-subject"}
+```{rave load_subject, language = "R", export = "subject", format = "rave-subject", cue = "always"}
 subject <- raveio::RAVESubject$new(
   project_name = project_name, 
   subject_code = subject_code,
@@ -169,7 +169,7 @@ brain <- threeBrain::freesurfer_brain2(
 ```
 
 
-```{rave Loading_brain_and_CT_if_exists, language = "R", export = "localize_data"}
+```{rave Loading_brain_and_CT_if_exists, language = "R", export = "localize_data", cue = "always"}
 force(subject)
 
 resolve_path <- function(path) {
@@ -196,7 +196,7 @@ if(length(path_ct)) {
   ct_path <- resolve_path(path_ct)
   has_ct <- TRUE
   subject$set_default("path_ct", path_ct, namespace = "electrode_localization")
-  ct_data <- threeBrain:::read_nii2(ct_path)
+  ct_header <- threeBrain:::read_nii2(ct_path, head_only = TRUE)
   
   # check if method is MRI
   transform_space <- tolower(transform_space)
@@ -220,7 +220,7 @@ if(length(path_ct)) {
   
 } else {
   subject$set_default("path_ct", NULL, namespace = "electrode_localization")
-  ct_data <- NULL
+  ct_header <- NULL
   transform_space <- "no_ct"
 }
 
@@ -228,7 +228,7 @@ subject$set_default("transform_space", transform_space, namespace = "electrode_l
 
 localize_data <- list(
   transform_space = transform_space,
-  ct_data = ct_data,
+  ct_header = ct_header,
   ct_path = ct_path,
   mri_path = mri_path,
   mri_data = mri_data,
@@ -236,15 +236,15 @@ localize_data <- list(
 )
 ```
 
-```{rave generate_indicator, language = "R", export = "ct_exists"}
-ct_exists <- isTRUE(!is.null(localize_data$ct_data) && is.list(localize_data$ct_data))
+```{rave generate_indicator, language = "R", export = "ct_exists", cue = "always"}
+ct_exists <- isTRUE(!is.null(localize_data$ct_header) && is.list(localize_data$ct_header))
 ```
 
-```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always"}
+```{rave generate_localization_viewer, language = "R", export = "viewer", cue = "always", cue = "always"}
 
 force(ct_exists)
 viewer <- brain$localize(
-  ct_path = localize_data$ct_data, 
+  ct_path = localize_data$ct_path, 
   transform_space = localize_data$transform_space,
   transform_matrix = localize_data$transform_matrix,
   mri_path = localize_data$mri_path
