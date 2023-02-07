@@ -367,9 +367,148 @@ rm(._._env_._.)
                 plan_list
             }), target_depends = c("localization_plan", "subject"
             )), deps = c("localization_plan", "subject"), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"), load_brain = targets::tar_target_raw(name = "brain", 
+        pattern = NULL, iteration = "list"), check_load_pial_envelop = targets::tar_target_raw(name = "pial_envelope", 
         command = quote({
             .__target_expr__. <- quote({
+                pial_envelope <- 0
+                tryCatch({
+                  fs_path <- subject$freesurfer_path
+                  if (!is.na(fs_path) && length(fs_path) == 1 && 
+                    file.exists(fs_path)) {
+                    lh_envelope_path <- file.path(fs_path, "surf", 
+                      "lh.pial-outer-smoothed")
+                    rh_envelope_path <- file.path(fs_path, "surf", 
+                      "rh.pial-outer-smoothed")
+                    tmpdir <- file.path(subject$freesurfer_path, 
+                      "tmp")
+                    lh_filled_path <- file.path(tmpdir, "lh.pial.filled.mgz")
+                    rh_filled_path <- file.path(tmpdir, "rh.pial.filled.mgz")
+                    lh_pial_path <- file.path(fs_path, "surf", 
+                      "lh.pial.T1")
+                    rh_pial_path <- file.path(fs_path, "surf", 
+                      "rh.pial.T1")
+                    if (!file.exists(lh_envelope_path) || !file.exists(rh_envelope_path)) {
+                      if (!file.exists(lh_pial_path)) {
+                        lh_pial_path <- file.path(fs_path, "surf", 
+                          "lh.pial")
+                      }
+                      if (!file.exists(rh_pial_path)) {
+                        rh_pial_path <- file.path(fs_path, "surf", 
+                          "rh.pial")
+                      }
+                      progress <- dipsaus::progress2("Compute pial envelope", 
+                        max = 4, shiny_auto_close = TRUE)
+                      raveio::dir_create2(tmpdir)
+                      progress$inc("Filling lh.pial...")
+                      if (!file.exists(lh_filled_path)) {
+                        threeBrain::fill_surface(surface = lh_pial_path, 
+                          save_as = lh_filled_path, resolution = 256L, 
+                          delta = 3, )
+                      }
+                      progress$inc("Filling rh.pial...")
+                      if (!file.exists(rh_filled_path)) {
+                        threeBrain::fill_surface(surface = rh_pial_path, 
+                          save_as = rh_filled_path, resolution = 256L, 
+                          delta = 3)
+                      }
+                      progress$inc("Inflate & resample (left)...")
+                      if (file.exists(lh_filled_path)) {
+                        threeBrain::generate_smooth_envelope(filled_volume_path = lh_filled_path, 
+                          save_as = lh_envelope_path, inflate = 2)
+                        pial_envelope <- 1
+                      }
+                      progress$inc("Inflate & resample (right)...")
+                      if (file.exists(rh_filled_path)) {
+                        threeBrain::generate_smooth_envelope(filled_volume_path = rh_filled_path, 
+                          save_as = rh_envelope_path, inflate = 2)
+                        pial_envelope <- pial_envelope + 1
+                      }
+                    } else {
+                      pial_envelope <- 2
+                    }
+                  }
+                }, error = function(e) {
+                  warning(e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(pial_envelope)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "pial_envelope", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "pial_envelope", target_expr = quote({
+                {
+                  pial_envelope <- 0
+                  tryCatch({
+                    fs_path <- subject$freesurfer_path
+                    if (!is.na(fs_path) && length(fs_path) == 
+                      1 && file.exists(fs_path)) {
+                      lh_envelope_path <- file.path(fs_path, 
+                        "surf", "lh.pial-outer-smoothed")
+                      rh_envelope_path <- file.path(fs_path, 
+                        "surf", "rh.pial-outer-smoothed")
+                      tmpdir <- file.path(subject$freesurfer_path, 
+                        "tmp")
+                      lh_filled_path <- file.path(tmpdir, "lh.pial.filled.mgz")
+                      rh_filled_path <- file.path(tmpdir, "rh.pial.filled.mgz")
+                      lh_pial_path <- file.path(fs_path, "surf", 
+                        "lh.pial.T1")
+                      rh_pial_path <- file.path(fs_path, "surf", 
+                        "rh.pial.T1")
+                      if (!file.exists(lh_envelope_path) || !file.exists(rh_envelope_path)) {
+                        if (!file.exists(lh_pial_path)) {
+                          lh_pial_path <- file.path(fs_path, 
+                            "surf", "lh.pial")
+                        }
+                        if (!file.exists(rh_pial_path)) {
+                          rh_pial_path <- file.path(fs_path, 
+                            "surf", "rh.pial")
+                        }
+                        progress <- dipsaus::progress2("Compute pial envelope", 
+                          max = 4, shiny_auto_close = TRUE)
+                        raveio::dir_create2(tmpdir)
+                        progress$inc("Filling lh.pial...")
+                        if (!file.exists(lh_filled_path)) {
+                          threeBrain::fill_surface(surface = lh_pial_path, 
+                            save_as = lh_filled_path, resolution = 256L, 
+                            delta = 3, )
+                        }
+                        progress$inc("Filling rh.pial...")
+                        if (!file.exists(rh_filled_path)) {
+                          threeBrain::fill_surface(surface = rh_pial_path, 
+                            save_as = rh_filled_path, resolution = 256L, 
+                            delta = 3)
+                        }
+                        progress$inc("Inflate & resample (left)...")
+                        if (file.exists(lh_filled_path)) {
+                          threeBrain::generate_smooth_envelope(filled_volume_path = lh_filled_path, 
+                            save_as = lh_envelope_path, inflate = 2)
+                          pial_envelope <- 1
+                        }
+                        progress$inc("Inflate & resample (right)...")
+                        if (file.exists(rh_filled_path)) {
+                          threeBrain::generate_smooth_envelope(filled_volume_path = rh_filled_path, 
+                            save_as = rh_envelope_path, inflate = 2)
+                          pial_envelope <- pial_envelope + 1
+                        }
+                      } else {
+                        pial_envelope <- 2
+                      }
+                    }
+                  }, error = function(e) {
+                    warning(e)
+                  })
+                }
+                pial_envelope
+            }), target_depends = "subject"), deps = "subject", 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
+    load_brain_and_generate_pial_envelope = targets::tar_target_raw(name = "brain", 
+        command = quote({
+            .__target_expr__. <- quote({
+                force(pial_envelope)
                 brain <- tryCatch({
                   threeBrain::threeBrain(path = subject$freesurfer_path, 
                     subject_code = subject$subject_code)
@@ -388,6 +527,7 @@ rm(._._env_._.)
         }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
             target_export = "brain", target_expr = quote({
                 {
+                  force(pial_envelope)
                   brain <- tryCatch({
                     threeBrain::threeBrain(path = subject$freesurfer_path, 
                       subject_code = subject$subject_code)
@@ -397,9 +537,9 @@ rm(._._env_._.)
                   })
                 }
                 brain
-            }), target_depends = "subject"), deps = "subject", 
-        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
-    Loading_brain_and_CT_if_exists = targets::tar_target_raw(name = "localize_data", 
+            }), target_depends = c("pial_envelope", "subject"
+            )), deps = c("pial_envelope", "subject"), cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), Loading_brain_and_CT_if_exists = targets::tar_target_raw(name = "localize_data", 
         command = quote({
             .__target_expr__. <- quote({
                 force(subject)

@@ -367,7 +367,7 @@ module_server <- function(input, output, session, ...){
     brain_proxy$set_background(dipsaus::col2hexStr(theme$background))
   })
 
-  show_group <- function(group_id, reset = FALSE) {
+  show_group <- function(group_id, reset_labels = FALSE, reset = FALSE) {
     if(missing(group_id)) {
       group_id <- local_reactives$active_plan
     }
@@ -395,6 +395,10 @@ module_server <- function(input, output, session, ...){
         item$Coord_x %?<-% row$Coord_x
         item$Coord_y %?<-% row$Coord_y
         item$Coord_z %?<-% row$Coord_z
+        if( reset_labels ) {
+          item$FSIndex <- NULL
+          item$FSLabel <- NULL
+        }
         brain_proxy$add_localization_electrode(as.data.frame(item), update_shiny = FALSE)
       }
       brain_proxy$set_localization_electrode(
@@ -769,6 +773,14 @@ module_server <- function(input, output, session, ...){
       local_reactives$refresh_table <- Sys.time()
     }),
     input$action_reset_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      show_group(reset_labels = TRUE)
+      local_reactives$refresh_table <- Sys.time()
+    }),
+    input$action_reset_fslabel_btn,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
   shiny::bindEvent(
