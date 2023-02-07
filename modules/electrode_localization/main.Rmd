@@ -115,7 +115,9 @@ if(length(plan_table)) {
       electrode_table <- raveio::safe_read_csv(files)
       tname1 <- c("Electrode", "Coord_x", "Coord_y", "Coord_z")
       tname2 <- c("Electrode", "Coord_x", "Coord_y", "Coord_z", "Radius", "SurfaceType", 
-                  "Hemisphere", "FSIndex", "FSLabel", "MNI305_x", "MNI305_y", "MNI305_z")
+                  "Hemisphere", "FSIndex", "FSLabel", "MNI305_x", "MNI305_y", "MNI305_z",
+                  "OrigCoord_x", "OrigCoord_y", "OrigCoord_z", "DistanceShifted", "DistanceToPial",
+                  "SurfaceElectrode")
       if(all(tname1 %in% names(electrode_table))) {
         tname2 <- tname2[tname2 %in% names(electrode_table)]
         electrode_table <- electrode_table[, tname2]
@@ -132,6 +134,7 @@ if(length(plan_table)) {
   plan_table$Coord_y %?<-% 0
   plan_table$Coord_z %?<-% 0
   plan_table$Radius %?<-% 1
+  plan_table$SurfaceElectrode %?<-% (plan_table$LocationType %in% c("ECoG"))
   plan_table$SurfaceType %?<-% "pial"
   plan_table$MNI305_x %?<-% 0
   plan_table$MNI305_y %?<-% 0
@@ -139,7 +142,6 @@ if(length(plan_table)) {
   plan_table$VertexNumber <- -1
   plan_table$FSIndex %?<-% 0
   plan_table$FSLabel %?<-% "Unknown"
-  plan_table$SurfaceElectrode <- plan_table$LocationType %in% c("ECoG")
   etypes <- subject$preprocess_settings$electrode_types
   if(!length(etypes)) {
     etypes <- "LFP"
@@ -162,10 +164,15 @@ if(length(plan_table)) {
 
 
 ```{rave load_brain, language = "R", export = "brain", cue = "always"}
-brain <- threeBrain::freesurfer_brain2(
-  fs_subject_folder = subject$freesurfer_path,
-  subject_name = subject$subject_code
-)
+brain <- tryCatch({
+  threeBrain::threeBrain(path = subject$freesurfer_path, 
+                         subject_code = subject$subject_code)
+}, error = function(e) {
+  threeBrain::freesurfer_brain2(
+    fs_subject_folder = subject$freesurfer_path,
+    subject_name = subject$subject_code
+  )
+})
 ```
 
 
@@ -271,7 +278,20 @@ re <- lapply(localization_list, function(item) {
   
   item$FSIndex %?<-% 0
   item$FSLabel %?<-% "Unknown"
+  item$FSLabel_aparc_a2009s_aseg %?<-% "Unknown"
+  item$FSLabel_aparc_aseg %?<-% "Unknown"
+  item$FSLabel_aparc_DKTatlas_aseg %?<-% "Unknown"
+  item$FSLabel_aseg %?<-% "Unknown"
   item$Radius %?<-% 1
+  item$OrigCoord_x %?<-% item$Coord_x
+  item$OrigCoord_y %?<-% item$Coord_y
+  item$OrigCoord_z %?<-% item$Coord_z
+  item$Sphere_x %?<-% 0
+  item$Sphere_y %?<-% 0
+  item$Sphere_z %?<-% 0
+  item$DistanceShifted %?<-% NA
+  item$DistanceToPial %?<-% NA
+  item$SurfaceElectrode %?<-% FALSE
   
   tbl <- data.frame(
     Electrode = item$Electrode,
@@ -280,7 +300,26 @@ re <- lapply(localization_list, function(item) {
     Dimension = item$Dimension, 
     LocationType = item$LocationType, Radius = item$Radius, 
     MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, MNI305_z = item$MNI305_z,
-    FSIndex = item$FSIndex, FSLabel = item$FSLabel
+    FSIndex = item$FSIndex, 
+    FSLabel = item$FSLabel,
+    FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg,
+    FSLabel_aparc_aseg = item$FSLabel_aparc_aseg,
+    FSLabel_aparc_DKTatlas_aseg = item$FSLabel_aparc_DKTatlas_aseg,
+    FSLabel_aseg = item$FSLabel_aseg,
+    
+    OrigCoord_x = item$OrigCoord_x, 
+    OrigCoord_y = item$OrigCoord_y, 
+    OrigCoord_z = item$OrigCoord_z,
+    
+    SurfaceElectrode = item$SurfaceElectrode, 
+    DistanceShifted = item$DistanceShifted, 
+    DistanceToPial = item$DistanceToPial,
+    SurfaceType = "pial",
+    VertexNumber = -1,
+    
+    Sphere_x = item$Sphere_x, 
+    Sphere_y = item$Sphere_y, 
+    Sphere_z = item$Sphere_z
   )
   if(!nrow(tbl)) { return(NULL) }
   tbl
@@ -290,9 +329,6 @@ re <- do.call("rbind", drop_nulls(re))
 if(length(re) && nrow(re)) {
   rownames(re) <- NULL
   re <- re[order(re$Electrode), ]
-  re$SurfaceElectrode <- re$LocationType %in% c("ECoG")
-  re$SurfaceType <- "pial"
-  re$VertexNumber <- -1
   
   # Calculate T1, MNI152
   empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + (re$Coord_z)^2
@@ -332,29 +368,10 @@ if(length(re) && nrow(re)) {
 
 Make sure you run target `localization_result_initial` first
 
-```{rave calculate_std141_mappings, export = "localization_result_final"}
+```{rave get_finalized_table, export = "localization_result_final", cue="always"}
 src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
 if(file.exists(src)) {
-  
-  localization_result_final <- utils::read.csv(file.path(subject$meta_path, "electrodes_unsaved.csv"))
-  
-  try({
-    re <- localization_result_final
-    brain$set_electrodes(electrodes = re)
-    re <- brain$calculate_template_coordinates(save_to = FALSE)
-    
-    # check Hemisphere, make sure no NAs
-    sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% c("left", "right")
-    if(any(sel)) {
-      is_left <- grepl(pattern = "(left|lh-)", re$FSLabel, ignore.case = TRUE)
-      is_right <- grepl(pattern = "(right|rh-)", re$FSLabel, ignore.case = TRUE)
-      re$Hemisphere[sel & (is_left | re$MNI305_x < 0)] <- "left"
-      re$Hemisphere[sel & !is_left & (is_right | re$MNI305_x > 0)] <- "right"
-    }
-    
-    localization_result_final <- re
-  })
-  
+  localization_result_final <- utils::read.csv(src)
 } else {
   localization_result_final <- NULL
 }
