@@ -514,7 +514,7 @@ rm(._._env_._.)
                     subject_code = subject$subject_code)
                 }, error = function(e) {
                   threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
-                    subject_name = subject$subject_code)
+                    subject_name = subject$subject_code, use_141 = FALSE)
                 })
             })
             tryCatch({
@@ -533,7 +533,7 @@ rm(._._env_._.)
                       subject_code = subject$subject_code)
                   }, error = function(e) {
                     threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
-                      subject_name = subject$subject_code)
+                      subject_name = subject$subject_code, use_141 = FALSE)
                   })
                 }
                 brain
