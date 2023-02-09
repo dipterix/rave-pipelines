@@ -19,7 +19,11 @@ module_html <- function(){
                 outputId = ns("label_selectors_wrapper")
               ),
               shiny::hr(),
-              shiny::actionLink(ns("action_reset_btn"), "Reset current group"),
+              shiny::span(
+                shiny::actionLink(ns("action_reset_btn"), "Reset current group"),
+                " | ",
+                shiny::actionLink(ns("action_reset_fslabel_btn"), "Re-compute FreeSurfer labels")
+              ),
               shiny::div(
                 class = "overflow-auto max-height-vh50",
                 DT::dataTableOutput(outputId = ns("group_table"), width = "auto")

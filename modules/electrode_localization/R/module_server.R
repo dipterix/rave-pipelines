@@ -271,7 +271,7 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
-  lapply(seq_len(100), function(ii){
+  lapply(seq_len(300), function(ii){
     shiny::bindEvent(
       ravedash::safe_observe({
         nms <- names(local_data$plan_list)
@@ -367,7 +367,7 @@ module_server <- function(input, output, session, ...){
     brain_proxy$set_background(dipsaus::col2hexStr(theme$background))
   })
 
-  show_group <- function(group_id, reset = FALSE) {
+  show_group <- function(group_id, reset_labels = FALSE, reset = FALSE) {
     if(missing(group_id)) {
       group_id <- local_reactives$active_plan
     }
@@ -383,15 +383,23 @@ module_server <- function(input, output, session, ...){
         if(all(c(row$Coord_x, row$Coord_y, row$Coord_z) == 0)) {
           break
         }
-        if(isTRUE(row$FSIndex > 0)) {
-          brain_proxy$add_localization_electrode(row[,c(
-            "Coord_x", "Coord_y", "Coord_z", "Label", "FSIndex", "FSLabel"
-          )], update_shiny = FALSE)
-        } else {
-          brain_proxy$add_localization_electrode(row[,c(
-            "Coord_x", "Coord_y", "Coord_z", "Label"
-          )], update_shiny = FALSE)
+        # Use OrigCoord_xyz if possible
+        item <- list(
+          Coord_x = row$OrigCoord_x,
+          Coord_y = row$OrigCoord_y,
+          Coord_z = row$OrigCoord_z,
+          Label = row$Label,
+          FSIndex = row$FSIndex,
+          FSLabel = row$FSLabel
+        )
+        item$Coord_x %?<-% row$Coord_x
+        item$Coord_y %?<-% row$Coord_y
+        item$Coord_z %?<-% row$Coord_z
+        if( reset_labels ) {
+          item$FSIndex <- NULL
+          item$FSLabel <- NULL
         }
+        brain_proxy$add_localization_electrode(as.data.frame(item), update_shiny = FALSE)
       }
       brain_proxy$set_localization_electrode(
         which = -1, update_shiny = TRUE,
@@ -421,6 +429,38 @@ module_server <- function(input, output, session, ...){
         nrow(group_table) - 2L
       }))
     ))
+
+    # check if brain shift is needed
+    if(length( group_table$SurfaceElectrode )) {
+      group_table$SurfaceElectrode <- as.logical(group_table$SurfaceElectrode)
+      has_surface_electrode <- any(group_table$SurfaceElectrode)
+      has_depth_electrode <- !all(group_table$SurfaceElectrode)
+    } else if( length(group_table$LocationType) ){
+      has_surface_electrode <- any(group_table$LocationType %in% "ECoG")
+      has_depth_electrode <- any(group_table$LocationType %in% c("sEEG", "iEEG"))
+    } else {
+      has_surface_electrode <- FALSE
+      has_depth_electrode <- TRUE
+    }
+    if( has_surface_electrode ) {
+      max_shifted <- max(c(group_table$DistanceShifted, 0))
+      shift_mode <- "soft threshold"
+      if( has_depth_electrode ) {
+        shift_mode <- "hard threshold"
+        max_shifted <- ceiling(max_shifted * 10) / 10
+      }
+      brain_proxy$set_controllers(list(
+        `Brain Shift` = shift_mode,
+        `Max Shift` = max_shifted
+      ))
+    } else {
+      brain_proxy$set_controllers(list(
+        `Brain Shift` = "disabled"
+      ))
+    }
+
+
+    print(group_table)
 
     return(list(
       current_id = ii,
@@ -737,6 +777,14 @@ module_server <- function(input, output, session, ...){
   )
   shiny::bindEvent(
     ravedash::safe_observe({
+      show_group(reset_labels = TRUE)
+      local_reactives$refresh_table <- Sys.time()
+    }),
+    input$action_reset_fslabel_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe({
       show_group()
     }),
     local_reactives$active_plan,
@@ -791,8 +839,34 @@ module_server <- function(input, output, session, ...){
       group_table$MNI305_x[idx2] <- table$MNI305_x[idx1]
       group_table$MNI305_y[idx2] <- table$MNI305_y[idx1]
       group_table$MNI305_z[idx2] <- table$MNI305_z[idx1]
+
+      group_table$OrigCoord_x[idx2] <- table$OrigCoord_x[idx1]
+      group_table$OrigCoord_y[idx2] <- table$OrigCoord_y[idx1]
+      group_table$OrigCoord_z[idx2] <- table$OrigCoord_z[idx1]
+
       group_table$FSIndex[idx2] <- table$FSIndex[idx1]
       group_table$FSLabel[idx2] <- table$FSLabel[idx1]
+
+      group_table$FSIndex_aparc_a2009s_aseg[idx2] <- table$FSIndex_aparc_a2009s_aseg[idx1]
+      group_table$FSLabel_aparc_a2009s_aseg[idx2] <- table$FSLabel_aparc_a2009s_aseg[idx1]
+
+      group_table$FSIndex_aparc_aseg[idx2] <- table$FSIndex_aparc_aseg[idx1]
+      group_table$FSLabel_aparc_aseg[idx2] <- table$FSLabel_aparc_aseg[idx1]
+
+      group_table$FSIndex_aparc_DKTatlas_aseg[idx2] <- table$FSIndex_aparc_DKTatlas_aseg[idx1]
+      group_table$FSLabel_aparc_DKTatlas_aseg[idx2] <- table$FSLabel_aparc_DKTatlas_aseg[idx1]
+
+      group_table$FSIndex_aseg[idx2] <- table$FSIndex_aseg[idx1]
+      group_table$FSLabel_aseg[idx2] <- table$FSLabel_aseg[idx1]
+
+      group_table$SurfaceElectrode[idx2] <- table$SurfaceElectrode[idx1]
+      group_table$DistanceShifted[idx2] <- table$DistanceShifted[idx1]
+      group_table$DistanceToPial[idx2] <- table$DistanceToPial[idx1]
+
+      group_table$Sphere_x[idx2] <- table$Sphere_x[idx1]
+      group_table$Sphere_y[idx2] <- table$Sphere_y[idx1]
+      group_table$Sphere_z[idx2] <- table$Sphere_z[idx1]
+
 
       local_data$plan_list[[group_id]] <- group_table
 

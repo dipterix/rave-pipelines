@@ -211,7 +211,9 @@ rm(._._env_._.)
                       tname2 <- c("Electrode", "Coord_x", "Coord_y", 
                         "Coord_z", "Radius", "SurfaceType", "Hemisphere", 
                         "FSIndex", "FSLabel", "MNI305_x", "MNI305_y", 
-                        "MNI305_z")
+                        "MNI305_z", "OrigCoord_x", "OrigCoord_y", 
+                        "OrigCoord_z", "DistanceShifted", "DistanceToPial", 
+                        "SurfaceElectrode")
                       if (all(tname1 %in% names(electrode_table))) {
                         tname2 <- tname2[tname2 %in% names(electrode_table)]
                         electrode_table <- electrode_table[, 
@@ -230,6 +232,8 @@ rm(._._env_._.)
                   plan_table$Coord_y %?<-% 0
                   plan_table$Coord_z %?<-% 0
                   plan_table$Radius %?<-% 1
+                  plan_table$SurfaceElectrode %?<-% (plan_table$LocationType %in% 
+                    c("ECoG"))
                   plan_table$SurfaceType %?<-% "pial"
                   plan_table$MNI305_x %?<-% 0
                   plan_table$MNI305_y %?<-% 0
@@ -237,8 +241,6 @@ rm(._._env_._.)
                   plan_table$VertexNumber <- -1
                   plan_table$FSIndex %?<-% 0
                   plan_table$FSLabel %?<-% "Unknown"
-                  plan_table$SurfaceElectrode <- plan_table$LocationType %in% 
-                    c("ECoG")
                   etypes <- subject$preprocess_settings$electrode_types
                   if (!length(etypes)) {
                     etypes <- "LFP"
@@ -320,7 +322,10 @@ rm(._._env_._.)
                         tname2 <- c("Electrode", "Coord_x", "Coord_y", 
                           "Coord_z", "Radius", "SurfaceType", 
                           "Hemisphere", "FSIndex", "FSLabel", 
-                          "MNI305_x", "MNI305_y", "MNI305_z")
+                          "MNI305_x", "MNI305_y", "MNI305_z", 
+                          "OrigCoord_x", "OrigCoord_y", "OrigCoord_z", 
+                          "DistanceShifted", "DistanceToPial", 
+                          "SurfaceElectrode")
                         if (all(tname1 %in% names(electrode_table))) {
                           tname2 <- tname2[tname2 %in% names(electrode_table)]
                           electrode_table <- electrode_table[, 
@@ -339,6 +344,8 @@ rm(._._env_._.)
                     plan_table$Coord_y %?<-% 0
                     plan_table$Coord_z %?<-% 0
                     plan_table$Radius %?<-% 1
+                    plan_table$SurfaceElectrode %?<-% (plan_table$LocationType %in% 
+                      c("ECoG"))
                     plan_table$SurfaceType %?<-% "pial"
                     plan_table$MNI305_x %?<-% 0
                     plan_table$MNI305_y %?<-% 0
@@ -346,8 +353,6 @@ rm(._._env_._.)
                     plan_table$VertexNumber <- -1
                     plan_table$FSIndex %?<-% 0
                     plan_table$FSLabel %?<-% "Unknown"
-                    plan_table$SurfaceElectrode <- plan_table$LocationType %in% 
-                      c("ECoG")
                     etypes <- subject$preprocess_settings$electrode_types
                     if (!length(etypes)) {
                       etypes <- "LFP"
@@ -362,11 +367,155 @@ rm(._._env_._.)
                 plan_list
             }), target_depends = c("localization_plan", "subject"
             )), deps = c("localization_plan", "subject"), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"), load_brain = targets::tar_target_raw(name = "brain", 
+        pattern = NULL, iteration = "list"), check_load_pial_envelop = targets::tar_target_raw(name = "pial_envelope", 
         command = quote({
             .__target_expr__. <- quote({
-                brain <- threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
-                  subject_name = subject$subject_code)
+                pial_envelope <- 0
+                tryCatch({
+                  fs_path <- subject$freesurfer_path
+                  if (!is.na(fs_path) && length(fs_path) == 1 && 
+                    file.exists(fs_path)) {
+                    lh_envelope_path <- file.path(fs_path, "surf", 
+                      "lh.pial-outer-smoothed")
+                    rh_envelope_path <- file.path(fs_path, "surf", 
+                      "rh.pial-outer-smoothed")
+                    tmpdir <- file.path(subject$freesurfer_path, 
+                      "tmp")
+                    lh_filled_path <- file.path(tmpdir, "lh.pial.filled.mgz")
+                    rh_filled_path <- file.path(tmpdir, "rh.pial.filled.mgz")
+                    lh_pial_path <- file.path(fs_path, "surf", 
+                      "lh.pial.T1")
+                    rh_pial_path <- file.path(fs_path, "surf", 
+                      "rh.pial.T1")
+                    if (!file.exists(lh_envelope_path) || !file.exists(rh_envelope_path)) {
+                      if (!file.exists(lh_pial_path)) {
+                        lh_pial_path <- file.path(fs_path, "surf", 
+                          "lh.pial")
+                      }
+                      if (!file.exists(rh_pial_path)) {
+                        rh_pial_path <- file.path(fs_path, "surf", 
+                          "rh.pial")
+                      }
+                      progress <- dipsaus::progress2("Compute pial envelope", 
+                        max = 4, shiny_auto_close = TRUE)
+                      raveio::dir_create2(tmpdir)
+                      progress$inc("Filling lh.pial...")
+                      if (!file.exists(lh_filled_path)) {
+                        threeBrain::fill_surface(surface = lh_pial_path, 
+                          save_as = lh_filled_path, resolution = 256L, 
+                          delta = 3, )
+                      }
+                      progress$inc("Filling rh.pial...")
+                      if (!file.exists(rh_filled_path)) {
+                        threeBrain::fill_surface(surface = rh_pial_path, 
+                          save_as = rh_filled_path, resolution = 256L, 
+                          delta = 3)
+                      }
+                      progress$inc("Inflate & resample (left)...")
+                      if (file.exists(lh_filled_path)) {
+                        threeBrain::generate_smooth_envelope(filled_volume_path = lh_filled_path, 
+                          save_as = lh_envelope_path, inflate = 2)
+                        pial_envelope <- 1
+                      }
+                      progress$inc("Inflate & resample (right)...")
+                      if (file.exists(rh_filled_path)) {
+                        threeBrain::generate_smooth_envelope(filled_volume_path = rh_filled_path, 
+                          save_as = rh_envelope_path, inflate = 2)
+                        pial_envelope <- pial_envelope + 1
+                      }
+                    } else {
+                      pial_envelope <- 2
+                    }
+                  }
+                }, error = function(e) {
+                  warning(e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(pial_envelope)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "pial_envelope", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "pial_envelope", target_expr = quote({
+                {
+                  pial_envelope <- 0
+                  tryCatch({
+                    fs_path <- subject$freesurfer_path
+                    if (!is.na(fs_path) && length(fs_path) == 
+                      1 && file.exists(fs_path)) {
+                      lh_envelope_path <- file.path(fs_path, 
+                        "surf", "lh.pial-outer-smoothed")
+                      rh_envelope_path <- file.path(fs_path, 
+                        "surf", "rh.pial-outer-smoothed")
+                      tmpdir <- file.path(subject$freesurfer_path, 
+                        "tmp")
+                      lh_filled_path <- file.path(tmpdir, "lh.pial.filled.mgz")
+                      rh_filled_path <- file.path(tmpdir, "rh.pial.filled.mgz")
+                      lh_pial_path <- file.path(fs_path, "surf", 
+                        "lh.pial.T1")
+                      rh_pial_path <- file.path(fs_path, "surf", 
+                        "rh.pial.T1")
+                      if (!file.exists(lh_envelope_path) || !file.exists(rh_envelope_path)) {
+                        if (!file.exists(lh_pial_path)) {
+                          lh_pial_path <- file.path(fs_path, 
+                            "surf", "lh.pial")
+                        }
+                        if (!file.exists(rh_pial_path)) {
+                          rh_pial_path <- file.path(fs_path, 
+                            "surf", "rh.pial")
+                        }
+                        progress <- dipsaus::progress2("Compute pial envelope", 
+                          max = 4, shiny_auto_close = TRUE)
+                        raveio::dir_create2(tmpdir)
+                        progress$inc("Filling lh.pial...")
+                        if (!file.exists(lh_filled_path)) {
+                          threeBrain::fill_surface(surface = lh_pial_path, 
+                            save_as = lh_filled_path, resolution = 256L, 
+                            delta = 3, )
+                        }
+                        progress$inc("Filling rh.pial...")
+                        if (!file.exists(rh_filled_path)) {
+                          threeBrain::fill_surface(surface = rh_pial_path, 
+                            save_as = rh_filled_path, resolution = 256L, 
+                            delta = 3)
+                        }
+                        progress$inc("Inflate & resample (left)...")
+                        if (file.exists(lh_filled_path)) {
+                          threeBrain::generate_smooth_envelope(filled_volume_path = lh_filled_path, 
+                            save_as = lh_envelope_path, inflate = 2)
+                          pial_envelope <- 1
+                        }
+                        progress$inc("Inflate & resample (right)...")
+                        if (file.exists(rh_filled_path)) {
+                          threeBrain::generate_smooth_envelope(filled_volume_path = rh_filled_path, 
+                            save_as = rh_envelope_path, inflate = 2)
+                          pial_envelope <- pial_envelope + 1
+                        }
+                      } else {
+                        pial_envelope <- 2
+                      }
+                    }
+                  }, error = function(e) {
+                    warning(e)
+                  })
+                }
+                pial_envelope
+            }), target_depends = "subject"), deps = "subject", 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
+    load_brain_and_generate_pial_envelope = targets::tar_target_raw(name = "brain", 
+        command = quote({
+            .__target_expr__. <- quote({
+                force(pial_envelope)
+                brain <- tryCatch({
+                  threeBrain::threeBrain(path = subject$freesurfer_path, 
+                    subject_code = subject$subject_code)
+                }, error = function(e) {
+                  threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
+                    subject_name = subject$subject_code, use_141 = FALSE)
+                })
             })
             tryCatch({
                 eval(.__target_expr__.)
@@ -378,13 +527,19 @@ rm(._._env_._.)
         }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
             target_export = "brain", target_expr = quote({
                 {
-                  brain <- threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
-                    subject_name = subject$subject_code)
+                  force(pial_envelope)
+                  brain <- tryCatch({
+                    threeBrain::threeBrain(path = subject$freesurfer_path, 
+                      subject_code = subject$subject_code)
+                  }, error = function(e) {
+                    threeBrain::freesurfer_brain2(fs_subject_folder = subject$freesurfer_path, 
+                      subject_name = subject$subject_code, use_141 = FALSE)
+                  })
                 }
                 brain
-            }), target_depends = "subject"), deps = "subject", 
-        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
-    Loading_brain_and_CT_if_exists = targets::tar_target_raw(name = "localize_data", 
+            }), target_depends = c("pial_envelope", "subject"
+            )), deps = c("pial_envelope", "subject"), cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"), Loading_brain_and_CT_if_exists = targets::tar_target_raw(name = "localize_data", 
         command = quote({
             .__target_expr__. <- quote({
                 force(subject)
@@ -581,7 +736,20 @@ rm(._._env_._.)
                 re <- lapply(localization_list, function(item) {
                   item$FSIndex %?<-% 0
                   item$FSLabel %?<-% "Unknown"
+                  item$FSLabel_aparc_a2009s_aseg %?<-% "Unknown"
+                  item$FSLabel_aparc_aseg %?<-% "Unknown"
+                  item$FSLabel_aparc_DKTatlas_aseg %?<-% "Unknown"
+                  item$FSLabel_aseg %?<-% "Unknown"
                   item$Radius %?<-% 1
+                  item$OrigCoord_x %?<-% item$Coord_x
+                  item$OrigCoord_y %?<-% item$Coord_y
+                  item$OrigCoord_z %?<-% item$Coord_z
+                  item$Sphere_x %?<-% 0
+                  item$Sphere_y %?<-% 0
+                  item$Sphere_z %?<-% 0
+                  item$DistanceShifted %?<-% NA
+                  item$DistanceToPial %?<-% NA
+                  item$SurfaceElectrode %?<-% FALSE
                   tbl <- data.frame(Electrode = item$Electrode, 
                     Coord_x = item$Coord_x, Coord_y = item$Coord_y, 
                     Coord_z = item$Coord_z, Label = item$Label, 
@@ -589,7 +757,16 @@ rm(._._env_._.)
                     LocationType = item$LocationType, Radius = item$Radius, 
                     MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, 
                     MNI305_z = item$MNI305_z, FSIndex = item$FSIndex, 
-                    FSLabel = item$FSLabel)
+                    FSLabel = item$FSLabel, FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
+                    FSLabel_aparc_aseg = item$FSLabel_aparc_aseg, 
+                    FSLabel_aparc_DKTatlas_aseg = item$FSLabel_aparc_DKTatlas_aseg, 
+                    FSLabel_aseg = item$FSLabel_aseg, OrigCoord_x = item$OrigCoord_x, 
+                    OrigCoord_y = item$OrigCoord_y, OrigCoord_z = item$OrigCoord_z, 
+                    SurfaceElectrode = item$SurfaceElectrode, 
+                    DistanceShifted = item$DistanceShifted, DistanceToPial = item$DistanceToPial, 
+                    SurfaceType = "pial", VertexNumber = -1, 
+                    Sphere_x = item$Sphere_x, Sphere_y = item$Sphere_y, 
+                    Sphere_z = item$Sphere_z)
                   if (!nrow(tbl)) {
                     return(NULL)
                   }
@@ -599,10 +776,6 @@ rm(._._env_._.)
                 if (length(re) && nrow(re)) {
                   rownames(re) <- NULL
                   re <- re[order(re$Electrode), ]
-                  re$SurfaceElectrode <- re$LocationType %in% 
-                    c("ECoG")
-                  re$SurfaceType <- "pial"
-                  re$VertexNumber <- -1
                   empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
                     (re$Coord_z)^2
                   empty_sel <- is.na(empty_sel) | empty_sel == 
@@ -650,7 +823,20 @@ rm(._._env_._.)
                   re <- lapply(localization_list, function(item) {
                     item$FSIndex %?<-% 0
                     item$FSLabel %?<-% "Unknown"
+                    item$FSLabel_aparc_a2009s_aseg %?<-% "Unknown"
+                    item$FSLabel_aparc_aseg %?<-% "Unknown"
+                    item$FSLabel_aparc_DKTatlas_aseg %?<-% "Unknown"
+                    item$FSLabel_aseg %?<-% "Unknown"
                     item$Radius %?<-% 1
+                    item$OrigCoord_x %?<-% item$Coord_x
+                    item$OrigCoord_y %?<-% item$Coord_y
+                    item$OrigCoord_z %?<-% item$Coord_z
+                    item$Sphere_x %?<-% 0
+                    item$Sphere_y %?<-% 0
+                    item$Sphere_z %?<-% 0
+                    item$DistanceShifted %?<-% NA
+                    item$DistanceToPial %?<-% NA
+                    item$SurfaceElectrode %?<-% FALSE
                     tbl <- data.frame(Electrode = item$Electrode, 
                       Coord_x = item$Coord_x, Coord_y = item$Coord_y, 
                       Coord_z = item$Coord_z, Label = item$Label, 
@@ -658,7 +844,16 @@ rm(._._env_._.)
                       LocationType = item$LocationType, Radius = item$Radius, 
                       MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, 
                       MNI305_z = item$MNI305_z, FSIndex = item$FSIndex, 
-                      FSLabel = item$FSLabel)
+                      FSLabel = item$FSLabel, FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
+                      FSLabel_aparc_aseg = item$FSLabel_aparc_aseg, 
+                      FSLabel_aparc_DKTatlas_aseg = item$FSLabel_aparc_DKTatlas_aseg, 
+                      FSLabel_aseg = item$FSLabel_aseg, OrigCoord_x = item$OrigCoord_x, 
+                      OrigCoord_y = item$OrigCoord_y, OrigCoord_z = item$OrigCoord_z, 
+                      SurfaceElectrode = item$SurfaceElectrode, 
+                      DistanceShifted = item$DistanceShifted, 
+                      DistanceToPial = item$DistanceToPial, SurfaceType = "pial", 
+                      VertexNumber = -1, Sphere_x = item$Sphere_x, 
+                      Sphere_y = item$Sphere_y, Sphere_z = item$Sphere_z)
                     if (!nrow(tbl)) {
                       return(NULL)
                     }
@@ -668,10 +863,6 @@ rm(._._env_._.)
                   if (length(re) && nrow(re)) {
                     rownames(re) <- NULL
                     re <- re[order(re$Electrode), ]
-                    re$SurfaceElectrode <- re$LocationType %in% 
-                      c("ECoG")
-                    re$SurfaceType <- "pial"
-                    re$VertexNumber <- -1
                     empty_sel <- (re$Coord_x)^2 + (re$Coord_y)^2 + 
                       (re$Coord_z)^2
                     empty_sel <- is.na(empty_sel) | empty_sel == 
@@ -710,31 +901,12 @@ rm(._._env_._.)
             }), target_depends = c("localization_list", "brain", 
             "subject")), deps = c("localization_list", "brain", 
         "subject"), cue = targets::tar_cue("thorough"), pattern = NULL, 
-        iteration = "list"), calculate_std141_mappings = targets::tar_target_raw(name = "localization_result_final", 
+        iteration = "list"), get_finalized_table = targets::tar_target_raw(name = "localization_result_final", 
         command = quote({
             .__target_expr__. <- quote({
                 src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                 if (file.exists(src)) {
-                  localization_result_final <- utils::read.csv(file.path(subject$meta_path, 
-                    "electrodes_unsaved.csv"))
-                  try({
-                    re <- localization_result_final
-                    brain$set_electrodes(electrodes = re)
-                    re <- brain$calculate_template_coordinates(save_to = FALSE)
-                    sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
-                      c("left", "right")
-                    if (any(sel)) {
-                      is_left <- grepl(pattern = "(left|lh-)", 
-                        re$FSLabel, ignore.case = TRUE)
-                      is_right <- grepl(pattern = "(right|rh-)", 
-                        re$FSLabel, ignore.case = TRUE)
-                      re$Hemisphere[sel & (is_left | re$MNI305_x < 
-                        0)] <- "left"
-                      re$Hemisphere[sel & !is_left & (is_right | 
-                        re$MNI305_x > 0)] <- "right"
-                    }
-                    localization_result_final <- re
-                  })
+                  localization_result_final <- utils::read.csv(src)
                 } else {
                   localization_result_final <- NULL
                 }
@@ -751,31 +923,11 @@ rm(._._env_._.)
                 {
                   src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                   if (file.exists(src)) {
-                    localization_result_final <- utils::read.csv(file.path(subject$meta_path, 
-                      "electrodes_unsaved.csv"))
-                    try({
-                      re <- localization_result_final
-                      brain$set_electrodes(electrodes = re)
-                      re <- brain$calculate_template_coordinates(save_to = FALSE)
-                      sel <- is.na(re$Hemisphere) | !re$Hemisphere %in% 
-                        c("left", "right")
-                      if (any(sel)) {
-                        is_left <- grepl(pattern = "(left|lh-)", 
-                          re$FSLabel, ignore.case = TRUE)
-                        is_right <- grepl(pattern = "(right|rh-)", 
-                          re$FSLabel, ignore.case = TRUE)
-                        re$Hemisphere[sel & (is_left | re$MNI305_x < 
-                          0)] <- "left"
-                        re$Hemisphere[sel & !is_left & (is_right | 
-                          re$MNI305_x > 0)] <- "right"
-                      }
-                      localization_result_final <- re
-                    })
+                    localization_result_final <- utils::read.csv(src)
                   } else {
                     localization_result_final <- NULL
                   }
                 }
                 localization_result_final
-            }), target_depends = c("subject", "brain")), deps = c("subject", 
-        "brain"), cue = targets::tar_cue("thorough"), pattern = NULL, 
-        iteration = "list"))
+            }), target_depends = "subject"), deps = "subject", 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"))

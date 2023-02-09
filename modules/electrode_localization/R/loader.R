@@ -547,59 +547,36 @@ loader_server <- function(input, output, session, ...){
 
       dipsaus::shiny_alert2(
         title = "Loading in progress",
-        text = "Loading the viewer and CT file. It will take a while to generate prepare.",
+        text = "Loading the viewer and CT file. It will take a while if this is the first time.",
         icon = "info",
         auto_close = FALSE, buttons = FALSE
       )
 
+      on.exit({
+        Sys.sleep(0.5)
+        dipsaus::close_alert2()
+      }, after = TRUE, add = TRUE)
       res <- pipeline$run(
-        as_promise = TRUE,
-        names = c("plan_list", "brain", "localize_data", "ct_exists", "fslut"),
+        as_promise = FALSE,
+        async = FALSE,
+        names = c("plan_list", "pial_envelope", "brain", "localize_data", "ct_exists", "fslut"),
         type = "vanilla",
-        scheduler = "none",
-        check_interval = 1,
-        progress_title = "Loading data"
+        scheduler = "none"
       )
 
-      res$promise$then(
+      dipsaus::close_alert2()
 
-        # When data can be imported
-        onFulfilled = function(e){
+      # Let the module know the data has been changed
+      ravedash::fire_rave_event('data_changed', Sys.time())
+      ravedash::logger("Data has been loaded loaded")
 
-          dipsaus::close_alert2()
-
-          # Let the module know the data has been changed
-          ravedash::fire_rave_event('data_changed', Sys.time())
-          ravedash::logger("Data has been loaded loaded")
-
-          # Save session-based state: project name & subject code
-          ravedash::session_setopt(
-            project_name = project_name,
-            subject_code = subject_code
-          )
-
-        },
-
-
-        # this is what should happen when pipeline fails
-        onRejected = function(e){
-
-          dipsaus::close_alert2()
-
-          # Immediately open a new alert showing the error messages
-          dipsaus::shiny_alert2(
-            title = "Errors",
-            text = paste(
-              "Found an error while generating the 3D viewer:\n\n",
-              paste(e$message, collapse = "\n")
-            ),
-            icon = "error",
-            danger_mode = TRUE,
-            auto_close = FALSE
-          )
-        }
+      # Save session-based state: project name & subject code
+      ravedash::session_setopt(
+        project_name = project_name,
+        subject_code = subject_code
       )
-    }),
+
+    }, error_wrapper = "alert"),
     input$loader_ready_btn, ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
