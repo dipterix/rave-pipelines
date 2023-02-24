@@ -640,6 +640,79 @@ rm(._._env_._.)
             }), target_depends = c("check_result", "params", 
             "subject")), deps = c("check_result", "params", "subject"
         ), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"), CT_MR_coregistration_via_NiftyReg = targets::tar_target_raw(name = "coreg_niftyreg", 
+        command = quote({
+            .__target_expr__. <- quote({
+                coreg_niftyreg <- tryCatch({
+                  mri_path <- file.path(check_result$path_temp, 
+                    "derivative", params$nipy$reference)
+                  if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                    mri_path <- params$nii_t1
+                    mri_root <- file.path(check_result$path_temp, 
+                      "inputs", "MRI")
+                    mri_path <- file.path(mri_root, mri_path)
+                  }
+                  if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                    stop("Please choose a valid MRI Nifti file")
+                  }
+                  ct_path <- params$nii_ct
+                  ct_root <- file.path(check_result$path_temp, 
+                    "inputs", "CT")
+                  ct_path <- file.path(ct_root, ct_path)
+                  if (!path_is_valid(ct_path) || dir.exists(ct_path)) {
+                    stop("Please choose a valid CT Nifti file. Current file is missing: ", 
+                      ct_path)
+                  }
+                  raveio::cmd_run_niftyreg_coreg(subject = subject, 
+                    mri_path = mri_path, ct_path = ct_path, reg_type = params$niftyreg$reg_type, 
+                    interp = params$niftyreg$interp, verbose = FALSE, 
+                    dry_run = TRUE)
+                }, error = function(e) {
+                  list(error = TRUE, condition = e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(coreg_niftyreg)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "coreg_niftyreg", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "coreg_niftyreg", target_expr = quote({
+                {
+                  coreg_niftyreg <- tryCatch({
+                    mri_path <- file.path(check_result$path_temp, 
+                      "derivative", params$nipy$reference)
+                    if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                      mri_path <- params$nii_t1
+                      mri_root <- file.path(check_result$path_temp, 
+                        "inputs", "MRI")
+                      mri_path <- file.path(mri_root, mri_path)
+                    }
+                    if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                      stop("Please choose a valid MRI Nifti file")
+                    }
+                    ct_path <- params$nii_ct
+                    ct_root <- file.path(check_result$path_temp, 
+                      "inputs", "CT")
+                    ct_path <- file.path(ct_root, ct_path)
+                    if (!path_is_valid(ct_path) || dir.exists(ct_path)) {
+                      stop("Please choose a valid CT Nifti file. Current file is missing: ", 
+                        ct_path)
+                    }
+                    raveio::cmd_run_niftyreg_coreg(subject = subject, 
+                      mri_path = mri_path, ct_path = ct_path, 
+                      reg_type = params$niftyreg$reg_type, interp = params$niftyreg$interp, 
+                      verbose = FALSE, dry_run = TRUE)
+                  }, error = function(e) {
+                    list(error = TRUE, condition = e)
+                  })
+                }
+                coreg_niftyreg
+            }), target_depends = c("check_result", "params", 
+            "subject")), deps = c("check_result", "params", "subject"
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), CT_MR_coregistration_via_AFNI = targets::tar_target_raw(name = "coreg_3dallineate", 
         command = quote({
             .__target_expr__. <- quote({

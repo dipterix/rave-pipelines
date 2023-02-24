@@ -37,7 +37,7 @@ module_html <- function(){
             width = 12L,
 
             ravedash::output_card(
-              title = "Import DICOM Images",
+              title = "Import DICOM Folders or Nifti Images",
               start_collapsed = TRUE,
               tools = list(
                 shidashi::as_badge("requires `dcm2niix`|bg-yellow")
@@ -55,12 +55,11 @@ module_html <- function(){
                 )
               ),
               shiny::div(
-                "The following script uses ", shiny::pre(class="pre-compact no-padding display-inline", "dcm2niix"),
-                " external library to convert DICOM images to Nifti format for later purposes. ",
+                "If your original image files have DICOM format. The following script uses ", shiny::pre(class="pre-compact no-padding display-inline", "dcm2niix"), " external library to convert DICOM images to Nifti format for later purposes. ",
                 shiny::br(),
                 "* The script requires Unix ",
                 shiny::pre(class="pre-compact no-padding display-inline", "bash"),
-                " terminal. If you are using Windows, please use Window sub-Linux system (WSL2).",
+                " terminal. For Windows users, please use Window sub-Linux system (WSL2). If your data is in Nifti format, the file will be copied directly. No external scripts will be used.",
 
                 shiny::hr(),
 
@@ -213,7 +212,7 @@ module_html <- function(){
               title = "Co-registration CT to T1",
               start_collapsed = TRUE,
               tools = list(
-                shidashi::as_badge("requires `AFNI or FSL`|bg-yellow")
+                shidashi::as_badge("requires `AFNI/FSL/Python`|bg-yellow")
               ),
               append_tools = FALSE,
               # class_foot = "no-padding",
@@ -221,19 +220,33 @@ module_html <- function(){
                 shiny::tags$summary("Terminal script - CT MRI co-registration"),
                 shiny::uiOutput(ns("panel_coreg"), container = shiny::p)
               ),
-              shiny::div(
-                "This step tries to align the CT to MR image. ",
+              shiny::p(
+                "This step aligns the CT to MR image. ",
                 "For MRI, ",
                 shiny::pre(class="pre-compact no-padding display-inline", "MRI_RAW.nii"),
                 " is the original image file, and ",
                 shiny::pre(class="pre-compact no-padding display-inline", "T1.nii"),
                 " is the FreeSurfer-normalized image.",
-                shiny::br(),
-                "* The script requires Unix ",
-                shiny::pre(class="pre-compact no-padding display-inline", "bash"),
-                " terminals. If you are using Windows, ",
-                "please use the Windows sub-system for Linux (WSL2).",
-
+              ),
+              shiny::div(
+                shiny::tags$ul(
+                  shiny::tags$li(
+                    shiny::pre(class="pre-compact no-padding display-inline", "NiftyReg"),
+                    " is always available. "
+                  ),
+                  shiny::tags$li(
+                    shiny::pre(class="pre-compact no-padding display-inline", "nipy (native)"), " requires enabling RAVE-Python support"
+                  ),
+                  shiny::tags$li(
+                    shiny::pre(class="pre-compact no-padding display-inline", "FSL-FLIRT"),
+                    " and ",
+                    shiny::pre(class="pre-compact no-padding display-inline", "AFNI-ALICE"),
+                    " call external scripts that requires Unix ",
+                    shiny::pre(class="pre-compact no-padding display-inline", "bash"),
+                    " terminals. If you are using these two on Windows, ",
+                    "please use the Windows sub-system for Linux (WSL2)."
+                  )
+                ),
                 shiny::hr(),
 
                 shiny::fluidRow(
@@ -279,12 +292,45 @@ module_html <- function(){
                       shiny::selectInput(
                         inputId = ns("coreg_ct_program"),
                         label = "Program",
-                        choices = c("native (nipy)", "AFNI", "FSL")
+                        choices = c("NiftyReg", "native (nipy)", "AFNI", "FSL"),
+                        selected = "NiftyReg"
                       )
                     )
                   )
                 ),
 
+                # native: NiftyReg
+                shiny::conditionalPanel(
+                  condition = sprintf("input['%s']==='NiftyReg'", ns("coreg_ct_program")),
+                  shiny::fluidRow(
+
+                    shiny::column(
+                      width = 12L,
+                      "Coregistration parameters"
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_niftyreg_type"),
+                        label = "Registration type",
+                        choices = c("rigid", "affine", "nonlinear"),
+                        selected = "rigid"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_niftyreg_interp"),
+                        label = "Interpolation",
+                        choices = c("trilinear", "cubic", "nearest"),
+                        selected = "trilinear"
+                      )
+                    )
+
+                  )
+                ),
                 # native: nipy
                 shiny::conditionalPanel(
                   condition = sprintf("input['%s']==='native (nipy)'", ns("coreg_ct_program")),
@@ -438,6 +484,29 @@ module_html <- function(){
                       }
                     }),
                     dipsaus::actionButtonStyled(ns("btn_coreg_copy"), "Save & run by yourself")
+                  )
+                )
+              )
+            ),
+
+            ravedash::output_card(
+              title = "Align MRI to Template",
+              start_collapsed = TRUE,
+              tools = list(),
+              append_tools = FALSE,
+              shiny::div(
+                "This *optional* step aligns MRI to FreeSurfer ",
+                shiny::pre(class="pre-compact no-padding display-inline", "fsaverage"),
+                " to calculate MNI coordinates more accurately. Please make sure FreeSurfer ",
+                shiny::pre(class="pre-compact no-padding display-inline", "aseg.mgz"),
+                " has been generated for this subject. You can skip this step and proceed to"
+                " electrode localization."
+                shiny::hr(),
+
+                shiny::fluidRow(
+                  shiny::column(
+                    width = 12L,
+                    "This optional part is under coming!!! SDR algorithm will be incorporated. Please proceed to electrode localization module for now."
                   )
                 )
               )

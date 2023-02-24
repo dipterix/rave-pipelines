@@ -35,14 +35,6 @@ check_data_loaded <- function(first_time = FALSE){
         "has_flirt", "path_mri", "path_ct", "messages", "warnings") %in% names(check_result)
     )) {
       ravedash::fire_rave_event('loader_message', sprintf("Subject: %s", paste(check_result$subject_code, collapse = "")))
-      if(dipsaus::shiny_is_running()) {
-        programs <- c("FSL", "AFNI")[c(
-          check_result$has_flirt,
-          check_result$has_3dallineate
-        )] %OF% c("FSL", "AFNI")
-        session <- shiny::getDefaultReactiveDomain()
-        shiny::updateSelectInput(session = session, inputId = "coreg_ct_program", selected = programs)
-      }
       return(TRUE)
     }
   }, error = function(e){
