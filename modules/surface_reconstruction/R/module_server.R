@@ -71,7 +71,7 @@ module_server <- function(input, output, session, ...){
       local_reactives$tools <- cmd_tools
       local_reactives$build_command <- Sys.time()
 
-      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "collapse")
       shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
       shidashi::card_operate(title = "Co-registration CT to T1", method = "collapse")
 
@@ -93,31 +93,45 @@ module_server <- function(input, output, session, ...){
 
   shiny::bindEvent(
     ravedash::safe_observe({
-      shidashi::card_operate(title = "Import DICOM Images", method = "expand")
+      shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "expand")
       shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
       shidashi::card_operate(title = "Co-registration CT to T1", method = "collapse")
+      shidashi::card_operate(title = "Align MRI to Template", method = "collapse")
     }),
     input$jump_import_dicom,
     ignoreInit = TRUE, ignoreNULL = TRUE
   )
   shiny::bindEvent(
     ravedash::safe_observe({
-      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "collapse")
       shidashi::card_operate(title = "Surface Reconstruction", method = "expand")
       shidashi::card_operate(title = "Co-registration CT to T1", method = "collapse")
+      shidashi::card_operate(title = "Align MRI to Template", method = "collapse")
     }),
     input$jump_recon,
     ignoreInit = TRUE, ignoreNULL = TRUE
   )
   shiny::bindEvent(
     ravedash::safe_observe({
-      shidashi::card_operate(title = "Import DICOM Images", method = "collapse")
+      shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "collapse")
       shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
       shidashi::card_operate(title = "Co-registration CT to T1", method = "expand")
+      shidashi::card_operate(title = "Align MRI to Template", method = "collapse")
     }),
     input$jump_coregistration,
     ignoreInit = TRUE, ignoreNULL = TRUE
   )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "collapse")
+      shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
+      shidashi::card_operate(title = "Co-registration CT to T1", method = "collapse")
+      shidashi::card_operate(title = "Align MRI to Template", method = "expand")
+    }),
+    input$jump_mri_template_registration,
+    ignoreInit = TRUE, ignoreNULL = TRUE
+  )
+
 
   output$basic_info <- shiny::renderUI({
     loaded_flag <- ravedash::watch_data_loaded()
@@ -140,7 +154,7 @@ module_server <- function(input, output, session, ...){
           shiny::actionLink(
             inputId = ns("jump_import_dicom"),
             label = shiny::tagList(
-              "Convert .dcm images to .nii ", local({
+              "Import DICOM or Nifti images ", local({
                 if(length(tools$dcm2niix) == 1 &&
                    !is.na(tools$dcm2niix) &&
                    isTRUE(file.exists(tools$dcm2niix))) {
@@ -177,6 +191,14 @@ module_server <- function(input, output, session, ...){
                   ravedash::shiny_icons$arrow_right
                 }
               })
+            )
+          )
+        ),
+        shiny::tags$li(
+          shiny::actionLink(
+            inputId = ns("jump_mri_template_registration"),
+            label = shiny::tagList(
+              "Align MRI to template ", ravedash::shiny_icons$arrow_right
             )
           )
         )
@@ -248,6 +270,9 @@ module_server <- function(input, output, session, ...){
       include.dirs = FALSE,
       all.files = FALSE
     )
+    choices <- choices[!startsWith(choices, "ct_in_t1")]
+    sel <- startsWith(toupper(choices), "MRI")
+    choices <- c(choices[sel], choices[!sel])
     selected <- input$param_coreg_mri %OF% choices
     shiny::updateSelectInput(
       session = session, inputId = "param_coreg_mri",
@@ -574,8 +599,14 @@ module_server <- function(input, output, session, ...){
         "FSL" = {
           local_reactives$bash_scripts$coreg_flirt
         },
-        {
+        "native (nipy)" = {
           local_reactives$bash_scripts$coreg_nipy
+        },
+        "NiftyReg" = {
+          local_reactives$bash_scripts$coreg_niftyreg
+        },
+        {
+          stop("Unknown coregistration command")
         }
       )
       if(isTRUE(cmd$error)) {
@@ -624,10 +655,18 @@ module_server <- function(input, output, session, ...){
           bin <- "FSL/flirt"
           cmd <- local_reactives$bash_scripts$coreg_flirt
         },
-        {
+        "native (nipy)" = {
           bin <- "RAVE/nipy"
           cmd <- local_reactives$bash_scripts$coreg_nipy
           native <- TRUE
+        },
+        "NiftyReg" = {
+          bin <- "RAVE/NiftyReg"
+          cmd <- local_reactives$bash_scripts$coreg_niftyreg
+          native <- TRUE
+        },
+        {
+          stop("Unknown coregistration program")
         }
       )
       if(isTRUE(cmd$error)) {
@@ -683,6 +722,11 @@ module_server <- function(input, output, session, ...){
         flag = input$param_fs_steps,
         fresh_start = isTRUE(input$param_fs_fresh_start)
       ),
+      niftyreg = list(
+        reference = input$param_coreg_mri,
+        reg_type = input$coreg_niftyreg_type,
+        interp = input$coreg_niftyreg_interp
+      ),
       flirt = list(
         reference = input$param_coreg_mri,
         dof = as.integer(gsub("[^0-9]+$", "", input$coreg_fsl_dof)) %OF% c(6L, 7L, 9L, 12L),
@@ -707,7 +751,7 @@ module_server <- function(input, output, session, ...){
   }), priority = 1L, millis = 300)
 
 
-  output$ct_preview <- shiny::renderPlot({
+  ct_preview_path <- shiny::reactive({
     loaded_flag <- ravedash::watch_data_loaded()
     if(!loaded_flag){ return() }
     subject <- pipeline$read("subject")
@@ -716,60 +760,79 @@ module_server <- function(input, output, session, ...){
     nii_ct <- params$nii_ct
     path <- file.path(subject$preprocess_settings$raw_path,
                       "rave-imaging", "inputs", "CT", nii_ct)
-    has_path <- FALSE
-    nii <- NULL
-    if(length(path) == 1 && !is.na(path) && file.exists(path)) {
-      try({
-        nii <- threeBrain:::read_nii2(path)
-        has_path <- TRUE
-      }, silent = TRUE)
-    }
-    shiny::validate(shiny::need(has_path, message = "No valid CT file selected"))
-
-    data <- nii$get_data()
-    voxel_size <- nii$get_voxel_size()
-    shape <- dim(data)
-    ijk <- round(shape / 2)
-    ijk[ijk <= 0] <- 1
-
-    idx1 <- seq_len(shape[[1]]) * voxel_size[[1]]
-    idx1 <- idx1 - mean(idx1)
-    idx2 <- seq_len(shape[[2]]) * voxel_size[[2]]
-    idx2 <- idx2 - mean(idx2)
-    idx3 <- seq_len(shape[[3]]) * voxel_size[[3]]
-    idx3 <- idx3 - mean(idx3)
-    canvas_lim <- max(abs(c(idx1,idx2,idx3))) * c(-1, 1)
-
-    old_par <- par(c("mfrow", "mar", "bg", "fg"))
-    on.exit({
-      do.call(par, old_par)
-    })
-    layout(matrix(c(4,4,4,1,2,3), nrow = 2, byrow = TRUE),
-           heights = c(lcm(1.5), 1))
-    par(mar = c(0,0,0,0), bg = "black", fg = "white")
-    image(z = as.matrix(data[ijk[1], , ]), x = idx2, y = idx3,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    image(z = as.matrix(data[, ijk[2], ]), x = idx1, y = idx3,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    image(z = as.matrix(data[, , ijk[3]]), x = idx1, y = idx2,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    plot.new()
-    legend("center",
-           sprintf(
-             "Slices: %s, Voxel sizes: %s",
-             paste(shape, collapse = "x"),
-             paste(sprintf("%.2f", voxel_size), collapse = ", ")
-           ), bty = "n", cex = 2)
+    path
   })
+  output$ct_preview <- shiny::bindEvent(
+    shiny::bindCache(
+      shiny::renderPlot({
+        loaded_flag <- ravedash::watch_data_loaded()
+        if(!loaded_flag){ return() }
+        subject <- pipeline$read("subject")
+
+        params <- input_params()
+        nii_ct <- params$nii_ct
+        path <- file.path(subject$preprocess_settings$raw_path,
+                          "rave-imaging", "inputs", "CT", nii_ct)
+        has_path <- FALSE
+        nii <- NULL
+        if(length(path) == 1 && !is.na(path) && file.exists(path)) {
+          try({
+            nii <- threeBrain:::read_nii2(path)
+            has_path <- TRUE
+          }, silent = TRUE)
+        }
+        shiny::validate(shiny::need(has_path, message = "No valid CT file selected"))
+
+        data <- nii$get_data()
+        voxel_size <- nii$get_voxel_size()
+        shape <- dim(data)
+        ijk <- round(shape / 2)
+        ijk[ijk <= 0] <- 1
+
+        idx1 <- seq_len(shape[[1]]) * voxel_size[[1]]
+        idx1 <- idx1 - mean(idx1)
+        idx2 <- seq_len(shape[[2]]) * voxel_size[[2]]
+        idx2 <- idx2 - mean(idx2)
+        idx3 <- seq_len(shape[[3]]) * voxel_size[[3]]
+        idx3 <- idx3 - mean(idx3)
+        canvas_lim <- max(abs(c(idx1,idx2,idx3))) * c(-1, 1)
+
+        old_par <- par(c("mfrow", "mar", "bg", "fg"))
+        on.exit({
+          do.call(par, old_par)
+        })
+        layout(matrix(c(4,4,4,1,2,3), nrow = 2, byrow = TRUE),
+               heights = c(lcm(1.5), 1))
+        par(mar = c(0,0,0,0), bg = "black", fg = "white")
+        image(z = as.matrix(data[ijk[1], , ]), x = idx2, y = idx3,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        image(z = as.matrix(data[, ijk[2], ]), x = idx1, y = idx3,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        image(z = as.matrix(data[, , ijk[3]]), x = idx1, y = idx2,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        plot.new()
+        legend("center",
+               sprintf(
+                 "Slices: %s, Voxel sizes: %s",
+                 paste(shape, collapse = "x"),
+                 paste(sprintf("%.2f", voxel_size), collapse = ", ")
+               ), bty = "n", cex = 2)
+      }),
+      cache = "session",
+      ct_preview_path()
+    ),
+    ct_preview_path(),
+    ignoreNULL = FALSE, ignoreInit = FALSE
+  )
 
 
-  output$mri_preview <- shiny::renderPlot({
+  mri_preview_path <- shiny::reactive({
     loaded_flag <- ravedash::watch_data_loaded()
     if(!loaded_flag){ return() }
     subject <- pipeline$read("subject")
@@ -778,57 +841,76 @@ module_server <- function(input, output, session, ...){
     nii_t1 <- params$nii_t1
     path <- file.path(subject$preprocess_settings$raw_path,
                       "rave-imaging", "inputs", "MRI", nii_t1)
-    has_path <- FALSE
-    nii <- NULL
-    if(length(path) == 1 && !is.na(path) && file.exists(path)) {
-      try({
-        nii <- threeBrain:::read_nii2(path)
-        has_path <- TRUE
-      }, silent = TRUE)
-    }
-    shiny::validate(shiny::need(has_path, message = "No valid MRI file selected"))
-
-    data <- nii$get_data()
-    voxel_size <- nii$get_voxel_size()
-    shape <- dim(data)
-    ijk <- round(shape / 2)
-    ijk[ijk <= 0] <- 1
-
-    idx1 <- seq_len(shape[[1]]) * voxel_size[[1]]
-    idx1 <- idx1 - mean(idx1)
-    idx2 <- seq_len(shape[[2]]) * voxel_size[[2]]
-    idx2 <- idx2 - mean(idx2)
-    idx3 <- seq_len(shape[[3]]) * voxel_size[[3]]
-    idx3 <- idx3 - mean(idx3)
-    canvas_lim <- max(abs(c(idx1,idx2,idx3))) * c(-1, 1)
-
-    old_par <- par(c("mfrow", "mar", "bg", "fg"))
-    on.exit({
-      do.call(par, old_par)
-    })
-    layout(matrix(c(4,4,4,1,2,3), nrow = 2, byrow = TRUE),
-           heights = c(lcm(1.5), 1))
-    par(mar = c(0,0,0,0), bg = "black", fg = "white")
-    image(z = as.matrix(data[ijk[1], , ]), x = idx2, y = idx3,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    image(z = as.matrix(data[, ijk[2], ]), x = idx1, y = idx3,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    image(z = as.matrix(data[, , ijk[3]]), x = idx1, y = idx2,
-          useRaster = TRUE, asp = 1, col = gray_colors,
-          axes = FALSE, xlab = "", ylab = "",
-          xlim = canvas_lim, ylim = canvas_lim)
-    plot.new()
-    legend("center",
-           sprintf(
-             "Slices: %s, Voxel sizes: %s",
-             paste(shape, collapse = "x"),
-             paste(sprintf("%.2f", voxel_size), collapse = ", ")
-           ), bty = "n", cex = 2)
+    path
   })
+  output$mri_preview <- shiny::bindEvent(
+    shiny::bindCache(
+      shiny::renderPlot({
+        loaded_flag <- ravedash::watch_data_loaded()
+        if(!loaded_flag){ return() }
+        subject <- pipeline$read("subject")
+
+        params <- input_params()
+        nii_t1 <- params$nii_t1
+        path <- file.path(subject$preprocess_settings$raw_path,
+                          "rave-imaging", "inputs", "MRI", nii_t1)
+        has_path <- FALSE
+        nii <- NULL
+        if(length(path) == 1 && !is.na(path) && file.exists(path)) {
+          try({
+            nii <- threeBrain:::read_nii2(path)
+            has_path <- TRUE
+          }, silent = TRUE)
+        }
+        shiny::validate(shiny::need(has_path, message = "No valid MRI file selected"))
+
+        data <- nii$get_data()
+        voxel_size <- nii$get_voxel_size()
+        shape <- dim(data)
+        ijk <- round(shape / 2)
+        ijk[ijk <= 0] <- 1
+
+        idx1 <- seq_len(shape[[1]]) * voxel_size[[1]]
+        idx1 <- idx1 - mean(idx1)
+        idx2 <- seq_len(shape[[2]]) * voxel_size[[2]]
+        idx2 <- idx2 - mean(idx2)
+        idx3 <- seq_len(shape[[3]]) * voxel_size[[3]]
+        idx3 <- idx3 - mean(idx3)
+        canvas_lim <- max(abs(c(idx1,idx2,idx3))) * c(-1, 1)
+
+        old_par <- par(c("mfrow", "mar", "bg", "fg"))
+        on.exit({
+          do.call(par, old_par)
+        })
+        layout(matrix(c(4,4,4,1,2,3), nrow = 2, byrow = TRUE),
+               heights = c(lcm(1.5), 1))
+        par(mar = c(0,0,0,0), bg = "black", fg = "white")
+        image(z = as.matrix(data[ijk[1], , ]), x = idx2, y = idx3,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        image(z = as.matrix(data[, ijk[2], ]), x = idx1, y = idx3,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        image(z = as.matrix(data[, , ijk[3]]), x = idx1, y = idx2,
+              useRaster = TRUE, asp = 1, col = gray_colors,
+              axes = FALSE, xlab = "", ylab = "",
+              xlim = canvas_lim, ylim = canvas_lim)
+        plot.new()
+        legend("center",
+               sprintf(
+                 "Slices: %s, Voxel sizes: %s",
+                 paste(shape, collapse = "x"),
+                 paste(sprintf("%.2f", voxel_size), collapse = ", ")
+               ), bty = "n", cex = 2)
+      }),
+      cache = "session",
+      mri_preview_path()
+    ),
+    mri_preview_path(),
+    ignoreNULL = FALSE, ignoreInit = FALSE
+  )
 
 
   shiny::bindEvent(
@@ -845,7 +927,7 @@ module_server <- function(input, output, session, ...){
 
       res <- pipeline$eval(
         names = c("settings", 'subject', "params", "import_T1",
-                  "import_CT", "fs_recon", "coreg_flirt",
+                  "import_CT", "fs_recon", "coreg_flirt", "coreg_niftyreg",
                   "coreg_3dallineate", "coreg_nipy"),
         env = local_env, clean = FALSE
       )
