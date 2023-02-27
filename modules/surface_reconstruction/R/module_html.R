@@ -499,8 +499,8 @@ module_html <- function(){
                 shiny::pre(class="pre-compact no-padding display-inline", "fsaverage"),
                 " to calculate MNI coordinates more accurately. Please make sure FreeSurfer ",
                 shiny::pre(class="pre-compact no-padding display-inline", "aseg.mgz"),
-                " has been generated for this subject. You can skip this step and proceed to"
-                " electrode localization."
+                " has been generated for this subject. You can skip this step and proceed to",
+                " electrode localization.",
                 shiny::hr(),
 
                 shiny::fluidRow(
