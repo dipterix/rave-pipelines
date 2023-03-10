@@ -3,7 +3,7 @@ path_ct: POST_IMPLANT_CT/DICOM
 dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20220720/bin/dcm2niix
 params:
   nii_t1: MRI_RAW.nii
-  nii_ct: POST_IMPLANT_CT_0_0.nii
+  nii_ct: POST_IMPLANT_CT_1_STEALTH_20220824232445_2.nii
   dcm2niix:
     merge: Auto
     float: 'Yes'
@@ -15,6 +15,11 @@ params:
     reference: MRI_RAW.nii
     reg_type: rigid
     interp: trilinear
+  ants:
+    reference: MRI_RAW.nii
+    reg_type: Rigid
+    aff_metric: mattes
+    syn_metric: mattes
   flirt:
     reference: MRI_RAW.nii
     dof: 6

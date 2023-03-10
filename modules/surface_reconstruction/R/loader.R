@@ -216,7 +216,7 @@ loader_server <- function(input, output, session, ...){
             )
           }
           cmd_ui <- shiny::tagList(
-            shiny::p("The following external commands will be used. "),
+            shiny::p("External commandline paths. "),
             shiny::tags$ul(
               shiny::tags$li(shiny::strong("dcm2niix"), ": ", paste(cmd_tools$dcm2niix, collapse = "")),
               shiny::tags$li(shiny::strong("FreeSurfer"), ": ", paste(cmd_tools$freesurfer, collapse = "")),

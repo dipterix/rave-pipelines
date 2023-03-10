@@ -235,7 +235,10 @@ module_html <- function(){
                     " is always available. "
                   ),
                   shiny::tags$li(
-                    shiny::pre(class="pre-compact no-padding display-inline", "nipy (native)"), " requires enabling RAVE-Python support"
+                    shiny::pre(class="pre-compact no-padding display-inline", "ANTs"),
+                    " and ",
+                    shiny::pre(class="pre-compact no-padding display-inline", "img_pipe"),
+                    " require enabling RAVE-Python support"
                   ),
                   shiny::tags$li(
                     shiny::pre(class="pre-compact no-padding display-inline", "FSL-FLIRT"),
@@ -292,10 +295,53 @@ module_html <- function(){
                       shiny::selectInput(
                         inputId = ns("coreg_ct_program"),
                         label = "Program",
-                        choices = c("NiftyReg", "native (nipy)", "AFNI", "FSL"),
+                        choices = c("NiftyReg", "ANTs", "img_pipe", "AFNI", "FSL"),
                         selected = "NiftyReg"
                       )
                     )
+                  )
+                ),
+
+                # native: ANTs
+                shiny::conditionalPanel(
+                  condition = sprintf("input['%s']==='ANTs'", ns("coreg_ct_program")),
+                  shiny::fluidRow(
+
+                    shiny::column(
+                      width = 12L,
+                      "Coregistration parameters"
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_ants_type"),
+                        label = "Registration type",
+                        choices = c("Rigid", "DenseRigid", "Affine", "SyN"),
+                        selected = "Rigid"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_ants_aff_metric"),
+                        label = "Affine metric",
+                        choices = c("mattes", "meansquares", "GC"),
+                        selected = "mattes"
+                      )
+                    ),
+
+                    shiny::column(
+                      width = 4L,
+                      shiny::selectInput(
+                        inputId = ns("coreg_ants_syn_metric"),
+                        label = "SyN metric (non-linear)",
+                        choices = c("mattes", "meansquares", "demons", "CC"),
+                        selected = "mattes"
+                      )
+                    )
+
                   )
                 ),
 
@@ -331,9 +377,9 @@ module_html <- function(){
 
                   )
                 ),
-                # native: nipy
+                # img_pipe
                 shiny::conditionalPanel(
-                  condition = sprintf("input['%s']==='native (nipy)'", ns("coreg_ct_program")),
+                  condition = sprintf("input['%s']==='img_pipe'", ns("coreg_ct_program")),
                   shiny::fluidRow(
 
                     shiny::column(
@@ -495,18 +541,18 @@ module_html <- function(){
               tools = list(),
               append_tools = FALSE,
               shiny::div(
-                "This *optional* step aligns MRI to FreeSurfer ",
+                "This *optional* step aligns MRI to templates ",
                 shiny::pre(class="pre-compact no-padding display-inline", "fsaverage"),
-                " to calculate MNI coordinates more accurately. Please make sure FreeSurfer ",
+                " to calculate MNI coordinates with non-linear transform. Please make sure FreeSurfer ",
                 shiny::pre(class="pre-compact no-padding display-inline", "aseg.mgz"),
                 " has been generated for this subject. You can skip this step and proceed to",
                 " electrode localization.",
                 shiny::hr(),
 
-                shiny::fluidRow(
-                  shiny::column(
-                    width = 12L,
-                    "This optional part is under coming!!! SDR algorithm will be incorporated. Please proceed to electrode localization module for now."
+                shiny::div(
+                  class = "float-right",
+                  shiny::div(
+                    shiny::actionButton(ns("btn_sdr_run"), "Run from RAVE")
                   )
                 )
               )
