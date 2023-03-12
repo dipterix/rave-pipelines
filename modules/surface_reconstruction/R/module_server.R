@@ -74,6 +74,7 @@ module_server <- function(input, output, session, ...){
       shidashi::card_operate(title = "Import DICOM Folders or Nifti Images", method = "collapse")
       shidashi::card_operate(title = "Surface Reconstruction", method = "collapse")
       shidashi::card_operate(title = "Co-registration CT to T1", method = "collapse")
+      shidashi::card_operate(title = "Align MRI to Template", method = "collapse")
 
       component_container$reset_data()
       component_container$data$subject <- raveio::RAVESubject$new(
@@ -410,7 +411,10 @@ module_server <- function(input, output, session, ...){
           "The command seems to have finished. ",
           "However, RAVE does NOT know if the command finishes correctly.",
           "Please check the ", shiny::downloadLink(ns("logfile_download"), "log file"),
-          "to see ", ifelse(has_error, "the error information.", "the full log, especially the last 10 lines.")
+          "to see ", ifelse(
+            has_error, "the error information.",
+            "the full log, especially the last 10 lines."
+          )
         ),
         title = ifelse(has_error, "Error!", "Notice!"),
         autohide = FALSE, close = TRUE, type = "dark",
@@ -730,78 +734,51 @@ module_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
-  # shiny::bindEvent(
-  #   ravedash::safe_observe({
-  #     program <- paste(input$coreg_ct_program, collapse = "")
-  #     native <- FALSE
-  #     switch(
-  #       program,
-  #       "AFNI" = {
-  #         bin <- "AFNI/3dAllineate"
-  #         cmd <- local_reactives$bash_scripts$coreg_3dallineate
-  #       },
-  #       "FSL" = {
-  #         bin <- "FSL/flirt"
-  #         cmd <- local_reactives$bash_scripts$coreg_flirt
-  #       },
-  #       "img_pipe" = {
-  #         bin <- "RAVE/nipy"
-  #         cmd <- local_reactives$bash_scripts$coreg_nipy
-  #         native <- TRUE
-  #       },
-  #       "NiftyReg" = {
-  #         bin <- "RAVE/NiftyReg"
-  #         cmd <- local_reactives$bash_scripts$coreg_niftyreg
-  #         native <- TRUE
-  #       },
-  #       {
-  #         stop("Unknown coregistration program")
-  #       }
-  #     )
-  #     if(isTRUE(cmd$error)) {
-  #       error_notification(cmd$condition)
-  #       return()
-  #     }
-  #     ravedash::logger("Running {bin} from console", level = "info", use_glue = TRUE)
-  #
-  #     # set flag so rpymat is not checked
-  #     check_rpymat <- FALSE
-  #     if(native) {
-  #       if(dipsaus::get_os() == "windows") {
-  #         dipsaus::shiny_alert2(
-  #           title = sprintf("Running coregistration via %s", bin),
-  #           text = ravedash::be_patient_text(),
-  #           icon = "info", auto_close = FALSE, buttons = FALSE
-  #         )
-  #         on.exit({
-  #           Sys.sleep(0.5)
-  #           dipsaus::close_alert2()
-  #         }, add = TRUE, after = TRUE)
-  #         raveio::backup_file(cmd$script_path, remove = TRUE, quiet = TRUE)
-  #         writeLines(cmd$script, con = cmd$script_path, sep = "\n")
-  #         source(cmd$script_path, local = TRUE)
-  #       } else {
-  #         run_command_pipeline(
-  #           cmd = cmd,
-  #           wait = FALSE,
-  #           title = bin,
-  #           command = Sys.which("Rscript"),
-  #           args = c("--no-save", "--no-restore")
-  #         )
-  #       }
-  #     } else {
-  #       run_command_pipeline(cmd = cmd, wait = FALSE, title = bin)
-  #     }
-  #   }),
-  #   input$btn_sdr_run,
-  #   ignoreNULL = TRUE, ignoreInit = TRUE
-  # )
+  shiny::bindEvent(
+    ravedash::safe_observe({
+      native <- TRUE
+      bin <- "RAVE+ANTs"
+      cmd <- local_reactives$bash_scripts$morphmri_ants
+      if(isTRUE(cmd$error)) {
+        error_notification(cmd$condition)
+        return()
+      }
+      ravedash::logger("Running {bin} from console", level = "info", use_glue = TRUE)
+
+      # set flag so rpymat is not checked
+      if(dipsaus::get_os() == "windows") {
+        dipsaus::shiny_alert2(
+          title = sprintf("Morphing MRI to template via %s", bin),
+          text = ravedash::be_patient_text(),
+          icon = "info", auto_close = FALSE, buttons = FALSE
+        )
+        on.exit({
+          Sys.sleep(0.5)
+          dipsaus::close_alert2()
+        }, add = TRUE, after = TRUE)
+        raveio::backup_file(cmd$script_path, remove = TRUE, quiet = TRUE)
+        writeLines(cmd$script, con = cmd$script_path, sep = "\n")
+        source(cmd$script_path, local = TRUE)
+      } else {
+        run_command_pipeline(
+          cmd = cmd,
+          wait = FALSE,
+          title = sprintf("Morphing MRI to template via %s", bin),
+          command = Sys.which("Rscript"),
+          args = c("--no-save", "--no-restore")
+        )
+      }
+    }),
+    input$btn_mri_morph_run,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
 
   input_params <- shiny::debounce(shiny::reactive({
 
     list(
       nii_t1 = input$param_fs_infile,
       nii_ct = input$param_coreg_ct,
+      template_brain = input$mri_morph_template_subject,
       dcm2niix = list(
         merge = input$param_dcm2niix_merge,
         float = input$param_dcm2niix_float,
@@ -1022,7 +999,7 @@ module_server <- function(input, output, session, ...){
 
       res <- pipeline$eval(
         names = c("settings", 'subject', "params", "import_T1",
-                  "import_CT", "fs_recon",
+                  "import_CT", "fs_recon", "morphmri_ants",
                   "coreg_flirt", "coreg_niftyreg", "coreg_ants",
                   "coreg_3dallineate", "coreg_nipy"),
         env = local_env, clean = FALSE
@@ -1042,6 +1019,7 @@ module_server <- function(input, output, session, ...){
     input_params(),
     ignoreNULL = FALSE, ignoreInit = FALSE
   )
+
 
   render_shell <- function(cmd, shell = "/bin/sh"){
     cmd <- paste(cmd, collapse = "\n")

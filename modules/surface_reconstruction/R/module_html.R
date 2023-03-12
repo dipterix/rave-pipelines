@@ -40,7 +40,7 @@ module_html <- function(){
               title = "Import DICOM Folders or Nifti Images",
               start_collapsed = TRUE,
               tools = list(
-                shidashi::as_badge("requires `dcm2niix`|bg-yellow")
+                shidashi::as_badge("may require `dcm2niix`|bg-yellow")
               ),
               # class_foot = "no-padding",
               append_tools = FALSE,
@@ -180,7 +180,7 @@ module_html <- function(){
                       inputId = ns("param_fs_steps"),
                       label = "Recon flag",
                       choices = autorecon_flags,
-                      selected = autorecon_flags[[1]]
+                      selected = "-all"
                     ),
                     shiny::checkboxInput(
                       inputId = ns("param_fs_fresh_start"),
@@ -212,7 +212,7 @@ module_html <- function(){
               title = "Co-registration CT to T1",
               start_collapsed = TRUE,
               tools = list(
-                shidashi::as_badge("requires `AFNI/FSL/Python`|bg-yellow")
+                shidashi::as_badge("may require `AFNI/FSL/Python`|bg-yellow")
               ),
               append_tools = FALSE,
               # class_foot = "no-padding",
@@ -538,21 +538,35 @@ module_html <- function(){
             ravedash::output_card(
               title = "Align MRI to Template",
               start_collapsed = TRUE,
-              tools = list(),
+              tools = list(
+                shidashi::as_badge("requires `Python`|bg-yellow")
+              ),
               append_tools = FALSE,
               shiny::div(
-                "This *optional* step aligns MRI to templates ",
-                shiny::pre(class="pre-compact no-padding display-inline", "fsaverage"),
-                " to calculate MNI coordinates with non-linear transform. Please make sure FreeSurfer ",
-                shiny::pre(class="pre-compact no-padding display-inline", "aseg.mgz"),
-                " has been generated for this subject. You can skip this step and proceed to",
-                " electrode localization.",
+                "This *optional* step non-linearly aligns native ",
+                shiny::pre(class="pre-compact no-padding display-inline", "aparc+aseg"),
+                "to template brain in MNI space. Please make sure to finish FreeSurfer ",
+                "has finished for this subject. You can skip this step and proceed to ",
+                "electrode localization.",
                 shiny::hr(),
+
+                shiny::fluidRow(
+
+                  shiny::column(
+                    width = 4L,
+                    shiny::selectInput(
+                      inputId = ns("mri_morph_template_subject"),
+                      label = "Template to morph into",
+                      choices = c("fsaverage", "N27", "bert", "cvs_avg35", "cvs_avg35_inMNI152"),
+                      selected = getOption("threeBrain.template_subject", "fsaverage")
+                    )
+                  )
+                ),
 
                 shiny::div(
                   class = "float-right",
                   shiny::div(
-                    shiny::actionButton(ns("btn_sdr_run"), "Run from RAVE")
+                    dipsaus::actionButtonStyled(ns("btn_mri_morph_run"), "Run from RAVE")
                   )
                 )
               )

@@ -239,8 +239,10 @@ rm(._._env_._.)
                 }
                 ct <- file.path(subject$preprocess_settings$raw_path, 
                   path_ct)
-                if (is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
-                  warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+                if (is.null(cmd_tools$afni)) {
+                  warns <- append(warns, "AFNI path is missing/invalid: cannot use AFNI-ALICE co-registration script.")
+                } else if (is.null(cmd_tools$flirt)) {
+                  warns <- append(warns, "FSL home is missing/invalid: cannot use FSL-FLIRT co-registration script.")
                 } else {
                   if (!path_is_valid(ct, dir_ok = TRUE)) {
                     warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
@@ -307,8 +309,10 @@ rm(._._env_._.)
                   }
                   ct <- file.path(subject$preprocess_settings$raw_path, 
                     path_ct)
-                  if (is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
-                    warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+                  if (is.null(cmd_tools$afni)) {
+                    warns <- append(warns, "AFNI path is missing/invalid: cannot use AFNI-ALICE co-registration script.")
+                  } else if (is.null(cmd_tools$flirt)) {
+                    warns <- append(warns, "FSL home is missing/invalid: cannot use FSL-FLIRT co-registration script.")
                   } else {
                     if (!path_is_valid(ct, dir_ok = TRUE)) {
                       warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
@@ -854,4 +858,46 @@ rm(._._env_._.)
             }), target_depends = c("params", "check_result", 
             "subject", "cmd_tools")), deps = c("params", "check_result", 
         "subject", "cmd_tools"), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"))
+        pattern = NULL, iteration = "list"), morph_MRI_to_template = targets::tar_target_raw(name = "morphmri_ants", 
+        command = quote({
+            .__target_expr__. <- quote({
+                morphmri_ants <- tryCatch({
+                  template_brain <- params$template_brain
+                  if (length(template_brain) != 1) {
+                    template_brain <- getOption("threeBrain.template_subject", 
+                      "fsaverage")
+                  }
+                  raveio::cmd_run_ants_mri_to_template(subject = subject, 
+                    template_subject = template_brain, verbose = FALSE, 
+                    dry_run = TRUE)
+                }, error = function(e) {
+                  list(error = TRUE, condition = e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(morphmri_ants)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "morphmri_ants", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "morphmri_ants", target_expr = quote({
+                {
+                  morphmri_ants <- tryCatch({
+                    template_brain <- params$template_brain
+                    if (length(template_brain) != 1) {
+                      template_brain <- getOption("threeBrain.template_subject", 
+                        "fsaverage")
+                    }
+                    raveio::cmd_run_ants_mri_to_template(subject = subject, 
+                      template_subject = template_brain, verbose = FALSE, 
+                      dry_run = TRUE)
+                  }, error = function(e) {
+                    list(error = TRUE, condition = e)
+                  })
+                }
+                morphmri_ants
+            }), target_depends = c("params", "subject")), deps = c("params", 
+        "subject"), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"))

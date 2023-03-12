@@ -535,6 +535,28 @@ coreg_3dallineate <- tryCatch({
 })
 ```
 
+
+```{rave morph_MRI_to_template, export = "morphmri_ants", cue = "always", echo=FALSE}
+morphmri_ants <- tryCatch({
+  
+  template_brain <- params$template_brain
+  if(length(template_brain) != 1) {
+    template_brain <- getOption("threeBrain.template_subject", "fsaverage")
+  }
+  raveio::cmd_run_ants_mri_to_template(
+    subject = subject,
+    template_subject = template_brain,
+    verbose = FALSE,
+    dry_run = TRUE
+  )
+}, error = function(e) {
+  list(
+    error = TRUE,
+    condition = e
+  )
+})
+```
+
 <pre class="sh">
 <code class="hljs">
 ```{r, results='asis', echo=FALSE}
