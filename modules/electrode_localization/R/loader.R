@@ -119,6 +119,8 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               shidashi::flex_item(shiny::textInput("label", "Group label")),
               shidashi::flex_item(shiny::textInput("dimension", "Dimension")),
               shidashi::flex_item(shiny::selectInput("type", "Type", choices = raveio::LOCATION_TYPES)),
+              shidashi::flex_item(shiny::selectInput("hemisphere", "Hemisphere",
+                                                     choices = c("auto", "left", "right"))),
               shidashi::flex_break(),
               shidashi::flex_item(shiny::tags$small(
                 shiny::textOutput("info", inline = TRUE)
@@ -386,13 +388,17 @@ loader_server <- function(input, output, session, ...){
         if(!"Dimension" %in% names(table)) {
           table$Dimension <- ""
         }
+        if(!"Hemisphere" %in% names(table)) {
+          table$Hemisphere <- "auto"
+        }
 
         table$LabelPrefix <- gsub("[0-9]+$", "", table$Label)
         table <- table[order(table$Electrode),]
 
         current_dim <- ""
         current_prefix <- ""
-        current_type <- "LFP"
+        current_type <- "iEEG"
+        current_hemisphere <- "auto"
         current_e <- NULL
 
         for(ii in seq_len(nrow(table))) {
@@ -402,10 +408,12 @@ loader_server <- function(input, output, session, ...){
             current_dim <- sub$Dimension
             current_prefix <- sub$LabelPrefix
             current_type <- sub$LocationType
+            current_hemisphere <- sub$Hemisphere
           } else {
             if(!identical(current_dim, sub$Dimension) ||
                !identical(current_prefix, sub$LabelPrefix) ||
                !identical(current_type, sub$LocationType) ||
+               !identical(current_hemisphere, sub$Hemisphere) ||
                sub$Electrode != current_e[[length(current_e)]] + 1) {
 
               # check dimension
@@ -420,12 +428,14 @@ loader_server <- function(input, output, session, ...){
               plan[[length(plan) + 1]] <- list(
                 label = current_prefix,
                 dimension = as.character(dimension),
-                type = current_type
+                type = current_type,
+                hemisphere = current_hemisphere
               )
               current_e <- sub$Electrode
               current_dim <- sub$Dimension
               current_prefix <- sub$LabelPrefix
               current_type <- sub$LocationType
+              current_hemisphere <- sub$Hemisphere
 
             } else {
               current_e <- c(current_e, sub$Electrode)
@@ -446,7 +456,8 @@ loader_server <- function(input, output, session, ...){
           plan[[length(plan) + 1]] <- list(
             label = current_prefix,
             dimension = as.character(dimension),
-            type = current_type
+            type = current_type,
+            hemisphere = current_hemisphere
           )
         }
 
@@ -457,7 +468,8 @@ loader_server <- function(input, output, session, ...){
       plan <- list(list(
         label = "NoLabel",
         dimension = as.character(length(subject$preprocess_settings$electrodes)),
-        type = "LFP"
+        type = "iEEG",
+        hemisphere = "auto"
       ))
     }
     dipsaus::updateCompoundInput2(
@@ -638,7 +650,8 @@ loader_server <- function(input, output, session, ...){
       res <- pipeline$run(
         as_promise = FALSE,
         async = FALSE,
-        names = c("plan_list", "pial_envelope", "brain", "localize_data", "ct_exists", "fslut"),
+        names = c("plan_list", "pial_envelope", "brain", "localize_data",
+                  "ct_exists", "fslut"),
         type = "vanilla",
         scheduler = "none"
       )

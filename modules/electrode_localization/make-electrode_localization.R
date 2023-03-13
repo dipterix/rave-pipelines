@@ -15,36 +15,40 @@ rm(._._env_._.)
     quote({
         yaml::read_yaml(settings_path)
     }), deps = "settings_path", cue = targets::tar_cue("always")), 
-    input_path_ct = targets::tar_target_raw("path_ct", quote({
-        settings[["path_ct"]]
-    }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
-        quote({
-            settings[["subject_code"]]
-        }), deps = "settings"), input_path_mri = targets::tar_target_raw("path_mri", 
-        quote({
-            settings[["path_mri"]]
-        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
-        quote({
-            settings[["project_name"]]
-        }), deps = "settings"), input_path_transform = targets::tar_target_raw("path_transform", 
-        quote({
-            settings[["path_transform"]]
-        }), deps = "settings"), input_transform_space = targets::tar_target_raw("transform_space", 
-        quote({
-            settings[["transform_space"]]
-        }), deps = "settings"), `__extern_path_localization_list` = targets::tar_target_raw("settings_path._localization_list_", 
-        "./data/localization_list.json", format = "file"), input_localization_list = targets::tar_target_raw("localization_list", 
-        quote({
-            asNamespace("raveio")$pipeline_load_extdata(name = "localization_list", 
-                format = "json", error_if_missing = FALSE, default_if_missing = structure(list(), 
-                  class = "key_missing"), pipe_dir = ".")
-        }), deps = "settings_path._localization_list_"), `__extern_path_localization_plan` = targets::tar_target_raw("settings_path._localization_plan_", 
+    `__extern_path_localization_plan` = targets::tar_target_raw("settings_path._localization_plan_", 
         "./data/localization_plan.json", format = "file"), input_localization_plan = targets::tar_target_raw("localization_plan", 
         quote({
             asNamespace("raveio")$pipeline_load_extdata(name = "localization_plan", 
                 format = "json", error_if_missing = FALSE, default_if_missing = structure(list(), 
                   class = "key_missing"), pipe_dir = ".")
-        }), deps = "settings_path._localization_plan_"), load_FreeSurfer_LUT = targets::tar_target_raw(name = "fslut", 
+        }), deps = "settings_path._localization_plan_"), `__extern_path_localization_list` = targets::tar_target_raw("settings_path._localization_list_", 
+        "./data/localization_list.json", format = "file"), input_localization_list = targets::tar_target_raw("localization_list", 
+        quote({
+            asNamespace("raveio")$pipeline_load_extdata(name = "localization_list", 
+                format = "json", error_if_missing = FALSE, default_if_missing = structure(list(), 
+                  class = "key_missing"), pipe_dir = ".")
+        }), deps = "settings_path._localization_list_"), input_transform_space = targets::tar_target_raw("transform_space", 
+        quote({
+            settings[["transform_space"]]
+        }), deps = "settings"), input_path_transform = targets::tar_target_raw("path_transform", 
+        quote({
+            settings[["path_transform"]]
+        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
+        quote({
+            settings[["project_name"]]
+        }), deps = "settings"), input_path_mri = targets::tar_target_raw("path_mri", 
+        quote({
+            settings[["path_mri"]]
+        }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
+        quote({
+            settings[["subject_code"]]
+        }), deps = "settings"), input_path_ct = targets::tar_target_raw("path_ct", 
+        quote({
+            settings[["path_ct"]]
+        }), deps = "settings"), input_nonlinear_morphing = targets::tar_target_raw("nonlinear_morphing", 
+        quote({
+            settings[["nonlinear_morphing"]]
+        }), deps = "settings"), load_FreeSurfer_LUT = targets::tar_target_raw(name = "fslut", 
         command = quote({
             .__target_expr__. <- quote({
                 fslut_path <- system.file("palettes", "datacube2", 
@@ -178,10 +182,15 @@ rm(._._env_._.)
                   if (!isTRUE(type %in% raveio::LOCATION_TYPES)) {
                     type <- raveio::LOCATION_TYPES[[1]]
                   }
+                  hemisphere <- item$hemisphere
+                  if (!isTRUE(hemisphere %in% c("auto", "left", 
+                    "right"))) {
+                    hemisphere <- "auto"
+                  }
                   re <- data.frame(Electrode = count$n + seq_len(ne), 
                     Label = sprintf("%s%d", label, count$labels[[label]] + 
                       seq_len(ne)), LabelPrefix = label, Dimension = paste(dim, 
-                      collapse = "x"), LocationType = type)
+                      collapse = "x"), LocationType = type, Hemisphere = hemisphere)
                   count$n <- count$n + ne
                   count$labels[[label]] <- count$labels[[label]] + 
                     ne
@@ -209,22 +218,24 @@ rm(._._env_._.)
                       tname1 <- c("Electrode", "Coord_x", "Coord_y", 
                         "Coord_z")
                       tname2 <- c("Electrode", "Coord_x", "Coord_y", 
-                        "Coord_z", "Radius", "SurfaceType", "Hemisphere", 
-                        "FSIndex", "FSLabel", "MNI305_x", "MNI305_y", 
-                        "MNI305_z", "OrigCoord_x", "OrigCoord_y", 
-                        "OrigCoord_z", "DistanceShifted", "DistanceToPial", 
+                        "Coord_z", "Radius", "SurfaceType", "FSIndex", 
+                        "FSLabel", "MNI305_x", "MNI305_y", "MNI305_z", 
+                        "OrigCoord_x", "OrigCoord_y", "OrigCoord_z", 
+                        "DistanceShifted", "DistanceToPial", 
                         "SurfaceElectrode")
                       if (all(tname1 %in% names(electrode_table))) {
                         tname2 <- tname2[tname2 %in% names(electrode_table)]
                         electrode_table <- electrode_table[, 
                           tname2]
-                        if (!setequal(as.integer(electrode_table$Electrode), 
-                          as.integer(plan_table$Electrode)) || 
-                          nrow(electrode_table) != nrow(plan_table)) {
-                          stop("Existing electrode table has different row numbers to the plan table")
+                        missing_electrodes <- as.integer(electrode_table$Electrode)
+                        missing_electrodes <- missing_electrodes[!missing_electrodes %in% 
+                          as.integer(plan_table$Electrode)]
+                        if (length(missing_electrodes)) {
+                          stop("Detected channel ", dipsaus::deparse_svec(missing_electrodes), 
+                            " from RAVE data. Please include them in the electrode plan.")
                         }
                         plan_table <- merge(electrode_table, 
-                          plan_table, by = "Electrode")
+                          plan_table, by = "Electrode", all.y = TRUE)
                       }
                     }
                   }, silent = TRUE)
@@ -238,12 +249,13 @@ rm(._._env_._.)
                   plan_table$MNI305_x %?<-% 0
                   plan_table$MNI305_y %?<-% 0
                   plan_table$MNI305_z %?<-% 0
-                  plan_table$VertexNumber <- -1
                   plan_table$FSIndex %?<-% 0
                   plan_table$FSLabel %?<-% "Unknown"
                   etypes <- subject$preprocess_settings$electrode_types
                   if (!length(etypes)) {
-                    etypes <- "LFP"
+                    etypes <- ifelse(is.na(plan_table$LocationType) | 
+                      plan_table$LocationType %in% c("EEG", "Others"), 
+                      "Unknown", "LFP")
                   }
                   plan_table$SignalType <- etypes
                   plan_list <- split(plan_table, plan_table$LabelPrefix)
@@ -289,10 +301,16 @@ rm(._._env_._.)
                     if (!isTRUE(type %in% raveio::LOCATION_TYPES)) {
                       type <- raveio::LOCATION_TYPES[[1]]
                     }
+                    hemisphere <- item$hemisphere
+                    if (!isTRUE(hemisphere %in% c("auto", "left", 
+                      "right"))) {
+                      hemisphere <- "auto"
+                    }
                     re <- data.frame(Electrode = count$n + seq_len(ne), 
                       Label = sprintf("%s%d", label, count$labels[[label]] + 
                         seq_len(ne)), LabelPrefix = label, Dimension = paste(dim, 
-                        collapse = "x"), LocationType = type)
+                        collapse = "x"), LocationType = type, 
+                      Hemisphere = hemisphere)
                     count$n <- count$n + ne
                     count$labels[[label]] <- count$labels[[label]] + 
                       ne
@@ -321,22 +339,23 @@ rm(._._env_._.)
                           "Coord_z")
                         tname2 <- c("Electrode", "Coord_x", "Coord_y", 
                           "Coord_z", "Radius", "SurfaceType", 
-                          "Hemisphere", "FSIndex", "FSLabel", 
-                          "MNI305_x", "MNI305_y", "MNI305_z", 
-                          "OrigCoord_x", "OrigCoord_y", "OrigCoord_z", 
-                          "DistanceShifted", "DistanceToPial", 
+                          "FSIndex", "FSLabel", "MNI305_x", "MNI305_y", 
+                          "MNI305_z", "OrigCoord_x", "OrigCoord_y", 
+                          "OrigCoord_z", "DistanceShifted", "DistanceToPial", 
                           "SurfaceElectrode")
                         if (all(tname1 %in% names(electrode_table))) {
                           tname2 <- tname2[tname2 %in% names(electrode_table)]
                           electrode_table <- electrode_table[, 
                             tname2]
-                          if (!setequal(as.integer(electrode_table$Electrode), 
-                            as.integer(plan_table$Electrode)) || 
-                            nrow(electrode_table) != nrow(plan_table)) {
-                            stop("Existing electrode table has different row numbers to the plan table")
+                          missing_electrodes <- as.integer(electrode_table$Electrode)
+                          missing_electrodes <- missing_electrodes[!missing_electrodes %in% 
+                            as.integer(plan_table$Electrode)]
+                          if (length(missing_electrodes)) {
+                            stop("Detected channel ", dipsaus::deparse_svec(missing_electrodes), 
+                              " from RAVE data. Please include them in the electrode plan.")
                           }
                           plan_table <- merge(electrode_table, 
-                            plan_table, by = "Electrode")
+                            plan_table, by = "Electrode", all.y = TRUE)
                         }
                       }
                     }, silent = TRUE)
@@ -350,12 +369,13 @@ rm(._._env_._.)
                     plan_table$MNI305_x %?<-% 0
                     plan_table$MNI305_y %?<-% 0
                     plan_table$MNI305_z %?<-% 0
-                    plan_table$VertexNumber <- -1
                     plan_table$FSIndex %?<-% 0
                     plan_table$FSLabel %?<-% "Unknown"
                     etypes <- subject$preprocess_settings$electrode_types
                     if (!length(etypes)) {
-                      etypes <- "LFP"
+                      etypes <- ifelse(is.na(plan_table$LocationType) | 
+                        plan_table$LocationType %in% c("EEG", 
+                          "Others"), "Unknown", "LFP")
                     }
                     plan_table$SignalType <- etypes
                     plan_list <- split(plan_table, plan_table$LabelPrefix)
@@ -717,9 +737,10 @@ rm(._._env_._.)
                     Coord_z = item$Coord_z, Label = item$Label, 
                     LabelPrefix = item$LabelPrefix, Dimension = item$Dimension, 
                     LocationType = item$LocationType, Radius = item$Radius, 
-                    MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, 
-                    MNI305_z = item$MNI305_z, FSIndex = item$FSIndex, 
-                    FSLabel = item$FSLabel, FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
+                    Hemisphere = item$Hemisphere, MNI305_x = item$MNI305_x, 
+                    MNI305_y = item$MNI305_y, MNI305_z = item$MNI305_z, 
+                    FSIndex = item$FSIndex, FSLabel = item$FSLabel, 
+                    FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
                     FSLabel_aparc_aseg = item$FSLabel_aparc_aseg, 
                     FSLabel_aparc_DKTatlas_aseg = item$FSLabel_aparc_DKTatlas_aseg, 
                     FSLabel_aseg = item$FSLabel_aseg, OrigCoord_x = item$OrigCoord_x, 
@@ -804,9 +825,10 @@ rm(._._env_._.)
                       Coord_z = item$Coord_z, Label = item$Label, 
                       LabelPrefix = item$LabelPrefix, Dimension = item$Dimension, 
                       LocationType = item$LocationType, Radius = item$Radius, 
-                      MNI305_x = item$MNI305_x, MNI305_y = item$MNI305_y, 
-                      MNI305_z = item$MNI305_z, FSIndex = item$FSIndex, 
-                      FSLabel = item$FSLabel, FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
+                      Hemisphere = item$Hemisphere, MNI305_x = item$MNI305_x, 
+                      MNI305_y = item$MNI305_y, MNI305_z = item$MNI305_z, 
+                      FSIndex = item$FSIndex, FSLabel = item$FSLabel, 
+                      FSLabel_aparc_a2009s_aseg = item$FSLabel_aparc_a2009s_aseg, 
                       FSLabel_aparc_aseg = item$FSLabel_aparc_aseg, 
                       FSLabel_aparc_DKTatlas_aseg = item$FSLabel_aparc_DKTatlas_aseg, 
                       FSLabel_aseg = item$FSLabel_aseg, OrigCoord_x = item$OrigCoord_x, 
@@ -863,12 +885,110 @@ rm(._._env_._.)
             }), target_depends = c("localization_list", "brain", 
             "subject")), deps = c("localization_list", "brain", 
         "subject"), cue = targets::tar_cue("thorough"), pattern = NULL, 
-        iteration = "list"), get_finalized_table = targets::tar_target_raw(name = "localization_result_final", 
+        iteration = "list"), check_exist_MRI_to_template_nonlinear_transform = targets::tar_target_raw(name = "morph_mri_exists", 
+        command = quote({
+            .__target_expr__. <- quote({
+                morph_mri_exists <- FALSE
+                morph_path <- file.path(subject$preprocess_settings$raw_path, 
+                  "rave-imaging", "morph-template")
+                conf_path <- file.path(morph_path, "transform.yaml")
+                if (file.exists(conf_path)) {
+                  conf <- raveio::load_yaml(conf_path)
+                  fwdtransforms <- conf$fwdtransforms
+                  if (length(fwdtransforms)) {
+                    transform_path <- file.path(morph_path, fwdtransforms)
+                    if (file.exists(transform_path)) {
+                      morph_mri_exists <- TRUE
+                    }
+                  }
+                }
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(morph_mri_exists)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "morph_mri_exists", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "morph_mri_exists", target_expr = quote({
+                {
+                  morph_mri_exists <- FALSE
+                  morph_path <- file.path(subject$preprocess_settings$raw_path, 
+                    "rave-imaging", "morph-template")
+                  conf_path <- file.path(morph_path, "transform.yaml")
+                  if (file.exists(conf_path)) {
+                    conf <- raveio::load_yaml(conf_path)
+                    fwdtransforms <- conf$fwdtransforms
+                    if (length(fwdtransforms)) {
+                      transform_path <- file.path(morph_path, 
+                        fwdtransforms)
+                      if (file.exists(transform_path)) {
+                        morph_mri_exists <- TRUE
+                      }
+                    }
+                  }
+                }
+                morph_mri_exists
+            }), target_depends = "subject"), deps = "subject", 
+        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"), 
+    get_finalized_table = targets::tar_target_raw(name = "localization_result_final", 
         command = quote({
             .__target_expr__. <- quote({
                 src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                 if (file.exists(src)) {
                   localization_result_final <- utils::read.csv(src)
+                  if (nonlinear_morphing && morph_mri_exists) {
+                    tryCatch({
+                      coords <- localization_result_final[, c("Coord_x", 
+                        "Coord_y", "Coord_z")]
+                      overhead <- FALSE
+                      if (nrow(coords) <= 1) {
+                        overhead <- TRUE
+                        coords <- rbind(coords, data.frame(Coord_x = c(0, 
+                          0), Coord_y = c(0, 0), Coord_z = c(0, 
+                          0)))
+                      }
+                      morph_path <- file.path(subject$preprocess_settings$raw_path, 
+                        "rave-imaging", "morph-template")
+                      if (!dir.exists(morph_path)) {
+                        stop("Cannot find morph path.")
+                      }
+                      coord_lps <- diag(c(-1, -1, 1, 1)) %*% 
+                        brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
+                        rbind(t(as.matrix(coords)), 1)
+                      coord_lps <- as.data.frame(t(coord_lps[1:3, 
+                        ]))
+                      names(coord_lps) <- c("x", "y", "z")
+                      config <- raveio::load_yaml(file.path(morph_path, 
+                        "transform.yaml"))
+                      transform_inv <- file.path(morph_path, 
+                        config$invtransforms)
+                      ants <- rpyANTs::load_ants()
+                      new_pos <- ants$apply_transforms_to_points(dim = 3L, 
+                        points = coord_lps, transformlist = transform_inv)
+                      new_pos <- rpyANTs::py_to_r(new_pos)
+                      new_pos[rowSums(coords^2) == 0, ] <- 0
+                      coord_lps[rowSums(coords^2) == 0, ] <- 0
+                      distance <- sqrt(rowSums(as.matrix(new_pos - 
+                        coord_lps)^2))
+                      new_pos$x <- -new_pos$x
+                      new_pos$y <- -new_pos$y
+                      if (overhead) {
+                        new_pos <- new_pos[seq_len(nrow(new_pos) - 
+                          2), ]
+                        coord_lps <- coord_lps[seq_len(nrow(coord_lps) - 
+                          2), ]
+                        distance <- distance[seq_len(length(distance) - 
+                          2)]
+                      }
+                      localization_result_final$MNI305_x <- new_pos$x
+                      localization_result_final$MNI305_y <- new_pos$y
+                      localization_result_final$MNI305_z <- new_pos$z
+                      localization_result_final$MNI305MorphDistance <- distance
+                    }, error = function(e) {
+                    })
+                  }
                 } else {
                   localization_result_final <- NULL
                 }
@@ -886,10 +1006,63 @@ rm(._._env_._.)
                   src <- file.path(subject$meta_path, "electrodes_unsaved.csv")
                   if (file.exists(src)) {
                     localization_result_final <- utils::read.csv(src)
+                    if (nonlinear_morphing && morph_mri_exists) {
+                      tryCatch({
+                        coords <- localization_result_final[, 
+                          c("Coord_x", "Coord_y", "Coord_z")]
+                        overhead <- FALSE
+                        if (nrow(coords) <= 1) {
+                          overhead <- TRUE
+                          coords <- rbind(coords, data.frame(Coord_x = c(0, 
+                            0), Coord_y = c(0, 0), Coord_z = c(0, 
+                            0)))
+                        }
+                        morph_path <- file.path(subject$preprocess_settings$raw_path, 
+                          "rave-imaging", "morph-template")
+                        if (!dir.exists(morph_path)) {
+                          stop("Cannot find morph path.")
+                        }
+                        coord_lps <- diag(c(-1, -1, 1, 1)) %*% 
+                          brain$xfm %*% brain$Norig %*% solve(brain$Torig) %*% 
+                          rbind(t(as.matrix(coords)), 1)
+                        coord_lps <- as.data.frame(t(coord_lps[1:3, 
+                          ]))
+                        names(coord_lps) <- c("x", "y", "z")
+                        config <- raveio::load_yaml(file.path(morph_path, 
+                          "transform.yaml"))
+                        transform_inv <- file.path(morph_path, 
+                          config$invtransforms)
+                        ants <- rpyANTs::load_ants()
+                        new_pos <- ants$apply_transforms_to_points(dim = 3L, 
+                          points = coord_lps, transformlist = transform_inv)
+                        new_pos <- rpyANTs::py_to_r(new_pos)
+                        new_pos[rowSums(coords^2) == 0, ] <- 0
+                        coord_lps[rowSums(coords^2) == 0, ] <- 0
+                        distance <- sqrt(rowSums(as.matrix(new_pos - 
+                          coord_lps)^2))
+                        new_pos$x <- -new_pos$x
+                        new_pos$y <- -new_pos$y
+                        if (overhead) {
+                          new_pos <- new_pos[seq_len(nrow(new_pos) - 
+                            2), ]
+                          coord_lps <- coord_lps[seq_len(nrow(coord_lps) - 
+                            2), ]
+                          distance <- distance[seq_len(length(distance) - 
+                            2)]
+                        }
+                        localization_result_final$MNI305_x <- new_pos$x
+                        localization_result_final$MNI305_y <- new_pos$y
+                        localization_result_final$MNI305_z <- new_pos$z
+                        localization_result_final$MNI305MorphDistance <- distance
+                      }, error = function(e) {
+                      })
+                    }
                   } else {
                     localization_result_final <- NULL
                   }
                 }
                 localization_result_final
-            }), target_depends = "subject"), deps = "subject", 
-        cue = targets::tar_cue("always"), pattern = NULL, iteration = "list"))
+            }), target_depends = c("subject", "nonlinear_morphing", 
+            "morph_mri_exists", "brain")), deps = c("subject", 
+        "nonlinear_morphing", "morph_mri_exists", "brain"), cue = targets::tar_cue("always"), 
+        pattern = NULL, iteration = "list"))
