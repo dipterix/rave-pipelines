@@ -1,20 +1,30 @@
-skip_coregistration: no
-path_ct: POST_IMPLANT_CT/DICOM
-dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20220720/bin/dcm2niix
+subject_code: YAH
+fsl_path: /usr/local/fsl
+freesurfer_path: /Applications/freesurfer/7.3.2
+project_name: devel
+path_mri: '007'
+skip_recon: no
+afni_path: /Users/dipterix/abin
 params:
   nii_t1: MRI_RAW.nii
-  nii_ct: POST_IMPLANT_CT_0_0.nii
+  nii_ct: CT_RAW.nii
+  template_brain: N27
   dcm2niix:
     merge: Auto
     float: 'Yes'
     crop: 'No'
   freesurfer:
-    flag: -autorecon1
+    flag: -all
     fresh_start: no
   niftyreg:
     reference: MRI_RAW.nii
     reg_type: rigid
     interp: trilinear
+  ants:
+    reference: MRI_RAW.nii
+    reg_type: Rigid
+    aff_metric: mattes
+    syn_metric: mattes
   flirt:
     reference: MRI_RAW.nii
     dof: 6
@@ -32,10 +42,6 @@ params:
     optimizer: powell
   afni:
     reference: MRI_RAW.nii
-afni_path: /Users/dipterix/abin
-skip_recon: no
-path_mri: pre-MRI/DICOM_SAG_MPRAGE_20220728090416_13.nii
-project_name: devel
-freesurfer_path: /Applications/freesurfer/7.3.2
-fsl_path: /usr/local/fsl
-subject_code: PAV006
+dcm2niix_path: /opt/homebrew/Cellar/dcm2niix/1.0.20220720/bin/dcm2niix
+path_ct: '007'
+skip_coregistration: no

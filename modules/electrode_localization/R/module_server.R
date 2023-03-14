@@ -56,56 +56,68 @@ module_server <- function(input, output, session, ...){
 
   })
 
+
+  finalize_electrode_table <- function(nonlinear_morphing = FALSE) {
+    ravedash::logger("Check and save electrode table to subject.", level = "trace")
+
+    dipsaus::shiny_alert2(
+      title = "Please wait...",
+      text = "Finalizing the electrode table...",
+      icon = "info", auto_close = FALSE, buttons = FALSE
+    )
+
+    pipeline$set_settings(nonlinear_morphing = isTRUE(nonlinear_morphing))
+
+    res <- pipeline$run(
+      as_promise = FALSE,
+      scheduler = "none",
+      type = "callr",
+      callr_function = NULL,
+      async = FALSE,
+      names = "localization_result_final"
+    )
+
+    Sys.sleep(0.5)
+    dipsaus::close_alert2()
+    table <- pipeline$read('localization_result_final')
+    subject <- component_container$data$subject
+    raveio::save_meta2(
+      data = table,
+      meta_type = "electrodes",
+      project_name = subject$project_name,
+      subject_code = subject$subject_code
+    )
+
+    # backup unsaved.csv as it's not useful anymore
+    unlink(file.path(subject$meta_path, "electrodes_unsaved.csv"))
+
+    dipsaus::shiny_alert2(
+      title = "Success!",
+      icon = 'success',
+      text = "Electrode table has been exported to subject > rave > meta > electrodes.csv",
+      auto_close = TRUE, buttons = list("OK" = TRUE),
+      on_close = function(...) {
+        shiny::removeModal()
+      }
+    )
+  }
+
   shiny::bindEvent(
-    ravedash::safe_observe({
-      ravedash::logger("Check and save electrode table to subject.", level = "trace")
+    ravedash::safe_observe(error_wrapper = "notification", {
 
-      dipsaus::shiny_alert2(
-        title = "Please wait...",
-        text = "Finalizing the electrode table, calculating surface mapping (if applicable).",
-        icon = "info", auto_close = FALSE, buttons = FALSE
-      )
-
-      res <- pipeline$run(
-        as_promise = TRUE,
-        scheduler = "none",
-        type = "vanilla",
-        callr_function = NULL,
-        async = TRUE,
-        names = "localization_result_final"
-      )
-
-      res$promise$then(
-        onFulfilled = function(...){
-          dipsaus::close_alert2()
-          table <- pipeline$read('localization_result_final')
-          subject <- component_container$data$subject
-          raveio::save_meta2(
-            data = table,
-            meta_type = "electrodes",
-            project_name = subject$project_name,
-            subject_code = subject$subject_code
-          )
-
-          # backup unsaved.csv as it's not useful anymore
-          unlink(file.path(subject$meta_path, "electrodes_unsaved.csv"))
-
-          dipsaus::shiny_alert2(
-            title = "Success!",
-            icon = 'success',
-            text = "Electrode table has been exported to subject > rave > meta > electrodes.csv",
-            auto_close = TRUE, buttons = list("OK" = TRUE)
-          )
-        },
-        onRejected = function(e){
-          dipsaus::close_alert2()
-          error_notification(e)
-        }
-      )
-
+      finalize_electrode_table(nonlinear_morphing = FALSE)
 
     }),
     input$save_btn,
+    ignoreNULL = TRUE, ignoreInit = TRUE
+  )
+  shiny::bindEvent(
+    ravedash::safe_observe(error_wrapper = "notification", {
+
+      finalize_electrode_table(nonlinear_morphing = TRUE)
+
+    }),
+    input$save_btn2,
     ignoreNULL = TRUE, ignoreInit = TRUE
   )
 
@@ -139,54 +151,47 @@ module_server <- function(input, output, session, ...){
       pipeline$set_settings(localization_list = local_data$plan_list)
 
       results <- pipeline$run(
-        as_promise = TRUE,
+        as_promise = FALSE,
         scheduler = "none",
         type = "vanilla",
         callr_function = NULL,
         async = FALSE,
-        names = "localization_result_initial"
+        names = c("localization_result_initial", "morph_mri_exists")
       )
 
-      results$promise$then(
-        onFulfilled = function(...){
-          ravedash::logger("Fulfilled: ", pipeline$pipeline_name, " - localization_result_initial", level = 'debug')
+      ravedash::logger("Fulfilled: ", pipeline$pipeline_name, " - localization_result_initial", level = 'debug')
 
-          table_preview <- pipeline$read("localization_result_initial")
-          local_reactives$table_preview <- table_preview
+      morph_mri_exists <- pipeline$read("morph_mri_exists")
+      table_preview <- pipeline$read("localization_result_initial")
+      local_reactives$table_preview <- table_preview
 
-          shidashi::clear_notifications(class = "pipeline-error")
-          shiny::showModal(shiny::modalDialog(
-            title = "Electrode table",
-            easyClose = FALSE,
-            size = "xl",
-            shiny::div(
-              class = "overflow-auto max-height-vh70",
-              DT::dataTableOutput(ns("electrode_table_preview"), width = "auto")
-            ),
-            footer = shiny::tagList(
-              shiny::modalButton("Dismiss"),
+      shidashi::clear_notifications(class = "pipeline-error")
+      shiny::showModal(shiny::modalDialog(
+        title = "Electrode table",
+        easyClose = FALSE,
+        size = "xl",
+        shiny::div(
+          class = "overflow-auto max-height-vh70",
+          DT::dataTableOutput(ns("electrode_table_preview"), width = "auto")
+        ),
+        footer = shiny::tagList(
+          shiny::modalButton("Dismiss"),
+          local({
+            if( morph_mri_exists ) {
+              shiny::tagList(
+                shiny::actionButton(ns("save_btn"), "Save to subject"),
+                dipsaus::actionButtonStyled(ns("save_btn2"), "Morph to template & Save to subject")
+              )
+            } else {
               dipsaus::actionButtonStyled(ns("save_btn"), "Save to subject")
-            )
-          ))
-        },
-        onRejected = function(e, ...){
-          msg <- paste(e$message, collapse = "\n")
-          if(inherits(e, "error")){
-            ravedash::logger(msg, level = 'error')
-            ravedash::logger(traceback(e), level = 'error', .sep = "\n")
-            shidashi::show_notification(
-              message = msg,
-              title = "Error while running pipeline", type = "danger",
-              autohide = FALSE, close = TRUE, class = "pipeline-error"
-            )
-          }
-          return(msg)
-        }
-      )
+            }
+          })
+        )
+      ))
 
       return()
 
-    }),
+    }, error_wrapper = "notification"),
     server_tools$run_analysis_flag(),
     ignoreNULL = TRUE, ignoreInit = TRUE
   )

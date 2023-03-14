@@ -119,6 +119,8 @@ loader_html <- function(session = shiny::getDefaultReactiveDomain()){
               shidashi::flex_item(shiny::textInput("label", "Group label")),
               shidashi::flex_item(shiny::textInput("dimension", "Dimension")),
               shidashi::flex_item(shiny::selectInput("type", "Type", choices = raveio::LOCATION_TYPES)),
+              shidashi::flex_item(shiny::selectInput("hemisphere", "Hemisphere",
+                                                     choices = c("auto", "left", "right"))),
               shidashi::flex_break(),
               shidashi::flex_item(shiny::tags$small(
                 shiny::textOutput("info", inline = TRUE)
@@ -197,31 +199,136 @@ loader_server <- function(input, output, session, ...){
     ignoreNULL = TRUE, ignoreInit = FALSE
   )
 
-  refresh_ct_chocies <- function(value_ct = NULL, value_mri = NULL, value_transform = NULL, reset_method = FALSE){
+  load_coreg_params <- function() {
     project_name <- loader_project$get_sub_element_input()
     subject_code <- loader_subject$get_sub_element_input()
-
     if(!loader_subject$sv$is_valid() || !length(project_name) || !length(subject_code) ||
        is.na(project_name) || is.na(subject_code) || project_name == '' || subject_code == '') {
-      shiny::updateSelectInput(
-        session = session, inputId = "loader_ct_fname",
-        choices = character(0L)
-      )
-      shiny::updateSelectInput(
-        session = session, inputId = "loader_mri_fname",
-        choices = character(0L)
-      )
-      shiny::updateSelectInput(
-        session = session, inputId = "loader_transform_fname",
-        choices = character(0L)
-      )
+      return()
     }
-
     subject <- raveio::RAVESubject$new(project_name = project_name,
                                        subject_code = subject_code,
                                        strict = FALSE)
     fs_path <- subject$freesurfer_path
-    if(length(fs_path) != 1 || is.na(fs_path) || !isTRUE(dir.exists(fs_path))) {
+    if( !file.exists(fs_path) ) { return() }
+
+    path_coreg_conf <- file.path(subject$preprocess_settings$raw_path, "rave-imaging",
+                                 "derivative", "conf-coregistration.yaml")
+    coreg_files <- list.files(
+      file.path(subject$preprocess_settings$raw_path,
+                "rave-imaging",
+                "coregistration")
+    )
+
+    localization_method <- "Re-sampled CT"
+
+    if( file.exists(path_coreg_conf) ) {
+      coreg_conf <- raveio::load_yaml(path_coreg_conf)
+
+      # check outputs
+      if("CT_IJK_to_MR_RAS" %in% names(coreg_conf$outputs)) {
+        localization_method <- "CT (IJK) to MR (RAS) transform + Raw CT"
+        ct_name <- unique(basename(coreg_conf$input_image$backup))
+        ct_name <- ct_name[ct_name %in% coreg_files]
+        mri_name <- unique(basename(coreg_conf$reference_image$backup))
+        mri_name <- mri_name[mri_name %in% coreg_files]
+        trans_name <- basename(coreg_conf$outputs$CT_IJK_to_MR_RAS$path)
+      } else if ("ct2t1" %in% names(coreg_conf$outputs)) {
+        localization_method <- "FSL transform + Raw CT + MRI"
+        ct_name <- unique(basename(coreg_conf$input_image$backup))
+        ct_name <- ct_name[ct_name %in% coreg_files]
+        mri_name <- unique(basename(coreg_conf$reference_image$backup))
+        mri_name <- mri_name[mri_name %in% coreg_files]
+        trans_name <- unique(basename(coreg_conf$outputs$ct2t1$path))
+      } else if ("ct_in_t1" %in% names(coreg_conf$outputs)) {
+        localization_method <- "Re-sampled CT"
+        ct_name <- basename(coreg_conf$outputs$ct_in_t1$path)
+        mri_name <- NULL
+        trans_name <- NULL
+      }
+    } else {
+      selected_method <- subject$get_default(
+        "transform_space", default_if_missing = NULL,
+        namespace = "electrode_localization")
+      if( length(selected_method) == 1 ) {
+        localization_method <- names(LOCALIZATION_METHODS)[
+          unlist(LOCALIZATION_METHODS) == selected_method]
+      }
+      ct_name <- subject$get_default(
+        "path_ct", default_if_missing = NULL,
+        namespace = "electrode_localization")
+      if(length(ct_name) == 1) {
+        ct_name <- basename(ct_name)
+        ct_name <- ct_name[ct_name %in% coreg_files]
+      }
+      if(!length(ct_name)) {
+        ct_name <- coreg_files[grepl("^CT.*\\.nii(\\.gz|)$", coreg_files)]
+        if(length(ct_name)) { ct_name <- ct_name[[1]] }
+      }
+
+      mri_name <- subject$get_default(
+        "path_mri", default_if_missing = shiny::isolate(input$loader_mri_fname),
+        namespace = "electrode_localization")
+      if(length(mri_name) == 1) {
+        mri_name <- basename(mri_name)
+        mri_name <- mri_name[mri_name %in% coreg_files]
+      }
+      if(!length(mri_name)) {
+        mri_name <- coreg_files[grepl("^MR.*\\.nii(\\.gz|)$", coreg_files)]
+        if(length(mri_name)) { mri_name <- mri_name[[1]] }
+      }
+
+      trans_name <- subject$get_default(
+        "path_transform", default_if_missing = shiny::isolate(input$loader_transform_fname),
+        namespace = "electrode_localization")
+      if(length(trans_name) == 1) {
+        trans_name <- basename(trans_name)
+        trans_name <- trans_name[trans_name %in% coreg_files]
+      }
+      if(!length(trans_name)) {
+        trans_name <- coreg_files[grepl("\\.(mat|txt)$", coreg_files)]
+        if(length(trans_name)) { trans_name <- trans_name[[1]] }
+      }
+
+      if( length(trans_name) == 1 &&
+          (
+            identical(localization_method, "Re-sampled CT") ||
+            !isTRUE(localization_method %in% names(LOCALIZATION_METHODS))
+          ) ) {
+        if( startsWith(trans_name, "CT_IJK") ) {
+          localization_method <- "CT (IJK) to MR (RAS) transform + Raw CT"
+        } else if ( startsWith(trans_name, "ct2t1") ) {
+          localization_method <- "FSL transform + Raw CT + MRI"
+        }
+      }
+    }
+
+    return(list(
+      method = localization_method,
+      ct_filename = ct_name,
+      mr_filename = mri_name,
+      transform_filename = trans_name,
+      project_name = project_name,
+      subject_code = subject_code,
+      subject = subject
+    ))
+
+  }
+
+  refresh_ct_chocies <- function(value_ct = NULL, value_mri = NULL, value_transform = NULL, reset_method = FALSE){
+    coreg_params <- load_coreg_params()
+
+    # coreg_params <- list(
+    #   method = '',
+    #   ct_filename = ct_name,
+    #   mr_filename = mri_name,
+    #   transform_filename = trans_name,
+    #   project_name = project_name,
+    #   subject_code = subject_code,
+    #   subject = subject
+    # )
+
+    if( !length(coreg_params) ) {
       shiny::updateSelectInput(
         session = session, inputId = "loader_ct_fname",
         choices = character(0L)
@@ -234,61 +341,35 @@ loader_server <- function(input, output, session, ...){
         session = session, inputId = "loader_transform_fname",
         choices = character(0L)
       )
+      return()
     }
 
-    if( reset_method ) {
-      current_method <- shiny::isolate(input$loader_method)
-      selected_method <- subject$get_default(
-        "transform_space", default_if_missing = NULL,
-        namespace = "electrode_localization")
-      if(length(selected_method) == 1) {
-        selected_method <- names(LOCALIZATION_METHODS)[unlist(LOCALIZATION_METHODS) == selected_method]
-      }
-      selected_method <- c(selected_method, current_method) %OF% names(LOCALIZATION_METHODS)
-      shiny::updateSelectInput(session = session, inputId = "loader_method", selected = selected_method)
-    }
+    subject <- coreg_params$subject
 
-    nifti_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "nii(?:\\.gz)?$",
-                     recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
-                     full.names = FALSE, all.files = FALSE)
-    transform_files <- list.files(file.path(fs_path, "..", "coregistration"), pattern = "(mat|txt)$",
-                             recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
-                             full.names = FALSE, all.files = FALSE)
+    coreg_path <- file.path(subject$preprocess_settings$raw_path, "rave-imaging", "coregistration")
+
+    nifti_files <- list.files(coreg_path, pattern = "nii(?:\\.gz)?$",
+                              recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
+                              full.names = FALSE, all.files = FALSE)
+    transform_files <- list.files(coreg_path, pattern = "(mat|txt)$",
+                                  recursive = FALSE, ignore.case = TRUE, include.dirs = FALSE,
+                                  full.names = FALSE, all.files = FALSE)
     transform_files <- unique(c(transform_files[transform_files %in% c("CT_IJK_to_MR_RAS.txt", "ct2t1.mat")], transform_files))
-    selected_ct <- subject$get_default(
-      "path_ct", default_if_missing = shiny::isolate(input$loader_ct_fname),
-      namespace = "electrode_localization")
-    if(length(selected_ct) == 1) {
-      selected_ct <- basename(selected_ct)
-    }
-    selected_ct <- c(value_ct, selected_ct) %OF% nifti_files
+
+
+    shiny::updateSelectInput(
+      session = session, inputId = "loader_method", selected = coreg_params$method)
     shiny::updateSelectInput(
       session = session, inputId = "loader_ct_fname", choices = nifti_files,
-      selected = selected_ct
+      selected = coreg_params$ct_filename
     )
-
-    selected_mri <- subject$get_default(
-      "path_mri", default_if_missing = shiny::isolate(input$loader_mri_fname),
-      namespace = "electrode_localization")
-    if(length(selected_mri) == 1) {
-      selected_mri <- basename(selected_mri)
-    }
-    selected_mri <- c(value_mri, selected_mri) %OF% nifti_files
     shiny::updateSelectInput(
       session = session, inputId = "loader_mri_fname", choices = nifti_files,
-      selected = selected_mri
+      selected = coreg_params$mr_filename
     )
-
-    selected_transform <- subject$get_default(
-      "path_transform", default_if_missing = shiny::isolate(input$loader_transform_fname),
-      namespace = "electrode_localization")
-    if(length(selected_transform) == 1) {
-      selected_transform <- basename(selected_transform)
-    }
-    selected_transform <- c(value_transform, selected_transform) %OF% transform_files
     shiny::updateSelectInput(
       session = session, inputId = "loader_transform_fname", choices = transform_files,
-      selected = selected_transform
+      selected = coreg_params$transform_filename
     )
 
     electrode_file <- file.path(subject$meta_path, c("electrodes_unsaved.csv", "electrodes.csv"))
@@ -307,13 +388,17 @@ loader_server <- function(input, output, session, ...){
         if(!"Dimension" %in% names(table)) {
           table$Dimension <- ""
         }
+        if(!"Hemisphere" %in% names(table)) {
+          table$Hemisphere <- "auto"
+        }
 
         table$LabelPrefix <- gsub("[0-9]+$", "", table$Label)
         table <- table[order(table$Electrode),]
 
         current_dim <- ""
         current_prefix <- ""
-        current_type <- "LFP"
+        current_type <- "iEEG"
+        current_hemisphere <- "auto"
         current_e <- NULL
 
         for(ii in seq_len(nrow(table))) {
@@ -323,10 +408,12 @@ loader_server <- function(input, output, session, ...){
             current_dim <- sub$Dimension
             current_prefix <- sub$LabelPrefix
             current_type <- sub$LocationType
+            current_hemisphere <- sub$Hemisphere
           } else {
             if(!identical(current_dim, sub$Dimension) ||
                !identical(current_prefix, sub$LabelPrefix) ||
                !identical(current_type, sub$LocationType) ||
+               !identical(current_hemisphere, sub$Hemisphere) ||
                sub$Electrode != current_e[[length(current_e)]] + 1) {
 
               # check dimension
@@ -341,12 +428,14 @@ loader_server <- function(input, output, session, ...){
               plan[[length(plan) + 1]] <- list(
                 label = current_prefix,
                 dimension = as.character(dimension),
-                type = current_type
+                type = current_type,
+                hemisphere = current_hemisphere
               )
               current_e <- sub$Electrode
               current_dim <- sub$Dimension
               current_prefix <- sub$LabelPrefix
               current_type <- sub$LocationType
+              current_hemisphere <- sub$Hemisphere
 
             } else {
               current_e <- c(current_e, sub$Electrode)
@@ -367,7 +456,8 @@ loader_server <- function(input, output, session, ...){
           plan[[length(plan) + 1]] <- list(
             label = current_prefix,
             dimension = as.character(dimension),
-            type = current_type
+            type = current_type,
+            hemisphere = current_hemisphere
           )
         }
 
@@ -378,7 +468,8 @@ loader_server <- function(input, output, session, ...){
       plan <- list(list(
         label = "NoLabel",
         dimension = as.character(length(subject$preprocess_settings$electrodes)),
-        type = "LFP"
+        type = "iEEG",
+        hemisphere = "auto"
       ))
     }
     dipsaus::updateCompoundInput2(
@@ -559,7 +650,8 @@ loader_server <- function(input, output, session, ...){
       res <- pipeline$run(
         as_promise = FALSE,
         async = FALSE,
-        names = c("plan_list", "pial_envelope", "brain", "localize_data", "ct_exists", "fslut"),
+        names = c("plan_list", "pial_envelope", "brain", "localize_data",
+                  "ct_exists", "fslut"),
         type = "vanilla",
         scheduler = "none"
       )

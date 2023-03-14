@@ -15,39 +15,39 @@ rm(._._env_._.)
     quote({
         yaml::read_yaml(settings_path)
     }), deps = "settings_path", cue = targets::tar_cue("always")), 
-    input_skip_coregistration = targets::tar_target_raw("skip_coregistration", 
+    input_subject_code = targets::tar_target_raw("subject_code", 
         quote({
-            settings[["skip_coregistration"]]
-        }), deps = "settings"), input_path_ct = targets::tar_target_raw("path_ct", 
-        quote({
-            settings[["path_ct"]]
-        }), deps = "settings"), input_dcm2niix_path = targets::tar_target_raw("dcm2niix_path", 
-        quote({
-            settings[["dcm2niix_path"]]
-        }), deps = "settings"), input_params = targets::tar_target_raw("params", 
-        quote({
-            settings[["params"]]
-        }), deps = "settings"), input_afni_path = targets::tar_target_raw("afni_path", 
-        quote({
-            settings[["afni_path"]]
-        }), deps = "settings"), input_skip_recon = targets::tar_target_raw("skip_recon", 
-        quote({
-            settings[["skip_recon"]]
-        }), deps = "settings"), input_path_mri = targets::tar_target_raw("path_mri", 
-        quote({
-            settings[["path_mri"]]
-        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
-        quote({
-            settings[["project_name"]]
-        }), deps = "settings"), input_freesurfer_path = targets::tar_target_raw("freesurfer_path", 
-        quote({
-            settings[["freesurfer_path"]]
+            settings[["subject_code"]]
         }), deps = "settings"), input_fsl_path = targets::tar_target_raw("fsl_path", 
         quote({
             settings[["fsl_path"]]
-        }), deps = "settings"), input_subject_code = targets::tar_target_raw("subject_code", 
+        }), deps = "settings"), input_freesurfer_path = targets::tar_target_raw("freesurfer_path", 
         quote({
-            settings[["subject_code"]]
+            settings[["freesurfer_path"]]
+        }), deps = "settings"), input_project_name = targets::tar_target_raw("project_name", 
+        quote({
+            settings[["project_name"]]
+        }), deps = "settings"), input_path_mri = targets::tar_target_raw("path_mri", 
+        quote({
+            settings[["path_mri"]]
+        }), deps = "settings"), input_skip_recon = targets::tar_target_raw("skip_recon", 
+        quote({
+            settings[["skip_recon"]]
+        }), deps = "settings"), input_afni_path = targets::tar_target_raw("afni_path", 
+        quote({
+            settings[["afni_path"]]
+        }), deps = "settings"), input_params = targets::tar_target_raw("params", 
+        quote({
+            settings[["params"]]
+        }), deps = "settings"), input_dcm2niix_path = targets::tar_target_raw("dcm2niix_path", 
+        quote({
+            settings[["dcm2niix_path"]]
+        }), deps = "settings"), input_path_ct = targets::tar_target_raw("path_ct", 
+        quote({
+            settings[["path_ct"]]
+        }), deps = "settings"), input_skip_coregistration = targets::tar_target_raw("skip_coregistration", 
+        quote({
+            settings[["skip_coregistration"]]
         }), deps = "settings"), check_commandline_tools = targets::tar_target_raw(name = "cmd_tools", 
         command = quote({
             .__target_expr__. <- quote({
@@ -239,8 +239,10 @@ rm(._._env_._.)
                 }
                 ct <- file.path(subject$preprocess_settings$raw_path, 
                   path_ct)
-                if (is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
-                  warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+                if (is.null(cmd_tools$afni)) {
+                  warns <- append(warns, "AFNI path is missing/invalid: cannot use AFNI-ALICE co-registration script.")
+                } else if (is.null(cmd_tools$flirt)) {
+                  warns <- append(warns, "FSL home is missing/invalid: cannot use FSL-FLIRT co-registration script.")
                 } else {
                   if (!path_is_valid(ct, dir_ok = TRUE)) {
                     warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
@@ -307,8 +309,10 @@ rm(._._env_._.)
                   }
                   ct <- file.path(subject$preprocess_settings$raw_path, 
                     path_ct)
-                  if (is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
-                    warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+                  if (is.null(cmd_tools$afni)) {
+                    warns <- append(warns, "AFNI path is missing/invalid: cannot use AFNI-ALICE co-registration script.")
+                  } else if (is.null(cmd_tools$flirt)) {
+                    warns <- append(warns, "FSL home is missing/invalid: cannot use FSL-FLIRT co-registration script.")
                   } else {
                     if (!path_is_valid(ct, dir_ok = TRUE)) {
                       warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
@@ -713,6 +717,80 @@ rm(._._env_._.)
             }), target_depends = c("check_result", "params", 
             "subject")), deps = c("check_result", "params", "subject"
         ), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"), CT_MR_coregistration_via_ANTs = targets::tar_target_raw(name = "coreg_ants", 
+        command = quote({
+            .__target_expr__. <- quote({
+                coreg_ants <- tryCatch({
+                  mri_path <- file.path(check_result$path_temp, 
+                    "derivative", params$nipy$reference)
+                  if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                    mri_path <- params$nii_t1
+                    mri_root <- file.path(check_result$path_temp, 
+                      "inputs", "MRI")
+                    mri_path <- file.path(mri_root, mri_path)
+                  }
+                  if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                    stop("Please choose a valid MRI Nifti file")
+                  }
+                  ct_path <- params$nii_ct
+                  ct_root <- file.path(check_result$path_temp, 
+                    "inputs", "CT")
+                  ct_path <- file.path(ct_root, ct_path)
+                  if (!path_is_valid(ct_path) || dir.exists(ct_path)) {
+                    stop("Please choose a valid CT Nifti file. Current file is missing: ", 
+                      ct_path)
+                  }
+                  raveio::cmd_run_ants_coreg(subject = subject, 
+                    mri_path = mri_path, ct_path = ct_path, reg_type = params$ants$reg_type, 
+                    aff_metric = params$ants$aff_metric, syn_metric = params$ants$syn_metric, 
+                    verbose = FALSE, dry_run = TRUE)
+                }, error = function(e) {
+                  list(error = TRUE, condition = e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(coreg_ants)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "coreg_ants", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "coreg_ants", target_expr = quote({
+                {
+                  coreg_ants <- tryCatch({
+                    mri_path <- file.path(check_result$path_temp, 
+                      "derivative", params$nipy$reference)
+                    if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                      mri_path <- params$nii_t1
+                      mri_root <- file.path(check_result$path_temp, 
+                        "inputs", "MRI")
+                      mri_path <- file.path(mri_root, mri_path)
+                    }
+                    if (!path_is_valid(mri_path) || dir.exists(mri_path)) {
+                      stop("Please choose a valid MRI Nifti file")
+                    }
+                    ct_path <- params$nii_ct
+                    ct_root <- file.path(check_result$path_temp, 
+                      "inputs", "CT")
+                    ct_path <- file.path(ct_root, ct_path)
+                    if (!path_is_valid(ct_path) || dir.exists(ct_path)) {
+                      stop("Please choose a valid CT Nifti file. Current file is missing: ", 
+                        ct_path)
+                    }
+                    raveio::cmd_run_ants_coreg(subject = subject, 
+                      mri_path = mri_path, ct_path = ct_path, 
+                      reg_type = params$ants$reg_type, aff_metric = params$ants$aff_metric, 
+                      syn_metric = params$ants$syn_metric, verbose = FALSE, 
+                      dry_run = TRUE)
+                  }, error = function(e) {
+                    list(error = TRUE, condition = e)
+                  })
+                }
+                coreg_ants
+            }), target_depends = c("check_result", "params", 
+            "subject")), deps = c("check_result", "params", "subject"
+        ), cue = targets::tar_cue("always"), pattern = NULL, 
         iteration = "list"), CT_MR_coregistration_via_AFNI = targets::tar_target_raw(name = "coreg_3dallineate", 
         command = quote({
             .__target_expr__. <- quote({
@@ -780,4 +858,46 @@ rm(._._env_._.)
             }), target_depends = c("params", "check_result", 
             "subject", "cmd_tools")), deps = c("params", "check_result", 
         "subject", "cmd_tools"), cue = targets::tar_cue("always"), 
-        pattern = NULL, iteration = "list"))
+        pattern = NULL, iteration = "list"), morph_MRI_to_template = targets::tar_target_raw(name = "morphmri_ants", 
+        command = quote({
+            .__target_expr__. <- quote({
+                morphmri_ants <- tryCatch({
+                  template_brain <- params$template_brain
+                  if (length(template_brain) != 1) {
+                    template_brain <- getOption("threeBrain.template_subject", 
+                      "fsaverage")
+                  }
+                  raveio::cmd_run_ants_mri_to_template(subject = subject, 
+                    template_subject = template_brain, verbose = FALSE, 
+                    dry_run = TRUE)
+                }, error = function(e) {
+                  list(error = TRUE, condition = e)
+                })
+            })
+            tryCatch({
+                eval(.__target_expr__.)
+                return(morphmri_ants)
+            }, error = function(e) {
+                asNamespace("raveio")$resolve_pipeline_error(name = "morphmri_ants", 
+                  condition = e, expr = .__target_expr__.)
+            })
+        }), format = asNamespace("raveio")$target_format_dynamic(name = NULL, 
+            target_export = "morphmri_ants", target_expr = quote({
+                {
+                  morphmri_ants <- tryCatch({
+                    template_brain <- params$template_brain
+                    if (length(template_brain) != 1) {
+                      template_brain <- getOption("threeBrain.template_subject", 
+                        "fsaverage")
+                    }
+                    raveio::cmd_run_ants_mri_to_template(subject = subject, 
+                      template_subject = template_brain, verbose = FALSE, 
+                      dry_run = TRUE)
+                  }, error = function(e) {
+                    list(error = TRUE, condition = e)
+                  })
+                }
+                morphmri_ants
+            }), target_depends = c("params", "subject")), deps = c("params", 
+        "subject"), cue = targets::tar_cue("always"), pattern = NULL, 
+        iteration = "list"))

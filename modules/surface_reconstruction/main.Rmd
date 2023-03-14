@@ -148,8 +148,10 @@ if(!skip_recon && fs_reconstructed) {
 }
 
 ct <- file.path(subject$preprocess_settings$raw_path, path_ct)
-if(is.null(cmd_tools$afni) && is.null(cmd_tools$flirt)) {
-  warns <- append(warns, "Cannot find AFNI-3dAllineate nor FSL-flirt; the co-registration will result in errors. Please make sure `AFNI` or `FSL` home path is specified correctly.")
+if( is.null(cmd_tools$afni) ) {
+  warns <- append(warns, "AFNI path is missing/invalid: cannot use AFNI-ALICE co-registration script.")
+} else if ( is.null(cmd_tools$flirt) ) {
+  warns <- append(warns, "FSL home is missing/invalid: cannot use FSL-FLIRT co-registration script.")
 } else {
   if(!path_is_valid(ct, dir_ok = TRUE)) {
     warns <- append(warns, "The CT path is invalid: co-registration will result in errors.")
@@ -447,6 +449,44 @@ coreg_niftyreg <- tryCatch({
 })
 ```
 
+```{rave CT_MR_coregistration_via_ANTs, export = "coreg_ants", cue = "always", echo=FALSE}
+coreg_ants <- tryCatch({
+  mri_path <- file.path(check_result$path_temp, "derivative", params$nipy$reference)
+  if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
+    mri_path <- params$nii_t1
+    mri_root <- file.path(check_result$path_temp, "inputs", "MRI")
+    mri_path <- file.path(mri_root, mri_path)
+  }
+  
+  if(!path_is_valid(mri_path) || dir.exists(mri_path)) {
+    stop("Please choose a valid MRI Nifti file")
+  }
+  ct_path <- params$nii_ct
+  ct_root <- file.path(check_result$path_temp, "inputs", "CT")
+  ct_path <- file.path(ct_root, ct_path)
+  if(!path_is_valid(ct_path) || dir.exists(ct_path)) {
+    stop("Please choose a valid CT Nifti file. Current file is missing: ", ct_path)
+  }
+  
+  raveio::cmd_run_ants_coreg(
+    subject = subject,
+    mri_path = mri_path,
+    ct_path = ct_path,
+    reg_type = params$ants$reg_type,
+    aff_metric = params$ants$aff_metric,
+    syn_metric = params$ants$syn_metric,
+    verbose = FALSE,
+    dry_run = TRUE
+  )
+  
+}, error = function(e) {
+  list(
+    error = TRUE,
+    condition = e
+  )
+})
+```
+
 <pre class="sh">
 <code class="hljs">
 ```{r, results='asis', echo=FALSE}
@@ -487,6 +527,28 @@ coreg_3dallineate <- tryCatch({
     verbose = FALSE
   )
   
+}, error = function(e) {
+  list(
+    error = TRUE,
+    condition = e
+  )
+})
+```
+
+
+```{rave morph_MRI_to_template, export = "morphmri_ants", cue = "always", echo=FALSE}
+morphmri_ants <- tryCatch({
+  
+  template_brain <- params$template_brain
+  if(length(template_brain) != 1) {
+    template_brain <- getOption("threeBrain.template_subject", "fsaverage")
+  }
+  raveio::cmd_run_ants_mri_to_template(
+    subject = subject,
+    template_subject = template_brain,
+    verbose = FALSE,
+    dry_run = TRUE
+  )
 }, error = function(e) {
   list(
     error = TRUE,
